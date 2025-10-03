@@ -19,13 +19,14 @@ namespace Mobishare.API.Controllers
         private readonly IMqttIoTService _mqttIoTService = mqttIoTService;
 
 
+        // GET: api/corse? idUtente=& matricolaMezzo=..
         [Authorize(Roles = "Gestore")]
         [HttpGet]
         public async Task<ActionResult<SuccessResponse>> GetCorse([FromQuery] int? idUtente, [FromQuery] string? matricolaMezzo)
         {
             var query = _context.Corse.AsNoTracking().AsQueryable();
 
-            if (idUtente.HasValue)
+            if (idUtente.HasValue && idUtente.Value > 0)
                 query = query.Where(c => c.IdUtente == idUtente.Value);
 
             if (!string.IsNullOrEmpty(matricolaMezzo))

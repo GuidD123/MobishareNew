@@ -19,9 +19,8 @@ namespace Mobishare.API.Middleware
             catch (Exception ex)
             {
                 // Genera un TraceId univoco
-                var traceId = Guid.NewGuid().ToString();
-
-                _logger.LogError(ex, "Errore catturato dal middleware");
+                var traceId = context.TraceIdentifier;
+                _logger.LogError(ex, "Errore catturato dal middleware. TraceId={TraceId}", traceId);
 
                 context.Response.ContentType = "application/json";
 
@@ -37,6 +36,26 @@ namespace Mobishare.API.Middleware
                 // Mappa eccezioni custom in status code + messaggi
                 switch (ex)
                 {
+                    //400 Bad Request 
+                    case ValoreNonValidoException vnv: // ArgumentException custom
+                        statusCode = (int)HttpStatusCode.BadRequest;
+                        response = new
+                        {
+                            Errore = vnv.Message,
+                            Campo = vnv.Data,
+                            TraceId = traceId
+                        };
+                        break;
+
+                    case ImportoNonValidoException inv:
+                        statusCode = (int)HttpStatusCode.BadRequest;
+                        response = new { 
+                            Errore = inv.
+                            Message, inv.Importo, 
+                            TraceId = traceId 
+                        };
+                        break;
+
                     case CreditoInsufficienteException cie:
                         statusCode = (int)HttpStatusCode.BadRequest;
                         response = new 
@@ -48,9 +67,18 @@ namespace Mobishare.API.Middleware
                         };
                         break;
 
+                    case BatteriaTroppoBassaException bb:
+                        statusCode = (int)HttpStatusCode.BadRequest;
+                        response = new
+                        {
+                            Errore = bb.Message,
+                            TraceId = traceId
+                        };
+                        break;
+
                     case MezzoNonDisponibileException mde:
                         statusCode = (int)HttpStatusCode.BadRequest;
-                        response = new 
+                        response = new
                         {
                             Errore = mde.Message,
                             mde.IdMezzo,
@@ -58,15 +86,32 @@ namespace Mobishare.API.Middleware
                         };
                         break;
 
-                    case UtenteSospesoException use:
-                        statusCode = (int)HttpStatusCode.Forbidden;
-                        response = new 
+
+
+                    //401 Unauthorized
+
+                    case UtenteNonAutorizzatoException ua:
+                        statusCode = (int)HttpStatusCode.Unauthorized;
+                        response = new
                         {
-                            Errore = use.Message,
-                            use.Email,
+                            Errore = ua.Message,
                             TraceId = traceId
                         };
                         break;
+
+                    //402 Payment Required 
+                    case PagamentoFallitoException pfe:
+                        statusCode = 402;
+                        response = new
+                        {
+                            Errore = pfe.Message,
+                            pfe.Motivo,
+                            TraceId = traceId
+                        };
+                        break; 
+
+
+                    //403 Forbidden
 
                     case OperazioneNonConsentitaException oce:
                         statusCode = (int)HttpStatusCode.Forbidden;
@@ -77,26 +122,46 @@ namespace Mobishare.API.Middleware
                         };
                         break;
 
-                    case BatteriaTroppoBassaException bb:
-                        statusCode = (int)HttpStatusCode.BadRequest;
-                        response = new 
+                    case UtenteSospesoException use:
+                        statusCode = (int)HttpStatusCode.Forbidden;
+                        response = new
                         {
-                            Errore = bb.Message,
+                            Errore = use.Message,
+                            use.Email,
                             TraceId = traceId
                         };
                         break;
 
-                    case UtenteNonAutorizzatoException ua:
-                        statusCode = (int)HttpStatusCode.Unauthorized;
-                        response = new 
+                    //404 NotFound
+                    case CorsaNonTrovataException cnt:
+                        statusCode = (int)HttpStatusCode.NotFound;
+                        response = new
                         {
-                            Errore = ua.Message,
+                            Errore = cnt.Message,
                             TraceId = traceId
                         };
                         break;
+
+                    case ElementoNonTrovatoException ent:
+                        statusCode = (int)HttpStatusCode.NotFound;
+                        response = new
+                        {
+                            Errore = ent.Message,
+                            TraceId = traceId
+                        };
+                        break;
+
+                    //409 Conflict 
+                    case ElementoDuplicatoException dup:
+                        statusCode = (int)HttpStatusCode.Conflict;
+                        response = new 
+                        { 
+                            Errore = dup.Message,
+                            TraceId = traceId 
+                        };
+                        break;
+
                 }
-
-
                 context.Response.StatusCode = statusCode;
                 await context.Response.WriteAsync(JsonSerializer.Serialize(response));
             }
