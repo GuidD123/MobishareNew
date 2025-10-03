@@ -1,0 +1,91 @@
+﻿@page
+@model Mobishare.WebApp.Pages.Mezzi.IndexModel
+@{
+    ViewData["Title"] = "Mezzi Disponibili";
+}
+
+<div class="container mt-4">
+    <h2><i class="bi bi-bicycle"></i> Mezzi Disponibili</h2>
+    
+    @if (Model.Sospeso)
+    {
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Account sospeso!</strong> Non puoi noleggiare mezzi fino al saldo del debito.
+            <a href="/Profilo/Ricarica" class="alert-link">Ricarica ora</a>
+        </div>
+    }
+    
+    @if (Model.HasCorsaInCorso)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-info-circle-fill"></i>
+            Hai già una corsa in corso. <a href="/Corse/Corrente" class="alert-link">Visualizzala qui</a>
+        </div>
+    }
+    
+    @if (!Model.Mezzi.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Nessun mezzo disponibile al momento.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var mezzo in Model.Mezzi)
+            {
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                @switch(mezzo.TipoMezzo.ToLower())
+                                {
+                                    case "bicicletta":
+                                        <i class="bi bi-bicycle text-success"></i>
+                                        break;
+                                    case "monopattino":
+                                        <i class="bi bi-scooter text-primary"></i>
+                                        break;
+                                    case "auto":
+                                        <i class="bi bi-car-front text-info"></i>
+                                        break;
+                                    default:
+                                        <i class="bi bi-ev-station"></i>
+                                        break;
+                                }
+                                @mezzo.TipoMezzo
+                            </h5>
+                            <p class="card-text">
+                                <strong>Targa:</strong> @mezzo.Targa<br>
+                                <strong>Tariffa:</strong> €@mezzo.TariffaOraria.ToString("F2")/ora<br>
+                                @if (mezzo.BatteriaPercentuale.HasValue)
+                                {
+                                    <strong>Batteria:</strong> 
+                                    <span class="badge bg-@(mezzo.BatteriaPercentuale > 50 ? "success" : mezzo.BatteriaPercentuale > 20 ? "warning" : "danger")">
+                                        @mezzo.BatteriaPercentuale%
+                                    </span>
+                                    <br>
+                                }
+                                @if (mezzo.IdParcheggio.HasValue)
+                                {
+                                    <strong>Parcheggio:</strong> ID @mezzo.IdParcheggio<br>
+                                }
+                            </p>
+                            
+                            @if (!Model.Sospeso && !Model.HasCorsaInCorso)
+                            {
+                                <form method="post">
+                                    <input type="hidden" name="MezzoId" value="@mezzo.Id" />
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="bi bi-play-circle"></i> Noleggia
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

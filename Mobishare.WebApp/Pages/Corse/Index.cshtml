@@ -1,0 +1,92 @@
+﻿@page
+@model Mobishare.WebApp.Pages.Corse.IndexModel
+@{
+    ViewData["Title"] = "Le Mie Corse";
+}
+
+<div class="container mt-4">
+    <h2><i class="bi bi-clock-history"></i> Le Mie Corse</h2>
+    
+    @if (!Model.Corse.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Non hai ancora effettuato corse.
+            <a href="/Mezzi" class="alert-link">Noleggia un mezzo</a>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data Inizio</th>
+                        <th>Data Fine</th>
+                        <th>Mezzo</th>
+                        <th>Durata</th>
+                        <th>Costo</th>
+                        <th>Stato</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var corsa in Model.Corse)
+                    {
+                        <tr>
+                            <td>@corsa.DataInizio.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                @if (corsa.DataFine.HasValue)
+                                {
+                                    @corsa.DataFine.Value.ToString("dd/MM/yyyy HH:mm")
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning">In corso</span>
+                                }
+                            </td>
+                            <td>ID @corsa.IdMezzo</td>
+                            <td>
+                                @if (corsa.DataFine.HasValue)
+                                {
+                                    var durata = (corsa.DataFine.Value - corsa.DataInizio).TotalMinutes;
+                                    @($"{(int)durata} min")
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                            <td>
+                                @if (corsa.CostoTotale.HasValue)
+                                {
+                                    <strong>€@corsa.CostoTotale.Value.ToString("F2")</strong>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                            <td>
+                                @switch(corsa.Stato.ToLower())
+                                {
+                                    case "completata":
+                                        <span class="badge bg-success">Completata</span>
+                                        break;
+                                    case "in_corso":
+                                        <span class="badge bg-warning">In Corso</span>
+                                        break;
+                                    default:
+                                        <span class="badge bg-secondary">@corsa.Stato</span>
+                                        break;
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-3">
+            <strong>Totale Speso:</strong> €@Model.TotaleSpeso.ToString("F2")
+        </div>
+    }
+</div>

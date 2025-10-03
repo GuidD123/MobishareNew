@@ -1,0 +1,94 @@
+﻿@page
+@model Mobishare.Frontend.Pages.IndexModel
+@{
+    ViewData["Title"] = "Home - Mobishare";
+}
+
+<div class="container text-center mt-5">
+    <h1 class="display-4">Benvenuto in Mobishare</h1>
+    <p class="lead">Sharing di mezzi elettrici facile e veloce</p>
+    
+    @if (Model.IsLogged)
+    {
+        <div class="mt-5">
+            <h3>Ciao @Model.NomeUtente!</h3>
+            
+            <div class="alert alert-info mt-3">
+                <strong>Credito:</strong> € @Model.Credito.ToString("F2")
+                @if (Model.DebitoResiduo > 0)
+                {
+                    <br><span class="text-danger"><strong>Debito:</strong> € @Model.DebitoResiduo.ToString("F2")</span>
+                }
+            </div>
+            
+            @if (Model.Sospeso)
+            {
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    Account sospeso per debito non saldato. 
+                    <a href="/Profilo/Ricarica" class="alert-link">Ricarica ora</a>
+                </div>
+            }
+            else if (Model.HasCorsaInCorso)
+            {
+                <div class="alert alert-warning">
+                    <i class="bi bi-bicycle"></i> Hai una corsa in corso!
+                    <br>
+                    <a href="/Corse/Corrente" class="btn btn-primary mt-2">Visualizza corsa</a>
+                </div>
+            }
+            else
+            {
+                <a href="/Mezzi" class="btn btn-success btn-lg me-2">
+                    <i class="bi bi-bicycle"></i> Noleggia un mezzo
+                </a>
+                <a href="/Corse" class="btn btn-outline-primary btn-lg">
+                    <i class="bi bi-clock-history"></i> Le mie corse
+                </a>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="mt-5">
+            <a href="/Account/Login" class="btn btn-primary btn-lg me-2">
+                <i class="bi bi-box-arrow-in-right"></i> Accedi
+            </a>
+            <a href="/Account/Register" class="btn btn-outline-secondary btn-lg">
+                <i class="bi bi-person-plus"></i> Registrati
+            </a>
+        </div>
+    }
+</div>
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="bi bi-lightning-charge display-1 text-success"></i>
+                    <h5 class="card-title mt-3">Mezzi Elettrici</h5>
+                    <p class="card-text">Monopattini, bici e auto elettriche</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="bi bi-geo-alt display-1 text-primary"></i>
+                    <h5 class="card-title mt-3">Parcheggi Smart</h5>
+                    <p class="card-text">Trova il parcheggio più vicino</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="bi bi-wallet2 display-1 text-warning"></i>
+                    <h5 class="card-title mt-3">Credito Prepagato</h5>
+                    <p class="card-text">Ricarica e usa</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

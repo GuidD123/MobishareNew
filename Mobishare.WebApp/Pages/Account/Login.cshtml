@@ -1,0 +1,55 @@
+﻿@page
+@model Mobishare.WebApp.Pages.Account.LoginModel
+@{
+     ViewData["Title"] = "Login";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h2 class="text-center mb-4">
+                        <i class="bi bi-box-arrow-in-right"></i> Accedi a Mobishare
+                    </h2>
+                    
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @Model.ErrorMessage
+                        </div>
+                    }
+                    
+                    <form method="post">
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label">Email</label>
+                            <input asp-for="Email" class="form-control" type="email" placeholder="mario.rossi@email.com" required />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label asp-for="Password" class="form-label">Password</label>
+                            <input asp-for="Password" class="form-control" type="password" required />
+                            <span asp-validation-for="Password" class="text-danger"></span>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            Accedi
+                        </button>
+                    </form>
+                    
+                    <hr class="my-4">
+                    
+                    <p class="text-center mb-0">
+                        Non hai un account? 
+                        <a href="/Account/Register">Registrati</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
