@@ -16,6 +16,5 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Mobishare.Core\Mobishare.Core.csproj" />
-		<ProjectReference Include="..\Mobishare.IoT.Gateway\Mobishare.IoT.Gateway.csproj" />
 	</ItemGroup>
 </Project>

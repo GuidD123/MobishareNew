@@ -2,16 +2,13 @@
 using Mobishare.Core.Enums;
 using Mobishare.Infrastructure.IoT.Interfaces;
 using Mobishare.IoT.Gateway.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Mobishare.Infrastructure.IoT.Services
 {
     /// <summary>
-    /// Implementazione di scenari IoT predefiniti per la demo
+    /// Implementazione di scenari IoT predefiniti per la demo.
+    /// Permette di eseguire sequenze di test automatiche sull'emulatore Gateway
+    /// per dimostrazioni e testing.
     /// </summary>
     public class IoTScenarioService : IIoTScenarioService
     {
@@ -22,95 +19,163 @@ namespace Mobishare.Infrastructure.IoT.Services
         private string? _scenarioCorrente;
         private string? _dettagliScenario;
 
-        public IoTScenarioService(IMqttGatewayEmulatorService emulatore,
-                                  ILogger<IoTScenarioService> logger)
+        public IoTScenarioService(
+            IMqttGatewayEmulatorService emulatore,
+            ILogger<IoTScenarioService> logger)
         {
             _emulatore = emulatore;
             _logger = logger;
         }
 
+        /// <summary>
+        /// Indica se uno scenario è attualmente in esecuzione
+        /// </summary>
         public bool IsScenarioInEsecuzione => _isRunning;
+
+        /// <summary>
+        /// Nome dello scenario corrente (null se nessuno scenario è attivo)
+        /// </summary>
         public string? ScenarioCorrente => _scenarioCorrente;
+
+        /// <summary>
+        /// Dettagli testuali dell'ultimo scenario eseguito o in corso
+        /// </summary>
         public string? DettagliScenario => _dettagliScenario;
 
+        /// <summary>
+        /// Restituisce l'elenco degli scenari predefiniti disponibili
+        /// </summary>
         public List<string> GetScenariDisponibili()
         {
-            return
-            [
+            return new List<string>
+            {
                 "BatteriaScarica",
                 "SbloccaMezzo",
                 "GuastoMezzo"
-            ];
+            };
         }
 
+        /// <summary>
+        /// Avvia uno scenario predefinito su un parcheggio specifico
+        /// </summary>
         public async Task AvviaScenarioAsync(string nomeScenario, int idParcheggio)
         {
             if (_isRunning)
             {
-                _logger.LogWarning("Uno scenario è già in esecuzione: {Scenario}", _scenarioCorrente);
+                _logger.LogWarning("Uno scenario è già in esecuzione: {Scenario}. Impossibile avviarne un altro.", _scenarioCorrente);
                 return;
             }
 
             _isRunning = true;
             _scenarioCorrente = nomeScenario;
-            _dettagliScenario = $"Avviato alle {DateTime.UtcNow} per parcheggio {idParcheggio}";
+            _dettagliScenario = $"Avviato alle {DateTime.UtcNow:HH:mm:ss} per parcheggio {idParcheggio}";
 
-            switch (nomeScenario.ToLower())
+            _logger.LogInformation("Avvio scenario {Scenario} per parcheggio {IdParcheggio}", nomeScenario, idParcheggio);
+
+            try
             {
-                case "batteriascarica":
-                    var mezzi1 = _emulatore.GetMezziEmulati();
-                    if (mezzi1.Count > 0)
-                    {
-                        await _emulatore.SimulaVariazioneBatteriaAsync(mezzi1[0], 10);
-                        _dettagliScenario += " - Mezzo scaricato al 10%";
-                    }
-                    break;
+                switch (nomeScenario.ToLowerInvariant())
+                {
+                    case "batteriascarica":
+                        await EseguiBatteriaScaricaAsync();
+                        break;
 
-                case "sbloccamezzo":
-                    var mezzi2 = _emulatore.GetMezziEmulati();
-                    if (mezzi2.Count > 0)
-                    {
-                        await _emulatore.SimulaCambioStatoAsync(mezzi2[0], StatoMezzo.InUso);
-                        _dettagliScenario += " - Mezzo sbloccato e in uso";
-                    }
-                    break;
+                    case "sbloccamezzo":
+                        await EseguiSbloccaMezzoAsync();
+                        break;
 
-                case "guastomezzo":
-                    var mezzi3 = _emulatore.GetMezziEmulati();
-                    if (mezzi3.Count > 0)
-                    {
-                        await _emulatore.SimulaCambioStatoAsync(mezzi3[0], StatoMezzo.Manutenzione);
-                        _dettagliScenario += " - Mezzo forzato in manutenzione";
-                    }
-                    break;
+                    case "guastomezzo":
+                        await EseguiGuastoMezzoAsync();
+                        break;
 
-                default:
-                    _logger.LogWarning("Scenario {Scenario} non riconosciuto", nomeScenario);
-                    _isRunning = false;
-                    _scenarioCorrente = null;
-                    _dettagliScenario = null;
-                    break;
+                    default:
+                        _logger.LogWarning("Scenario '{Scenario}' non riconosciuto", nomeScenario);
+                        _dettagliScenario += " - ERRORE: scenario sconosciuto";
+                        _isRunning = false;
+                        _scenarioCorrente = null;
+                        break;
+                }
             }
-
-            _logger.LogInformation("Scenario {Scenario} avviato", nomeScenario);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Errore durante l'esecuzione dello scenario {Scenario}", nomeScenario);
+                _dettagliScenario += $" - ERRORE: {ex.Message}";
+                _isRunning = false;
+                _scenarioCorrente = null;
+            }
         }
 
+        /// <summary>
+        /// Ferma lo scenario corrente
+        /// </summary>
         public Task FermaScenarioAsync()
         {
-            if (!_isRunning) return Task.CompletedTask;
+            if (!_isRunning)
+            {
+                _logger.LogInformation("Nessuno scenario in esecuzione da fermare");
+                return Task.CompletedTask;
+            }
 
-            _logger.LogInformation("Scenario {Scenario} terminato", _scenarioCorrente);
+            _logger.LogInformation("Scenario {Scenario} terminato manualmente", _scenarioCorrente);
 
             _isRunning = false;
+            _dettagliScenario += $" - Terminato alle {DateTime.UtcNow:HH:mm:ss}";
             _scenarioCorrente = null;
-            _dettagliScenario = $"Terminato alle {DateTime.UtcNow}";
 
             return Task.CompletedTask;
         }
+
+        // === SCENARI PRIVATI ===
+
+        private async Task EseguiBatteriaScaricaAsync()
+        {
+            var mezzi = _emulatore.GetMezziEmulati();
+            if (mezzi.Count == 0)
+            {
+                _dettagliScenario += " - ERRORE: nessun mezzo disponibile nell'emulatore";
+                _logger.LogWarning("Scenario BatteriaScarica: nessun mezzo emulato disponibile");
+                return;
+            }
+
+            var idMezzo = mezzi[0];
+            await _emulatore.SimulaVariazioneBatteriaAsync(idMezzo, 10);
+
+            _dettagliScenario += $" - Mezzo {idMezzo} scaricato al 10%";
+            _logger.LogInformation("Scenario BatteriaScarica: mezzo {IdMezzo} portato al 10%", idMezzo);
+        }
+
+        private async Task EseguiSbloccaMezzoAsync()
+        {
+            var mezzi = _emulatore.GetMezziEmulati();
+            if (mezzi.Count == 0)
+            {
+                _dettagliScenario += " - ERRORE: nessun mezzo disponibile nell'emulatore";
+                _logger.LogWarning("Scenario SbloccaMezzo: nessun mezzo emulato disponibile");
+                return;
+            }
+
+            var idMezzo = mezzi[0];
+            await _emulatore.SimulaCambioStatoAsync(idMezzo, StatoMezzo.InUso);
+
+            _dettagliScenario += $" - Mezzo {idMezzo} sbloccato e portato in uso";
+            _logger.LogInformation("Scenario SbloccaMezzo: mezzo {IdMezzo} portato in stato InUso", idMezzo);
+        }
+
+        private async Task EseguiGuastoMezzoAsync()
+        {
+            var mezzi = _emulatore.GetMezziEmulati();
+            if (mezzi.Count == 0)
+            {
+                _dettagliScenario += " - ERRORE: nessun mezzo disponibile nell'emulatore";
+                _logger.LogWarning("Scenario GuastoMezzo: nessun mezzo emulato disponibile");
+                return;
+            }
+
+            var idMezzo = mezzi[0];
+            await _emulatore.SimulaCambioStatoAsync(idMezzo, StatoMezzo.Manutenzione);
+
+            _dettagliScenario += $" - Mezzo {idMezzo} forzato in manutenzione per simulare guasto";
+            _logger.LogInformation("Scenario GuastoMezzo: mezzo {IdMezzo} portato in Manutenzione", idMezzo);
+        }
     }
 }
-
-
-//Così ho le proprietà gestite : IsScenarioInEsecuzione, ScenarioCorrente, DettagliScenario
-//Ho 3 scenari minimi: BatteriaScarica, SbloccaMezzo, GuastoMezzo 
-//Il metodo GetScenarioDisponibili() mi ritorna l'elenco degli scenari 

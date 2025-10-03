@@ -170,14 +170,14 @@ namespace Mobishare.Infrastructure.IoT.Services
                     .WithTopic(MqttTopics.TuttiMezzi)
                     .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                     .Build(),
-                
+
                 new MqttTopicFilterBuilder()
                     .WithTopic(MqttTopics.TutteRisposte)
                     .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                     .Build()
             };
 
-            //previene crash su reconnect
+            // Previene crash su reconnect
             try
             {
                 await _mqttClient.SubscribeAsync(subscriptions);
@@ -453,6 +453,7 @@ namespace Mobishare.Infrastructure.IoT.Services
                         Topic = topic,
                         ReceivedAt = DateTime.UtcNow
                     };
+
                     try
                     {
                         RispostaComandoReceived?.Invoke(this, eventArgs);
@@ -476,7 +477,7 @@ namespace Mobishare.Infrastructure.IoT.Services
         /// </summary>
         private async Task OnMqttConnectedAsync(MqttClientConnectedEventArgs e)
         {
-            _logger.LogInformation("Client MQTT connesso a {Host}:{Port}", 
+            _logger.LogInformation("Client MQTT connesso a {Host}:{Port}",
                 _mqttConfig.BrokerHost, _mqttConfig.BrokerPort);
 
             var onlineMsg = new MqttApplicationMessageBuilder()
@@ -485,7 +486,7 @@ namespace Mobishare.Infrastructure.IoT.Services
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                 .WithRetainFlag(true)
                 .Build();
-            
+
             await _mqttClient.EnqueueAsync(onlineMsg);
             await SottoscriviTopicsAsync();
         }

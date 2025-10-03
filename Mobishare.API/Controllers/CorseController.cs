@@ -30,7 +30,7 @@ namespace Mobishare.API.Controllers
 
             if (idUtente.HasValue)
             {
-                if(idUtente.Value > 0)
+                if(idUtente.Value <= 0)
                     throw new ValoreNonValidoException(nameof(idUtente), "deve essere maggiore di 0");
                 query = query.Where(c => c.IdUtente == idUtente.Value);
             }

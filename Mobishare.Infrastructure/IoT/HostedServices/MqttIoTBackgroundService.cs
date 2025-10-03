@@ -1,66 +1,105 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Mobishare.Core.Data;
+using Mobishare.Infrastructure.IoT.Events;
 using Mobishare.Infrastructure.IoT.Interfaces;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Mobishare.Infrastructure.IoT.HostedServices
 {
     /// <summary>
-    /// Servizio in background che ascolta i messaggi MQTT
-    /// e aggiorna il database Mobishare di conseguenza.
+    /// Ascolta eventi MQTT e sincronizza il DB.
     /// </summary>
-    public class MqttIoTBackgroundService(
-        IMqttIoTService iotService,
-        IServiceProvider services,
-        ILogger<MqttIoTBackgroundService> logger) : BackgroundService
+    public sealed class MqttIoTBackgroundService : BackgroundService
     {
-        private readonly IMqttIoTService _iotService = iotService;
-        private readonly IServiceProvider _services = services;
-        private readonly ILogger<MqttIoTBackgroundService> _logger = logger;
+        private readonly IMqttIoTService _iotService;
+        private readonly IServiceProvider _services;
+        private readonly ILogger<MqttIoTBackgroundService> _logger;
+
+        // mantengo il token per usarlo negli handler
+        private CancellationToken _stoppingToken;
+
+        public MqttIoTBackgroundService(
+            IMqttIoTService iotService,
+            IServiceProvider services,
+            ILogger<MqttIoTBackgroundService> logger)
+        {
+            _iotService = iotService;
+            _services = services;
+            _logger = logger;
+        }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            // Avvio connessione MQTT
-            await _iotService.StartAsync(stoppingToken);
+            _stoppingToken = stoppingToken;
 
-            // Aggancio listener agli eventi
-            _iotService.MezzoStatusReceived += async (sender, e) =>
+            // subscribe
+            _iotService.MezzoStatusReceived += OnMezzoStatusReceived;
+            _iotService.RispostaComandoReceived += OnRispostaComandoReceived;
+
+            try
             {
-                try
-                {
-                    using var scope = _services.CreateScope();
-                    var db = scope.ServiceProvider.GetRequiredService<MobishareDbContext>();
-
-                    var mezzo = await db.Mezzi
-                        .FirstOrDefaultAsync(m => m.Matricola == e.StatusMessage.Matricola, stoppingToken);
-
-                    if (mezzo != null)
-                    {
-                        mezzo.Stato = e.StatusMessage.Stato;
-                        mezzo.LivelloBatteria = e.StatusMessage.LivelloBatteria;
-
-                        db.Update(mezzo);
-                        await db.SaveChangesAsync(stoppingToken);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Errore aggiornando il DB da MQTT");
-                }
-            };
-
-            _iotService.RispostaComandoReceived += (sender, e) =>
+                // resta in vita finché non viene cancellato
+                await Task.Delay(Timeout.Infinite, stoppingToken);
+            }
+            catch (OperationCanceledException)
             {
-                _logger.LogInformation("Risposta comando: Mezzo={Mezzo}, Successo={Successo}",
-                    e.IdMezzo, e.RispostaMessage.Successo);
-            };
+                // shutdown richiesto
+            }
+            finally
+            {
+                // unsubscribe per evitare memory leak
+                _iotService.MezzoStatusReceived -= OnMezzoStatusReceived;
+                _iotService.RispostaComandoReceived -= OnRispostaComandoReceived;
+            }
+        }
+
+        private void OnMezzoStatusReceived(object? sender, MezzoStatusReceivedEventArgs e)
+        {
+            // non bloccare il thread evento: esegui async in background
+            _ = Task.Run(() => HandleMezzoStatusAsync(e, _stoppingToken), _stoppingToken);
+        }
+
+        private async Task HandleMezzoStatusAsync(MezzoStatusReceivedEventArgs e, CancellationToken ct)
+        {
+            try
+            {
+                using var scope = _services.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<MobishareDbContext>();
+
+                // NB: nel payload il campo è IdMezzo (coerente con MqttIoTService)
+                var mezzo = await db.Mezzi
+                    .FirstOrDefaultAsync(m => m.Matricola == e.StatusMessage.IdMezzo, ct);
+
+                if (mezzo is null)
+                {
+                    _logger.LogWarning("Mezzo non trovato per telemetria. Matricola={Matricola}", e.StatusMessage.IdMezzo);
+                    return;
+                }
+
+                mezzo.Stato = e.StatusMessage.Stato;
+                mezzo.LivelloBatteria = e.StatusMessage.LivelloBatteria;
+
+                await db.SaveChangesAsync(ct);
+            }
+            catch (OperationCanceledException)
+            {
+                // chiusura in corso
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Errore aggiornando il DB da MQTT");
+            }
+        }
+
+        private void OnRispostaComandoReceived(object? sender, RispostaComandoReceivedEventArgs e)
+        {
+            _logger.LogInformation("Risposta comando: Mezzo={Mezzo} Successo={Successo} CmdId={CmdId}",
+                e.IdMezzo, e.RispostaMessage.Successo, e.RispostaMessage.CommandId);
         }
     }
 }

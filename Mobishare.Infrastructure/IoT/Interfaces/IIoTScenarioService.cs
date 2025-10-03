@@ -1,23 +1,21 @@
-﻿using Mobishare.Infrastructure.IoT.Models;
-using Mobishare.Infrastructure.IoT.Events;
-
-namespace Mobishare.Infrastructure.IoT.Interfaces
+﻿namespace Mobishare.Infrastructure.IoT.Interfaces
 {
-
     /// <summary>
-    /// Servizio per la gestione di scenari di test IoT predefiniti
-    /// Idea è permettere di definire scenari di test (batteria scarica, guasto, sblocco ecc) che usano sotto il cofano l'IMqttGatewayEmulatorService.
-    /// Mi servirà come demo al'esame, invece di mandare comandi manuali ogni volta, avvio uno scenario già pronto preimpostato 
+    /// Servizio per la gestione di scenari di test IoT predefiniti.
+    /// Permette di eseguire sequenze automatiche di comandi sull'emulatore
+    /// per demo e testing senza dover inviare comandi manuali.
     /// </summary>
     public interface IIoTScenarioService
     {
         /// <summary>
         /// Avvia uno scenario predefinito di test
         /// </summary>
+        /// <param name="nomeScenario">Nome dello scenario (es. "BatteriaScarica")</param>
+        /// <param name="idParcheggio">ID del parcheggio su cui eseguire lo scenario</param>
         Task AvviaScenarioAsync(string nomeScenario, int idParcheggio);
 
         /// <summary>
-        /// Ferma lo scenario in corso
+        /// Ferma lo scenario attualmente in corso
         /// </summary>
         Task FermaScenarioAsync();
 
@@ -27,17 +25,17 @@ namespace Mobishare.Infrastructure.IoT.Interfaces
         List<string> GetScenariDisponibili();
 
         /// <summary>
-        /// Verifica se uno scenario è in esecuzione
+        /// Indica se uno scenario è attualmente in esecuzione
         /// </summary>
         bool IsScenarioInEsecuzione { get; }
 
         /// <summary>
-        /// Nome dello scenario attualmente in esecuzione
+        /// Nome dello scenario attualmente in esecuzione (null se nessuno)
         /// </summary>
         string? ScenarioCorrente { get; }
 
         /// <summary>
-        /// Dettagli dell'ultimo scenario eseguito
+        /// Dettagli testuali dell'ultimo scenario eseguito o in corso
         /// </summary>
         string? DettagliScenario { get; }
     }
