@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Mobishare.Core.Data;
 using Mobishare.Core.DTOs;
 using Mobishare.Core.Enums;
@@ -13,10 +14,11 @@ namespace Mobishare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class CorseController(MobishareDbContext context, IMqttIoTService mqttIoTService) : ControllerBase
+    public class CorseController(MobishareDbContext context, IMqttIoTService mqttIoTService, ILogger<CorseController> logger) : ControllerBase
     {
         private readonly MobishareDbContext _context = context;
         private readonly IMqttIoTService _mqttIoTService = mqttIoTService;
+        private readonly ILogger<CorseController> _logger = logger;
 
 
         // GET: api/corse? idUtente=& matricolaMezzo=..
@@ -26,13 +28,23 @@ namespace Mobishare.API.Controllers
         {
             var query = _context.Corse.AsNoTracking().AsQueryable();
 
-            if (idUtente.HasValue && idUtente.Value > 0)
+            if (idUtente.HasValue)
+            {
+                if(idUtente.Value > 0)
+                    throw new ValoreNonValidoException(nameof(idUtente), "deve essere maggiore di 0");
                 query = query.Where(c => c.IdUtente == idUtente.Value);
+            }
 
-            if (!string.IsNullOrEmpty(matricolaMezzo))
-                query = query.Where(c => c.MatricolaMezzo == matricolaMezzo);
+            if (!string.IsNullOrWhiteSpace(matricolaMezzo))
+            {
+                var mat = matricolaMezzo.Trim();
+                if (mat.Length > 64)
+                    throw new ValoreNonValidoException(nameof(matricolaMezzo), "lunghezza massima 64");
+                query = query.Where(c => c.MatricolaMezzo == mat);
+            }
 
             var corse = await query
+                .OrderByDescending(c => c.DataOraInizio)
                 .Select(c => new CorsaResponseDTO
                 {
                     Id = c.Id,
@@ -53,18 +65,30 @@ namespace Mobishare.API.Controllers
             });
         }
 
+
+
         // GET: api/corse/utente/{idUtente} -> storico corse di un utente
         [Authorize]
-        [HttpGet("utente/{idUtente}")]
+        [HttpGet("utente/{idUtente:int}")]
         public async Task<ActionResult<SuccessResponse>> GetStoricoCorseUtente(int idUtente)
         {
+            //verifica input idUtente 
+            if (idUtente <= 0)
+                throw new ValoreNonValidoException(nameof(idUtente), "deve essere maggiore di 0");
+
+            //legge idUtente dal JWT (claim) -> int.Parse(..) lo converte in int, se manca il claim -> lancia una 403 OperazioneNonConsentita
+            var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new OperazioneNonConsentitaException("Utente non autenticato"));
+            var isGestore = User.IsInRole("Gestore"); //verifica ruolo da tokens
+            if (!isGestore && callerId != idUtente) //consente accesso solo se il chiamante è il proprietario della corsa oppure è un Gestore (vede le corse di tutti)
+                throw new OperazioneNonConsentitaException("Non autorizzato a visualizzare corse di altri utenti");
 
             // Verifica che l'utente esista
-            var utente = await _context.Utenti.FindAsync(idUtente)
-                          ?? throw new ElementoNonTrovatoException("Utente", idUtente);
+            var utente = await _context.Utenti.AsNoTracking().FirstOrDefaultAsync(u => u.Id == idUtente)
+                ?? throw new ElementoNonTrovatoException("Utente", idUtente);
 
             // Recupera le corse di quell'utente
-            var corse = await _context.Corse
+            var corse = await _context.Corse.AsNoTracking()
                 .Where(c => c.IdUtente == idUtente)
                 .OrderByDescending(c => c.DataOraInizio) // ordine: più recenti prima
                 .Select(c => new CorsaResponseDTO
@@ -89,11 +113,21 @@ namespace Mobishare.API.Controllers
 
 
 
-        [HttpGet("{id}")]
+        [Authorize]
+        [HttpGet("{id:int}")]
         public async Task<ActionResult<SuccessResponse>> GetCorsaById(int id)
         {
+            if (id <= 0)
+                throw new ValoreNonValidoException(nameof(id), "deve essere maggiore di 0");
+
             var corsa = await _context.Corse.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id)
-               ?? throw new ElementoNonTrovatoException("Corsa", id); 
+                ?? throw new ElementoNonTrovatoException("Corsa", id);
+
+            var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new OperazioneNonConsentitaException("Utente non autenticato"));
+            var isGestore = User.IsInRole("Gestore");
+            if (!isGestore && corsa.IdUtente != callerId)
+                throw new OperazioneNonConsentitaException("Non autorizzato a visualizzare questa corsa");
 
             var dto = new CorsaResponseDTO
             {
@@ -120,22 +154,35 @@ namespace Mobishare.API.Controllers
         [Authorize(Roles = "Utente")]
         [HttpPost("inizia")]
         public async Task<ActionResult<SuccessResponse>> PostCorsa([FromBody] AvviaCorsaDTO dto)
-        {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+        {   
+            //Validazione input
+            if (dto == null) throw new ValoreNonValidoException("body", "mancante");
+            if (string.IsNullOrWhiteSpace(dto.MatricolaMezzo))
+                throw new ValoreNonValidoException(nameof(dto.MatricolaMezzo), "obbligatoria");
+            var matricola = dto.MatricolaMezzo.Trim();
+            if (matricola.Length > 64)
+                throw new ValoreNonValidoException(nameof(dto.MatricolaMezzo), "lunghezza massima 64");
+            if (dto.IdParcheggioPrelievo <= 0)
+                throw new ValoreNonValidoException(nameof(dto.IdParcheggioPrelievo), "deve essere > 0");
+
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
                 // Recupero utente dal token JWT
                 var idUtente = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                             ?? throw new OperazioneNonConsentitaException("Utente non autenticato"));
+                     ?? throw new OperazioneNonConsentitaException("Utente non autenticato"));
 
                 var utente = await _context.Utenti.FindAsync(idUtente)
                      ?? throw new ElementoNonTrovatoException("Utente", idUtente);
 
-                var mezzo = await _context.Mezzi.FirstOrDefaultAsync(m => m.Matricola == dto.MatricolaMezzo);
+                // Verifiche risorse
+                var parcheggio = await _context.Parcheggi.FindAsync(dto.IdParcheggioPrelievo)
+                    ?? throw new ElementoNonTrovatoException("Parcheggio", dto.IdParcheggioPrelievo);
 
-                if (mezzo == null)
-                    throw new ElementoNonTrovatoException("Mezzo", dto.MatricolaMezzo);
+                var mezzo = await _context.Mezzi.FirstOrDefaultAsync(m => m.Matricola == dto.MatricolaMezzo) 
+                    ?? throw new ElementoNonTrovatoException("Mezzo", dto.MatricolaMezzo);
 
                 if (utente.Credito < Tariffe.COSTO_BASE)
                     throw new CreditoInsufficienteException(utente.Credito, Tariffe.COSTO_BASE);
@@ -164,12 +211,19 @@ namespace Mobishare.API.Controllers
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // Avvia davvero il mezzo tramite MQTT
-                await _mqttIoTService.SbloccaMezzoAsync(
-                    dto.IdParcheggioPrelievo,
-                    dto.MatricolaMezzo,
-                    utente.Id.ToString()
-                );
+                try
+                {
+                    // Avvia il mezzo tramite MQTT dopo commit 
+                    await _mqttIoTService.SbloccaMezzoAsync(dto.IdParcheggioPrelievo, dto.MatricolaMezzo, utente.Id.ToString());
+                }
+                catch (Exception e)
+                {
+                    _logger.LogWarning(e,
+                        "MQTT SbloccaMezzo fallito. CorsaId={CorsaId} Matricola={Matricola} ParcheggioId={ParcheggioId}",
+                        corsa.Id, matricola, dto.IdParcheggioPrelievo);
+                }
+
+
 
                 var response = new CorsaResponseDTO
                 {
@@ -180,21 +234,23 @@ namespace Mobishare.API.Controllers
                     DataOraInizio = corsa.DataOraInizio
                 };
 
-                return CreatedAtAction(nameof(GetCorsaById), new { id = corsa.Id }, new SuccessResponse
+                return CreatedAtAction(nameof(GetCorsaById), new { id = corsa.Id }, 
+                    new SuccessResponse
                 {
                     Messaggio = "Corsa avviata correttamente",
                     Dati = response
                 });
+
             }
             catch (DbUpdateConcurrencyException)
             {
                 await transaction.RollbackAsync();
                 throw new OperazioneNonConsentitaException("Il mezzo è stato prenotato da un altro utente");
             }
-            catch (Exception ex)
+            catch
             {
                 await transaction.RollbackAsync();
-                throw new OperazioneNonConsentitaException($"Errore durante la gestione della corsa: {ex.Message}");
+                throw;
             }
         }
 

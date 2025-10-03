@@ -104,6 +104,7 @@ builder.Services.AddAuthorizationBuilder()
 #region Configurazione MQTT e IoT
 // Registra i servizi MQTT
 builder.Services.AddSingleton<IMqttIoTService, MqttIoTService>();
+builder.Services.AddHostedService(sp => (MqttIoTService)sp.GetRequiredService<IMqttIoTService>());
 
 // Registra il BackgroundService che integra IoT e DB e avvia automaticamente
 builder.Services.AddHostedService<MqttIoTBackgroundService>();

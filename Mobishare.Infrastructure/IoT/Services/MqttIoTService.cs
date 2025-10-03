@@ -1,26 +1,32 @@
-﻿using System;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using MQTTnet;
-using MQTTnet.Client;
-using MQTTnet.Extensions.ManagedClient;
-using MQTTnet.Formatter;
-using Mobishare.Infrastructure.IoT.Models;
+using Mobishare.Core.Enums;
 using Mobishare.Infrastructure.IoT.Config;
 using Mobishare.Infrastructure.IoT.Events;
 using Mobishare.Infrastructure.IoT.Interfaces;
-using Mobishare.Core.Enums;
-
+using Mobishare.Infrastructure.IoT.Models;
+using MQTTnet;
+using MQTTnet.Client;
+using MQTTnet.Extensions.ManagedClient;
+using MQTTnet.Protocol;
+using System;
+using System.Linq;
+using System.Text;
+using System.Text.Json;
 
 namespace Mobishare.Infrastructure.IoT.Services
 {
     /// <summary>
-    /// Servizio MQTT per la comunicazione del Backend con il sottosistema IoT
+    /// Servizio MQTT per la comunicazione Backend ↔ IoT.
+    ///
+    /// Stato:
+    /// - Usa IManagedMqttClient (enqueue + retry automatico, QoS1 consigliato).
+    /// - Si avvia come IHostedService (registrazione DI: Singleton + HostedService).
+    /// - Esegue resubscribe ad ogni reconnect e pubblica stato online/offline con retained message.
+    /// - I metodi di Publish NON rilanciano eccezioni (i controller hanno già commitato DB).
     /// </summary>
-    public class MqttIoTService : IMqttIoTService, IDisposable
+    public class MqttIoTService : IMqttIoTService, IHostedService, IDisposable
     {
         private readonly ILogger<MqttIoTService> _logger;
         private readonly IConfiguration _configuration;
@@ -29,58 +35,84 @@ namespace Mobishare.Infrastructure.IoT.Services
         private readonly JsonSerializerOptions _jsonOptions;
         private bool _disposed = false;
 
-        // Eventi pubblici
+        // === Eventi pubblici esposti al resto dell'app ===
         public event EventHandler<MezzoStatusReceivedEventArgs>? MezzoStatusReceived;
         public event EventHandler<RispostaComandoReceivedEventArgs>? RispostaComandoReceived;
 
+        /// <summary>
+        /// Indica lo stato di connessione del client gestito.
+        /// </summary>
         public bool IsConnected => _mqttClient.IsConnected;
 
+        /// <summary>
+        /// Ctor: legge configurazione, crea ManagedMqttClient e registra gli handler degli eventi MQTT.
+        /// </summary>
         public MqttIoTService(ILogger<MqttIoTService> logger, IConfiguration configuration)
         {
             _logger = logger;
             _configuration = configuration;
 
-            // Carica configurazione MQTT
+            // Carica configurazione MQTT da appsettings (sezione "Mqtt").
             _mqttConfig = new MqttConfiguration();
             _configuration.GetSection("Mqtt").Bind(_mqttConfig);
 
-            // JsonSerializerOptions riutilizzabile
+            // Opzioni JSON riutilizzabili per serializzazione payload.
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             };
 
-            // Crea client MQTT gestito
+            // Crea client MQTT gestito (con coda interna + auto-reconnect).
             var factory = new MqttFactory();
             _mqttClient = factory.CreateManagedMqttClient();
 
-            // Configura eventi del client MQTT
+            // Registra gli handler: ricezione messaggi, connect/disconnect.
             _mqttClient.ApplicationMessageReceivedAsync += OnMqttMessageReceivedAsync;
             _mqttClient.ConnectedAsync += OnMqttConnectedAsync;
             _mqttClient.DisconnectedAsync += OnMqttDisconnectedAsync;
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken = default)
+        // =====================
+        // IHostedService API
+        // =====================
+
+        /// <summary>
+        /// Avvio del servizio come HostedService.
+        /// </summary>
+        public Task StartAsync(CancellationToken ct) => StartInternalAsync(ct);
+
+        /// <summary>
+        /// Arresto del servizio come HostedService.
+        /// </summary>
+        public Task StopAsync(CancellationToken ct) => StopInternalAsync(ct);
+
+        /// <summary>
+        /// Avvio effettivo del client MQTT gestito.
+        /// - Configura opzioni client (KeepAlive, credenziali, TLS opzionale).
+        /// - Imposta Last-Will "offline" retained su topic di stato backend.
+        /// - Usa CleanSession(true) per evitare accumulo messaggi non consegnati.
+        /// </summary>
+        private async Task StartInternalAsync(CancellationToken ct)
         {
             try
             {
                 _logger.LogInformation("Avvio servizio MQTT IoT...");
 
                 var clientOptions = new MqttClientOptionsBuilder()
-                    .WithClientId(_mqttConfig.ClientId + "-" + Environment.MachineName + "-" + DateTime.Now.Ticks)
+                    .WithClientId($"{_mqttConfig.ClientId}-{Environment.MachineName}-{DateTime.Now.Ticks}")
                     .WithTcpServer(_mqttConfig.BrokerHost, _mqttConfig.BrokerPort)
                     .WithCleanSession(true)
-                    .WithKeepAlivePeriod(TimeSpan.FromSeconds(_mqttConfig.KeepAliveSeconds));
+                    .WithKeepAlivePeriod(TimeSpan.FromSeconds(_mqttConfig.KeepAliveSeconds))
+                    .WithWillTopic("mobishare/backend/status")
+                    .WithWillPayload("{\"status\":\"offline\"}")
+                    .WithWillRetain(true)
+                    .WithWillQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce);
 
                 if (!string.IsNullOrEmpty(_mqttConfig.Username))
-                {
                     clientOptions.WithCredentials(_mqttConfig.Username, _mqttConfig.Password);
-                }
 
                 if (_mqttConfig.UseTls)
-                {
                     clientOptions.WithTlsOptions(o => o.UseTls());
-                }
 
                 var managedOptions = new ManagedMqttClientOptionsBuilder()
                     .WithClientOptions(clientOptions.Build())
@@ -88,9 +120,6 @@ namespace Mobishare.Infrastructure.IoT.Services
                     .Build();
 
                 await _mqttClient.StartAsync(managedOptions);
-
-                // Sottoscrivi ai topic di interesse
-                await SottoscriviTopicsAsync();
 
                 _logger.LogInformation("Servizio MQTT IoT avviato con successo");
             }
@@ -101,11 +130,25 @@ namespace Mobishare.Infrastructure.IoT.Services
             }
         }
 
-        public async Task StopAsync(CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Arresto ordinato del Managed client.
+        /// </summary>
+        private async Task StopInternalAsync(CancellationToken ct)
         {
             try
             {
                 _logger.LogInformation("Arresto servizio MQTT IoT...");
+
+                // Pubblica offline prima di stoppare
+                var offline = new MqttApplicationMessageBuilder()
+                    .WithTopic("mobishare/backend/status")
+                    .WithPayload("{\"status\":\"offline\"}")
+                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                    .WithRetainFlag(true)
+                    .Build();
+                await _mqttClient.EnqueueAsync(offline);
+                await Task.Delay(300, ct); // Breve attesa
+
                 await _mqttClient.StopAsync();
                 _logger.LogInformation("Servizio MQTT IoT arrestato");
             }
@@ -116,31 +159,44 @@ namespace Mobishare.Infrastructure.IoT.Services
             }
         }
 
+        /// <summary>
+        /// Sottoscrive i topic necessari. Chiamata ad ogni reconnect.
+        /// </summary>
         private async Task SottoscriviTopicsAsync()
         {
             var subscriptions = new[]
             {
-                // Sottoscrivi a tutti i status dei mezzi
                 new MqttTopicFilterBuilder()
                     .WithTopic(MqttTopics.TuttiMezzi)
-                    .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
+                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                     .Build(),
                 
-                // Sottoscrivi a tutte le risposte ai comandi
                 new MqttTopicFilterBuilder()
                     .WithTopic(MqttTopics.TutteRisposte)
-                    .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
+                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                     .Build()
             };
 
-            await _mqttClient.SubscribeAsync(subscriptions);
-
-            _logger.LogInformation("Sottoscrizioni MQTT completate: {Topics}",
-                string.Join(", ", subscriptions.Select(s => s.Topic)));
+            //previene crash su reconnect
+            try
+            {
+                await _mqttClient.SubscribeAsync(subscriptions);
+                _logger.LogInformation("Sottoscrizioni MQTT completate: {Topics}",
+                    string.Join(", ", subscriptions.Select(s => s.Topic)));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Subscribe MQTT fallita");
+            }
         }
 
-        // === METODI PUBBLICI PER INVIO COMANDI ===
+        // =====================
+        // COMANDI PUBBLICI
+        // =====================
 
+        /// <summary>
+        /// Costruisce il topic corretto e pubblica il comando verso un mezzo.
+        /// </summary>
         public async Task InviaComandoMezzoAsync(int idParcheggio, string idMezzo, ComandoMezzoMessage comando)
         {
             try
@@ -159,10 +215,14 @@ namespace Mobishare.Infrastructure.IoT.Services
             }
         }
 
+        /// <summary>
+        /// Invia comando di sblocco mezzo con CommandId per idempotenza.
+        /// </summary>
         public async Task SbloccaMezzoAsync(int idParcheggio, string idMezzo, string utenteId)
         {
             var comando = new ComandoMezzoMessage
             {
+                CommandId = Guid.NewGuid().ToString(),
                 IdMezzo = idMezzo,
                 Comando = TipoComandoIoT.Sblocca,
                 MittenteId = utenteId,
@@ -172,26 +232,32 @@ namespace Mobishare.Infrastructure.IoT.Services
                     { "Timestamp", DateTime.UtcNow }
                 }
             };
-
             await InviaComandoMezzoAsync(idParcheggio, idMezzo, comando);
         }
 
+        /// <summary>
+        /// Invia comando di blocco mezzo con CommandId per idempotenza.
+        /// </summary>
         public async Task BloccaMezzoAsync(int idParcheggio, string idMezzo)
         {
             var comando = new ComandoMezzoMessage
             {
+                CommandId = Guid.NewGuid().ToString(),
                 IdMezzo = idMezzo,
                 Comando = TipoComandoIoT.Blocca,
                 MittenteId = "System"
             };
-
             await InviaComandoMezzoAsync(idParcheggio, idMezzo, comando);
         }
 
+        /// <summary>
+        /// Cambia il colore della spia su un mezzo con CommandId per idempotenza.
+        /// </summary>
         public async Task CambiaColoreSpiaAsync(int idParcheggio, string idMezzo, ColoreSpia colore)
         {
             var comando = new ComandoMezzoMessage
             {
+                CommandId = Guid.NewGuid().ToString(),
                 IdMezzo = idMezzo,
                 Comando = TipoComandoIoT.CambiaColoreSpia,
                 MittenteId = "System",
@@ -200,67 +266,66 @@ namespace Mobishare.Infrastructure.IoT.Services
                     { "Colore", colore.ToString() }
                 }
             };
-
             await InviaComandoMezzoAsync(idParcheggio, idMezzo, comando);
         }
 
+        // =====================
+        // PUBLISH HELPERS
+        // =====================
+
+        /// <summary>
+        /// Serializza l'oggetto in JSON e lo pubblica sul topic indicato con QoS1.
+        /// Non rilancia eccezioni di enqueue: log warning e prosegue.
+        /// </summary>
         public async Task PublishAsync<T>(string topic, T message) where T : class
-        {
-            var json = JsonSerializer.Serialize(message, _jsonOptions);
-
-            await SafePublishAsync(async () =>
-            {
-                var mqttMessage = new MqttApplicationMessageBuilder()
-                    .WithTopic(topic)
-                    .WithPayload(json)
-                    .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
-                    .WithRetainFlag(false)
-                    .Build();
-
-                await _mqttClient.EnqueueAsync(mqttMessage);
-            });
-        }
-
-
-        /*public async Task PublishAsync(string topic, string jsonMessage)
         {
             try
             {
-                var message = new MqttApplicationMessageBuilder()
-                    .WithTopic(topic)
-                    .WithPayload(jsonMessage)
-                    .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
-                    .WithRetainFlag(false)
-                    .Build();
-
-                await _mqttClient.EnqueueAsync(message);
-
-                _logger.LogDebug("Messaggio pubblicato sul topic {Topic}: {Message}", topic, jsonMessage);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Errore nella pubblicazione del messaggio sul topic {Topic}", topic);
-                throw;
-            }
-        }*/
-
-        public async Task PublishAsync(string topic, string jsonMessage)
-        {
-            await SafePublishAsync(async () =>
-            {
+                var json = JsonSerializer.Serialize(message, _jsonOptions);
                 var mqttMessage = new MqttApplicationMessageBuilder()
                     .WithTopic(topic)
-                    .WithPayload(jsonMessage)
-                    .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
+                    .WithPayload(json)
+                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                     .WithRetainFlag(false)
                     .Build();
 
                 await _mqttClient.EnqueueAsync(mqttMessage);
-            });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Enqueue MQTT fallito per topic {Topic}", topic);
+            }
         }
 
-        // === EVENT HANDLERS INTERNI ===
+        /// <summary>
+        /// Variante che accetta JSON già pronto.
+        /// </summary>
+        public async Task PublishAsync(string topic, string jsonMessage)
+        {
+            try
+            {
+                var mqttMessage = new MqttApplicationMessageBuilder()
+                    .WithTopic(topic)
+                    .WithPayload(jsonMessage)
+                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                    .WithRetainFlag(false)
+                    .Build();
 
+                await _mqttClient.EnqueueAsync(mqttMessage);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Enqueue MQTT fallito per topic {Topic}", topic);
+            }
+        }
+
+        // =====================
+        // EVENT HANDLERS MQTT
+        // =====================
+
+        /// <summary>
+        /// Handler globale di ricezione messaggi.
+        /// </summary>
         private async Task OnMqttMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs e)
         {
             try
@@ -270,7 +335,6 @@ namespace Mobishare.Infrastructure.IoT.Services
 
                 _logger.LogDebug("Messaggio ricevuto dal topic {Topic}: {Payload}", topic, payload);
 
-                // Parse del topic per determinare il tipo di messaggio
                 await RouteMessageAsync(topic, payload);
             }
             catch (Exception ex)
@@ -279,11 +343,13 @@ namespace Mobishare.Infrastructure.IoT.Services
             }
         }
 
+        /// <summary>
+        /// Instrada il messaggio in base al topic.
+        /// </summary>
         private async Task RouteMessageAsync(string topic, string payload)
         {
             try
             {
-                // Parse del topic: Parking/{id_parking}/{messageType}/...
                 var topicParts = topic.Split('/');
                 if (topicParts.Length < 3 || topicParts[0] != "Parking")
                 {
@@ -325,18 +391,20 @@ namespace Mobishare.Infrastructure.IoT.Services
             }
         }
 
+        /// <summary>
+        /// Deserializza e propaga un messaggio di stato mezzo.
+        /// </summary>
         private async Task HandleMezzoStatusMessageAsync(int idParcheggio, string payload, string topic)
         {
             try
             {
-                var statusMessage = JsonSerializer.Deserialize<MezzoStatusMessage>(payload,_jsonOptions);
+                var statusMessage = JsonSerializer.Deserialize<MezzoStatusMessage>(payload, _jsonOptions);
 
                 if (statusMessage != null)
                 {
                     _logger.LogInformation("Status ricevuto per mezzo {IdMezzo}: {Stato}, Batteria: {Batteria}%",
                         statusMessage.IdMezzo, statusMessage.Stato, statusMessage.LivelloBatteria);
 
-                    // Scatena l'evento
                     var eventArgs = new MezzoStatusReceivedEventArgs
                     {
                         IdParcheggio = idParcheggio,
@@ -345,7 +413,14 @@ namespace Mobishare.Infrastructure.IoT.Services
                         ReceivedAt = DateTime.UtcNow
                     };
 
-                    MezzoStatusReceived?.Invoke(this, eventArgs);
+                    try
+                    {
+                        MezzoStatusReceived?.Invoke(this, eventArgs);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Errore in handler MezzoStatusReceived");
+                    }
                 }
 
                 await Task.CompletedTask;
@@ -356,6 +431,9 @@ namespace Mobishare.Infrastructure.IoT.Services
             }
         }
 
+        /// <summary>
+        /// Deserializza e propaga una risposta a comando.
+        /// </summary>
         private async Task HandleRispostaComandoMessageAsync(int idParcheggio, string idMezzo, string payload, string topic)
         {
             try
@@ -367,7 +445,6 @@ namespace Mobishare.Infrastructure.IoT.Services
                     _logger.LogInformation("Risposta comando ricevuta da mezzo {IdMezzo}: {Comando} -> {Successo}",
                         idMezzo, rispostaMessage.ComandoOriginale, rispostaMessage.Successo);
 
-                    // Scatena l'evento
                     var eventArgs = new RispostaComandoReceivedEventArgs
                     {
                         IdParcheggio = idParcheggio,
@@ -376,8 +453,14 @@ namespace Mobishare.Infrastructure.IoT.Services
                         Topic = topic,
                         ReceivedAt = DateTime.UtcNow
                     };
-
-                    RispostaComandoReceived?.Invoke(this, eventArgs);
+                    try
+                    {
+                        RispostaComandoReceived?.Invoke(this, eventArgs);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Errore in handler RispostaComandoReceived");
+                    }
                 }
 
                 await Task.CompletedTask;
@@ -388,55 +471,49 @@ namespace Mobishare.Infrastructure.IoT.Services
             }
         }
 
+        /// <summary>
+        /// Handler on-connect: pubblica stato online e sottoscrive i topic.
+        /// </summary>
         private async Task OnMqttConnectedAsync(MqttClientConnectedEventArgs e)
         {
-            _logger.LogInformation("Client MQTT connesso al broker {Host}:{Port}",
+            _logger.LogInformation("Client MQTT connesso a {Host}:{Port}", 
                 _mqttConfig.BrokerHost, _mqttConfig.BrokerPort);
-            await Task.CompletedTask;
+
+            var onlineMsg = new MqttApplicationMessageBuilder()
+                .WithTopic("mobishare/backend/status")
+                .WithPayload("{\"status\":\"online\"}")
+                .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                .WithRetainFlag(true)
+                .Build();
+            
+            await _mqttClient.EnqueueAsync(onlineMsg);
+            await SottoscriviTopicsAsync();
         }
 
+        /// <summary>
+        /// Handler on-disconnect.
+        /// </summary>
         private async Task OnMqttDisconnectedAsync(MqttClientDisconnectedEventArgs e)
         {
-            _logger.LogWarning("Client MQTT disconnesso dal broker. Motivo: {Reason}",
-                e.Reason);
+            _logger.LogWarning("Client MQTT disconnesso dal broker. Motivo: {Reason}", e.Reason);
             await Task.CompletedTask;
         }
 
-        // === DISPOSE ===
+        // =====================
+        // DISPOSE PATTERN
+        // =====================
 
         public void Dispose()
         {
-            if (!_disposed)
-            {
-                _mqttClient?.Dispose();
-                _disposed = true;
-                GC.SuppressFinalize(this);
-            }
+            if (_disposed) return;
+
+            _mqttClient.ApplicationMessageReceivedAsync -= OnMqttMessageReceivedAsync;
+            _mqttClient.ConnectedAsync -= OnMqttConnectedAsync;
+            _mqttClient.DisconnectedAsync -= OnMqttDisconnectedAsync;
+
+            _mqttClient.Dispose();
+            _disposed = true;
+            GC.SuppressFinalize(this);
         }
-
-        private async Task SafePublishAsync(Func<Task> publishAction, int maxRetries = 3, int delayMs = 1000)
-        {
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
-            {
-                try
-                {
-                    await publishAction();
-                    return; // pubblicazione riuscita
-                }
-                catch (Exception ex)
-                {
-                    if (attempt == maxRetries)
-                    {
-                        _logger.LogError(ex, "MQTT publish fallito dopo {MaxRetries} tentativi", maxRetries);
-                        throw;
-                    }
-
-                    _logger.LogWarning(ex, "Tentativo {Attempt}/{MaxRetries} fallito. Riprovo tra {DelayMs}ms", attempt, maxRetries, delayMs);
-                    await Task.Delay(delayMs);
-                }
-            }
-        }
-
-
     }
 }

@@ -8,7 +8,8 @@ namespace Mobishare.Infrastructure.IoT.Models
     /// </summary>
     public class ComandoMezzoMessage
     {
-        public string IdMezzo { get; set; } = string.Empty; 
+        public string IdMezzo { get; set; } = string.Empty;
+        public string? CommandId { get; set; }
         public TipoComandoIoT Comando { get; set; }
         public Dictionary<string, object>? Parametri { get; set; }
         public DateTime TimeStamp { get; set; } = DateTime.UtcNow;
