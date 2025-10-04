@@ -2,10 +2,10 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Mobishare.Core.Enums;
+using Mobishare.Core.Models;
 using Mobishare.Infrastructure.IoT.Config;
 using Mobishare.Infrastructure.IoT.Events;
 using Mobishare.Infrastructure.IoT.Interfaces;
-using Mobishare.Infrastructure.IoT.Models;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Extensions.ManagedClient;

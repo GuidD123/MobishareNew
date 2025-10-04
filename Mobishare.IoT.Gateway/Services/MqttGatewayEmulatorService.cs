@@ -1,10 +1,9 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Mobishare.Core.Enums;
-using Mobishare.Infrastructure.IoT.Models;
+using Mobishare.Core.Models;
 using Mobishare.IoT.Gateway.Config;
 using Mobishare.IoT.Gateway.Interfaces;
-using Mobishare.IoT.Gateway.Models;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Extensions.ManagedClient;

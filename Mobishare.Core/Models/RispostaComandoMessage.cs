@@ -1,6 +1,6 @@
 ﻿using Mobishare.Core.Enums;
 
-namespace Mobishare.Infrastructure.IoT.Models
+namespace Mobishare.Core.Models
 {
     /// <summary>
     /// Risposta del Gateway IoT a un comando ricevuto.

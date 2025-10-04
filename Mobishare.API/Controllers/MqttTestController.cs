@@ -98,7 +98,7 @@ namespace Mobishare.API.Controllers
         {
             try
             {
-                var comando = new Mobishare.Infrastructure.IoT.Models.ComandoMezzoMessage
+                var comando = new Mobishare.Core.Models.ComandoMezzoMessage
                 {
                     IdMezzo = request.IdMezzo,
                     Comando = request.Comando,

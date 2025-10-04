@@ -1,6 +1,6 @@
 ﻿using Mobishare.Core.Enums;
-using Mobishare.Infrastructure.IoT.Models;
 using Mobishare.Infrastructure.IoT.Events;
+using Mobishare.Core.Models;
 
 namespace Mobishare.Infrastructure.IoT.Interfaces
 {

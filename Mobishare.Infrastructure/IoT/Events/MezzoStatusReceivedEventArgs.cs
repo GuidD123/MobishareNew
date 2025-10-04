@@ -1,4 +1,4 @@
-﻿using Mobishare.Infrastructure.IoT.Models;
+﻿using Mobishare.Core.Models;
 
 namespace Mobishare.Infrastructure.IoT.Events
 {

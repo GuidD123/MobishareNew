@@ -1,6 +1,6 @@
 ﻿using Mobishare.Core.Enums;
 
-namespace Mobishare.Infrastructure.IoT.Models
+namespace Mobishare.Core.Models
 {
     /// <summary>
     /// Messaggio inviato dal Gateway IoT al Backend con lo stato di un mezzo.

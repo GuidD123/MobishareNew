@@ -1,4 +1,4 @@
-﻿using Mobishare.Infrastructure.IoT.Models;
+﻿
 
 namespace Mobishare.API.DTO
 {

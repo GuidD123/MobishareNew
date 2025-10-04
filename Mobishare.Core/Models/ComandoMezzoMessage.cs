@@ -1,6 +1,6 @@
 ﻿using Mobishare.Core.Enums;
 
-namespace Mobishare.Infrastructure.IoT.Models
+namespace Mobishare.Core.Models
 {
     /// <summary>
     /// Comando inviato dal Backend al Gateway IoT per controllare un mezzo.

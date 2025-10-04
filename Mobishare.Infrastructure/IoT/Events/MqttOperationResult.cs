@@ -1,4 +1,4 @@
-﻿namespace Mobishare.Infrastructure.IoT.Models
+﻿namespace Mobishare.Infrastructure.IoT.Events
 {
     /// <summary>
     /// Risultato di un'operazione MQTT (per usi futuri, es. API che ritorna esito publish)

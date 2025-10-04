@@ -1,5 +1,4 @@
 ﻿using Mobishare.Core.Enums;
-using Mobishare.Infrastructure.IoT.Models;
 
 
 namespace Mobishare.API.DTO

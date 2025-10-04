@@ -5,12 +5,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Mobishare.IoT.Gateway.Models
+namespace Mobishare.Core.Models
 {
     /// <summary>
     /// Rappresenta un mezzo emulato nel Gateway
     /// </summary>
-    internal class MezzoEmulato
+    public class MezzoEmulato
     {
         public string IdMezzo { get; set; } = string.Empty;
         public string Matricola { get; set; } = string.Empty;
