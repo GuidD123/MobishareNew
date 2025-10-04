@@ -1,0 +1,338 @@
+﻿@page
+@model Mobishare.WebApp.Pages.Parcheggi.IndexModel
+@{
+    ViewData["Title"] = "Parcheggi e Mezzi";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="bi bi-geo-alt-fill text-primary"></i> Parcheggi e Mezzi Disponibili
+        </h2>
+        <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" 
+                data-bs-target="#filterPanel">
+            <i class="bi bi-funnel"></i> Filtri
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Pannello Filtri -->
+    <div class="collapse mb-4" id="filterPanel">
+        <div class="card card-body">
+            <form method="get">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Zona</label>
+                        <select name="zonaFiltro" class="form-select" asp-for="ZonaFiltro">
+                            <option value="">Tutte le zone</option>
+                            @foreach (var zona in Model.ZoneUniche)
+                            {
+                                <option value="@zona">@zona</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Solo Attivi</label>
+                        <select name="soloAttivi" class="form-select" asp-for="SoloAttivi">
+                            <option value="true">Sì</option>
+                            <option value="false">Tutti</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">&nbsp;</label>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i> Applica Filtri
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Statistiche Rapide -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-primary">@Model.Parcheggi.Count</h3>
+                    <p class="mb-0 text-muted">Parcheggi Totali</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-success">@Model.Parcheggi.Count(p => p.Attivo)</h3>
+                    <p class="mb-0 text-muted">Parcheggi Attivi</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-info">@Model.Parcheggi.Sum(p => p.Mezzi.Count)</h3>
+                    <p class="mb-0 text-muted">Mezzi Totali</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-warning">@Model.Parcheggi.Sum(p => p.Mezzi.Count(m => m.Stato == "Disponibile"))</h3>
+                    <p class="mb-0 text-muted">Mezzi Disponibili</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Elenco Parcheggi -->
+    @if (Model.Parcheggi.Any())
+    {
+        <div class="row">
+            @foreach (var parcheggio in Model.Parcheggi)
+            {
+                <div class="col-lg-6 col-xl-4 mb-4">
+                    <div class="card shadow-sm h-100 @(!parcheggio.Attivo ? "border-danger" : "")">
+                        <!-- Header Parcheggio -->
+                        <div class="card-header @(parcheggio.Attivo ? "bg-primary" : "bg-secondary") text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-building"></i> @parcheggio.Nome
+                                </h5>
+                                @if (parcheggio.Attivo)
+                                {
+                                    <span class="badge bg-success">Attivo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Chiuso</span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="card-body">
+                            <!-- Info Parcheggio -->
+                            <div class="mb-3">
+                                <p class="mb-1">
+                                    <i class="bi bi-geo-alt text-primary"></i> 
+                                    <strong>Zona:</strong> @parcheggio.Zona
+                                </p>
+                                @if (!string.IsNullOrEmpty(parcheggio.Indirizzo))
+                                {
+                                    <p class="mb-1">
+                                        <i class="bi bi-signpost-2"></i> 
+                                        <small class="text-muted">@parcheggio.Indirizzo</small>
+                                    </p>
+                                }
+                                <p class="mb-1">
+                                    <i class="bi bi-clipboard-data text-info"></i> 
+                                    <strong>Capienza:</strong> @parcheggio.Capienza posti
+                                </p>
+                                <p class="mb-0">
+                                    <i class="bi bi-bicycle text-success"></i> 
+                                    <strong>Mezzi presenti:</strong> @parcheggio.Mezzi.Count / @parcheggio.Capienza
+                                </p>
+                            </div>
+
+                            <!-- Progress Bar Occupazione -->
+                            <div class="mb-3">
+                                @{
+                                    var percentualeOccupazione = parcheggio.Capienza > 0 
+                                        ? (double)parcheggio.Mezzi.Count / parcheggio.Capienza * 100 
+                                        : 0;
+                                    var coloreBarra = percentualeOccupazione > 80 ? "bg-danger" 
+                                                    : percentualeOccupazione > 50 ? "bg-warning" 
+                                                    : "bg-success";
+                                }
+                                <small class="text-muted">Occupazione: @percentualeOccupazione.ToString("0")%</small>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar @coloreBarra" role="progressbar" 
+                                         style="width: @percentualeOccupazione%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Riepilogo Mezzi per Stato -->
+                            @if (parcheggio.Mezzi.Any())
+                            {
+                                <div class="mb-3">
+                                    <strong>Stato Mezzi:</strong>
+                                    <div class="d-flex flex-wrap gap-1 mt-2">
+                                        @{
+                                            var disponibili = parcheggio.Mezzi.Count(m => m.Stato == "Disponibile");
+                                            var inUso = parcheggio.Mezzi.Count(m => m.Stato == "InUso");
+                                            var manutenzione = parcheggio.Mezzi.Count(m => m.Stato == "InManutenzione");
+                                            var guasti = parcheggio.Mezzi.Count(m => m.Stato == "Guasto");
+                                        }
+                                        @if (disponibili > 0)
+                                        {
+                                            <span class="badge bg-success">@disponibili Disponibili</span>
+                                        }
+                                        @if (inUso > 0)
+                                        {
+                                            <span class="badge bg-primary">@inUso In Uso</span>
+                                        }
+                                        @if (manutenzione > 0)
+                                        {
+                                            <span class="badge bg-warning">@manutenzione Manutenzione</span>
+                                        }
+                                        @if (guasti > 0)
+                                        {
+                                            <span class="badge bg-danger">@guasti Guasti</span>
+                                        }
+                                    </div>
+                                </div>
+
+                                <!-- Riepilogo Mezzi per Tipo -->
+                                <div class="mb-3">
+                                    <strong>Tipi Mezzi:</strong>
+                                    <div class="d-flex flex-wrap gap-1 mt-2">
+                                        @{
+                                            var mezziPerTipo = parcheggio.Mezzi.GroupBy(m => m.Tipo);
+                                        }
+                                        @foreach (var gruppo in mezziPerTipo)
+                                        {
+                                            var icona = gruppo.Key switch
+                                            {
+                                                "Bicicletta" => "🚴",
+                                                "Monopattino" => "🛴",
+                                                "eBike" => "🚲",
+                                                "eScooter" => "⚡",
+                                                _ => "🚗"
+                                            };
+                                            <span class="badge bg-info">@icona @gruppo.Count() @gruppo.Key</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-warning mb-3">
+                                    <small>Nessun mezzo presente</small>
+                                </div>
+                            }
+
+                            <!-- Bottone Dettagli -->
+                            <button type="button" class="btn btn-outline-primary w-100" 
+                                    data-bs-toggle="modal" data-bs-target="#modalMezzi@(parcheggio.Id)">
+                                <i class="bi bi-list-ul"></i> Vedi Dettagli Mezzi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Dettagli Mezzi -->
+                <div class="modal fade" id="modalMezzi@(parcheggio.Id)" tabindex="-1">
+                    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title">
+                                    <i class="bi bi-building"></i> @parcheggio.Nome - Dettaglio Mezzi
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                @if (parcheggio.Mezzi.Any())
+                                {
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Matricola</th>
+                                                    <th>Tipo</th>
+                                                    <th>Stato</th>
+                                                    <th>Batteria</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var mezzo in parcheggio.Mezzi.OrderBy(m => m.Matricola))
+                                                {
+                                                    <tr>
+                                                        <td><strong>@mezzo.Matricola</strong></td>
+                                                        <td>
+                                                            @{
+                                                                var iconaTipo = mezzo.Tipo switch
+                                                                {
+                                                                    "Bicicletta" => "🚴",
+                                                                    "Monopattino" => "🛴",
+                                                                    "eBike" => "🚲",
+                                                                    "eScooter" => "⚡",
+                                                                    _ => "🚗"
+                                                                };
+                                                            }
+                                                            @iconaTipo @mezzo.Tipo
+                                                        </td>
+                                                        <td>
+                                                            @switch (mezzo.Stato)
+                                                            {
+                                                                case "Disponibile":
+                                                                    <span class="badge bg-success">Disponibile</span>
+                                                                    break;
+                                                                case "InUso":
+                                                                    <span class="badge bg-primary">In Uso</span>
+                                                                    break;
+                                                                case "InManutenzione":
+                                                                    <span class="badge bg-warning">Manutenzione</span>
+                                                                    break;
+                                                                case "Guasto":
+                                                                    <span class="badge bg-danger">Guasto</span>
+                                                                    break;
+                                                                default:
+                                                                    <span class="badge bg-secondary">@mezzo.Stato</span>
+                                                                    break;
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            @if (mezzo.LivelloBatteria.HasValue)
+                                                            {
+                                                                var livello = mezzo.LivelloBatteria.Value;
+                                                                var coloreBatteria = livello > 60 ? "success" 
+                                                                                   : livello > 30 ? "warning" 
+                                                                                   : "danger";
+                                                                <span class="badge bg-@coloreBatteria">
+                                                                    <i class="bi bi-battery-charging"></i> @livello%
+                                                                </span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted">N/A</span>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-center py-4 text-muted">
+                                        <i class="bi bi-inbox display-4"></i>
+                                        <p class="mt-3">Nessun mezzo presente in questo parcheggio</p>
+                                    </div>
+                                }
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <p class="mt-3 text-muted">Nessun parcheggio trovato con i filtri selezionati</p>
+        </div>
+    }
+</div>

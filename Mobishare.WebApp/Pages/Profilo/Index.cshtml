@@ -1,0 +1,162 @@
+﻿@page
+@model Mobishare.WebApp.Pages.Profilo.IndexModel
+@{
+    ViewData["Title"] = "Il mio Profilo";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">
+        <i class="bi bi-person-circle text-primary"></i> Il mio Profilo
+    </h2>
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill"></i> @Model.SuccessMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Informazioni Account -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Informazioni Account</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.Utente != null)
+                    {
+                        <p><strong>Nome:</strong> @Model.Utente.Nome</p>
+                        <p><strong>Email:</strong> @Model.Utente.Email</p>
+                        <p><strong>Ruolo:</strong> 
+                            <span class="badge bg-info">@Model.Utente.Ruolo</span>
+                        </p>
+                        <p><strong>Credito:</strong> 
+                            <span class="badge @(Model.Utente.Credito > 0 ? "bg-success" : "bg-warning")">
+                                €@Model.Utente.Credito.ToString("0.00")
+                            </span>
+                        </p>
+                        <p><strong>Stato:</strong> 
+                            @if (Model.Utente.Sospeso)
+                            {
+                                <span class="badge bg-danger">Sospeso</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">Attivo</span>
+                            }
+                        </p>
+
+                        @if (Model.Utente.Sospeso)
+                        {
+                            <div class="alert alert-warning mt-3">
+                                <i class="bi bi-exclamation-triangle"></i> 
+                                Account sospeso. Effettua una ricarica per riattivarlo.
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted">Caricamento dati...</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Aggiorna Nome -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-pencil-square"></i> Aggiorna Nome</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="AggiornaNome">
+                        <div class="mb-3">
+                            <label asp-for="InputNome.NuovoNome" class="form-label">Nuovo Nome</label>
+                            <input asp-for="InputNome.NuovoNome" class="form-control" 
+                                   placeholder="Inserisci nuovo nome" />
+                            <span asp-validation-for="InputNome.NuovoNome" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="InputNome.Password" class="form-label">Password attuale</label>
+                            <input asp-for="InputNome.Password" class="form-control" 
+                                   type="password" placeholder="••••••••" />
+                            <span asp-validation-for="InputNome.Password" class="text-danger small"></span>
+                        </div>
+
+                        <button type="submit" class="btn btn-info w-100">
+                            <i class="bi bi-save"></i> Aggiorna Nome
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cambia Password -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-key-fill"></i> Cambia Password</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="CambiaPassword">
+                        <div class="mb-3">
+                            <label asp-for="InputPassword.VecchiaPassword" class="form-label">Password Attuale</label>
+                            <input asp-for="InputPassword.VecchiaPassword" class="form-control" 
+                                   type="password" placeholder="••••••••" />
+                            <span asp-validation-for="InputPassword.VecchiaPassword" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="InputPassword.NuovaPassword" class="form-label">Nuova Password</label>
+                            <input asp-for="InputPassword.NuovaPassword" class="form-control" 
+                                   type="password" placeholder="••••••••" />
+                            <span asp-validation-for="InputPassword.NuovaPassword" class="text-danger small"></span>
+                            <small class="form-text text-muted">Min 8 caratteri, 1 maiuscola, 1 numero</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="InputPassword.ConfermaPassword" class="form-label">Conferma Password</label>
+                            <input asp-for="InputPassword.ConfermaPassword" class="form-control" 
+                                   type="password" placeholder="••••••••" />
+                            <span asp-validation-for="InputPassword.ConfermaPassword" class="text-danger small"></span>
+                        </div>
+
+                        <button type="submit" class="btn btn-warning w-100">
+                            <i class="bi bi-shield-lock"></i> Cambia Password
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Link Utili -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="d-flex gap-2">
+                <a asp-page="/Ricariche/Index" class="btn btn-success">
+                    <i class="bi bi-credit-card"></i> Gestisci Ricariche
+                </a>
+                <a asp-page="/Corse/Index" class="btn btn-primary">
+                    <i class="bi bi-bicycle"></i> Storico Corse
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

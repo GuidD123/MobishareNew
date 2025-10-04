@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Mobishare.WebApp.Services;
 using System.ComponentModel.DataAnnotations;
 
-namespace Mobishare.WebApp.Pages.Account
+namespace Mobishare.WebApp.Pages.Auth
 {
     public class LoginModel : PageModel
     {
