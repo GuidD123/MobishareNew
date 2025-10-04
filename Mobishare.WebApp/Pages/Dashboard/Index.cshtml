@@ -1,0 +1,12 @@
+﻿@page
+@model Mobishare.WebApp.Pages.Dashboard.IndexModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="row">
+    <div class="col-12">
+        <h2>Benvenuto, @Context.Session.GetString("UserName")!</h2>
+        <p class="text-muted">Il tuo credito: € @ViewData["Credito"]</p>
+    </div>
+</div>
