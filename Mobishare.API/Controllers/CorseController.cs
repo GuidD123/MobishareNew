@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Mobishare.Core.Data;
@@ -8,17 +9,21 @@ using Mobishare.Core.Enums;
 using Mobishare.Core.Exceptions;
 using Mobishare.Core.Models;
 using Mobishare.Infrastructure.IoT.Interfaces;
+using Mobishare.Infrastructure.SignalRHubs;
+using Mobishare.Infrastructure.SignalRHubs.Services;
 using System.Security.Claims;
 
 namespace Mobishare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class CorseController(MobishareDbContext context, IMqttIoTService mqttIoTService, ILogger<CorseController> logger) : ControllerBase
+    public class CorseController(MobishareDbContext context, IMqttIoTService mqttIoTService, ILogger<CorseController> logger, IHubContext<NotificheHub> hubContext, NotificationOutboxService notifiche) : ControllerBase
     {
         private readonly MobishareDbContext _context = context;
         private readonly IMqttIoTService _mqttIoTService = mqttIoTService;
         private readonly ILogger<CorseController> _logger = logger;
+        private readonly IHubContext<NotificheHub> _hubContext = hubContext;
+        private readonly NotificationOutboxService _notifiche = notifiche;
 
 
         // GET: api/corse? idUtente=& matricolaMezzo=..
@@ -177,12 +182,19 @@ namespace Mobishare.API.Controllers
                 var utente = await _context.Utenti.FindAsync(idUtente)
                      ?? throw new ElementoNonTrovatoException("Utente", idUtente);
 
+                // Verifica che l'utente non abbia già una corsa in corso
+                bool corsaInCorso = await _context.Corse.AnyAsync(c => c.IdUtente == utente.Id && c.DataOraFine == null);
+                if (corsaInCorso)
+                    throw new OperazioneNonConsentitaException("Hai già una corsa in corso. Termina quella prima di avviarne un'altra.");
+
+
                 // Verifiche risorse
                 var parcheggio = await _context.Parcheggi.FindAsync(dto.IdParcheggioPrelievo)
                     ?? throw new ElementoNonTrovatoException("Parcheggio", dto.IdParcheggioPrelievo);
 
                 var mezzo = await _context.Mezzi.FirstOrDefaultAsync(m => m.Matricola == dto.MatricolaMezzo) 
                     ?? throw new ElementoNonTrovatoException("Mezzo", dto.MatricolaMezzo);
+
 
                 if (utente.Credito < Tariffe.COSTO_BASE)
                     throw new CreditoInsufficienteException(utente.Credito, Tariffe.COSTO_BASE);
@@ -256,8 +268,8 @@ namespace Mobishare.API.Controllers
 
 
 
-
         // PUT: api/corse/{id} -> fine corsa + logica credito consistente
+        [Authorize(Roles = "Utente,Gestore")]
         [HttpPut("{id}")]
         public async Task<ActionResult<SuccessResponse>> PutCorsa(int id, [FromBody] FineCorsaDTO dto)
         {
@@ -280,7 +292,7 @@ namespace Mobishare.API.Controllers
                 if (mezzo == null)
                     throw new ElementoNonTrovatoException("Mezzo", corsaEsistente.MatricolaMezzo);
 
-                // Calcolo costo
+                // Calcolo costo della corsa
                 TimeSpan durata = corsaEsistente.DataOraFine.Value - corsaEsistente.DataOraInizio;
                 decimal costo = Tariffe.COSTO_BASE;
 
@@ -300,6 +312,15 @@ namespace Mobishare.API.Controllers
                             break;
                     }
                 }
+
+                _logger.LogInformation("Fine corsa {CorsaId}: durata {DurataMinuti:F1} min, costo {Costo:F2}€, utente {UtenteId}, mezzo {Matricola}",
+                    corsaEsistente.Id,
+                    durata.TotalMinutes,
+                    costo,
+                    corsaEsistente.IdUtente,
+                    corsaEsistente.MatricolaMezzo
+                );
+
 
                 corsaEsistente.CostoFinale = costo;
 
@@ -323,6 +344,44 @@ namespace Mobishare.API.Controllers
                     corsaEsistente.IdParcheggioRilascio ?? 0,
                     corsaEsistente.MatricolaMezzo
                 );
+
+                try
+                {
+                    //Notifica l’utente con credito aggiornato
+                    await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                        .SendAsync("CreditoAggiornato", utente.Credito);
+
+                    //Notifica tutti gli admin con dettagli della corsa terminata
+                    await _hubContext.Clients.Group("admin")
+                        .SendAsync("RiceviNotificaAdmin",
+                            "Corsa terminata",
+                            $"Utente {utente.Nome} (ID {utente.Id}) ha terminato una corsa da {corsaEsistente.CostoFinale:F2}€");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Invio notifica SignalR fallito per Corsa {CorsaId}", corsaEsistente.Id);
+                }
+
+                _notifiche.Enqueue(utente.Id.ToString(),"CorsaTerminata",
+                    new
+                    {
+                        CorsaId = corsaEsistente.Id,
+                        Costo = corsaEsistente.CostoFinale,
+                        NuovoCredito = utente.Credito,
+                        StatoUtente = utente.Sospeso ? "Sospeso" : "Attivo",
+                        DataOraFine = corsaEsistente.DataOraFine
+                    }
+                );
+
+                try
+                {
+                    await _notifiche.FlushAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Outbox flush fallito dopo Corsa {CorsaId}", corsaEsistente.Id);
+                }
+                ;
 
                 var response = new CorsaResponseDTO
                 {

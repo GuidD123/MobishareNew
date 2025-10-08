@@ -6,16 +6,19 @@ using Mobishare.Core.Enums;
 using Mobishare.Core.Exceptions;
 using Mobishare.Core.Models;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.SignalR;
+using Mobishare.Infrastructure.SignalRHubs;
+
 
 namespace Mobishare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class RicaricheController(MobishareDbContext context, ILogger<RicaricheController> logger) : ControllerBase
+    public class RicaricheController(MobishareDbContext context, ILogger<RicaricheController> logger, IHubContext<NotificheHub> hubContext) : ControllerBase
     {
         private readonly MobishareDbContext _context = context;
         private readonly ILogger<RicaricheController> _logger = logger;
-        
+        private readonly IHubContext<NotificheHub> _hubContext = hubContext;
 
 
         // GET: api/ricariche/{idUtente} - Storico ricariche utente
@@ -52,7 +55,7 @@ namespace Mobishare.API.Controllers
         [HttpPost]
         public async Task<ActionResult<SuccessResponse>> PostRicarica([FromBody] NuovaRicaricaDTO dto)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            await using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
@@ -65,6 +68,7 @@ namespace Mobishare.API.Controllers
 
                 if (dto.ImportoRicarica > 500) // Limite massimo ricarica
                     throw new ImportoNonValidoException(dto.ImportoRicarica, "supera il massimo di 500€");
+
 
                 // Crea ricarica in stato "InSospeso"
                 var ricarica = new Ricarica
@@ -79,6 +83,7 @@ namespace Mobishare.API.Controllers
                 _context.Ricariche.Add(ricarica);
                 await _context.SaveChangesAsync();
 
+
                 // Simula processamento pagamento
                 var successoPagamento = await ProcessaPagamentoAsync(ricarica, dto);
 
@@ -88,8 +93,12 @@ namespace Mobishare.API.Controllers
                     ricarica.Stato = StatoPagamento.Completato;
                     utente.Credito += dto.ImportoRicarica;
 
-                    // Se utente era sospeso e ora ha credito positivo, riattivalo
-                    if (utente.Sospeso && utente.Credito >= 0)
+                    if (utente.Credito < 0)
+                    {
+                        utente.Sospeso = true;
+                        _logger.LogWarning("Utente {UserId} resta sospeso: credito negativo ({Credito}€)", utente.Id, utente.Credito);
+                    }
+                    else if (utente.Sospeso)
                     {
                         utente.Sospeso = false;
                         _logger.LogInformation("Utente {UserId} riattivato dopo ricarica. Nuovo credito: {Credito}€",
@@ -98,6 +107,24 @@ namespace Mobishare.API.Controllers
 
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
+
+                    try
+                    {
+                        //notifica utente avvenuta ricarica
+                        await _hubContext.Clients.Group($"utenti-{utente.Id}")
+                            .SendAsync("CreditoAggiornato", utente.Credito);
+
+                        //notifica admin avvenuta ricarica
+                        await _hubContext.Clients.Group("admin")
+                            .SendAsync("RiceviNotificaAdmin","Ricarica completata",$"Utente {utente.Nome} (ID {utente.Id}) ha effettuato una ricarica da {dto.ImportoRicarica:F2}€");
+
+                        _logger.LogInformation("Notifica SignalR inviata a utente {Id} (credito: {Credito}€)",
+                            utente.Id, utente.Credito);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Impossibile inviare notifica SignalR per utente {Id}", utente.Id);
+                    }
 
                     var payload = new RicaricaResponseDTO
                     {
@@ -133,7 +160,12 @@ namespace Mobishare.API.Controllers
             {
                 await transaction.RollbackAsync();
                 _logger.LogError(ex, "Errore durante la ricarica per utente {UserId}", dto.IdUtente);
-                return StatusCode(500, "Errore interno durante la ricarica");
+                return StatusCode(500, new ErrorResponse
+                {
+                    Messaggio = "Errore interno durante la ricarica",
+                    Dettagli = ex.Message
+                });
+
             }
         }
 
@@ -226,6 +258,13 @@ namespace Mobishare.API.Controllers
                 .Where(c => c.IdUtente == idUtente && c.CostoFinale.HasValue)
                 .SumAsync(c => c.CostoFinale!.Value);
 
+            var ultima = await _context.Ricariche
+                .Where(r => r.IdUtente == idUtente)
+                .OrderByDescending(r => r.DataRicarica)
+                .Select(r => r.DataRicarica)
+                .FirstOrDefaultAsync();
+
+
             var payload = new SaldoResponseDTO
             {
                 CreditoAttuale = utente.Credito,
@@ -233,11 +272,7 @@ namespace Mobishare.API.Controllers
                 TotaleRicariche = totaleRicariche,
                 RicaricheInSospeso = ricaricheInSospeso,
                 TotaleSpese = totaleSpeseCorse,
-                UltimaRicarica = await _context.Ricariche
-                    .Where(r => r.IdUtente == idUtente)
-                    .OrderByDescending(r => r.DataRicarica)
-                    .Select(r => r.DataRicarica)
-                    .FirstOrDefaultAsync()
+                UltimaRicarica = ultima == default ? null : ultima
             };
 
             return Ok(new SuccessResponse

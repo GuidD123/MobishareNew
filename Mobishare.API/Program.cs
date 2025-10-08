@@ -8,6 +8,9 @@ using Mobishare.Infrastructure.IoT.HostedServices;
 using Mobishare.Infrastructure.IoT.Interfaces;
 using Mobishare.Infrastructure.IoT.Services;
 using Mobishare.Infrastructure.Services;
+using Mobishare.Infrastructure.SignalRHubs;
+using Mobishare.Infrastructure.SignalRHubs.HostedServices;
+using Mobishare.Infrastructure.SignalRHubs.Services;
 using System.Text;
 using System.Text.Json;
 
@@ -154,6 +157,7 @@ builder.Services.AddSwaggerGen(c =>
 #endregion
 
 
+//SignalR richiede AllowCredentials()per permettere la connessione WebSocket tra domini diversi 
 #region Configurazione CORS
 builder.Services.AddCors(options =>
 {
@@ -173,6 +177,15 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 #endregion
+
+#region Configurazione SignalR
+builder.Services.AddSignalR();
+#endregion
+
+builder.Services.AddSingleton<NotificationOutboxService>();
+
+builder.Services.AddHostedService<NotificationRetryService>();
+
 
 
 // Costruisce l'applicazione
@@ -252,8 +265,11 @@ app.MapGet("/health", async (MobishareDbContext context) =>
 #endregion
 
 
-// Registra tutti i controllers
+//Registra tutti i controllers
 app.MapControllers();
+
+//Endpoint SignalR per notifiche in tempo reale -> hub raggiungibile a localhost
+app.MapHub<NotificheHub>("/hub/notifiche");
 
 
 #region Gestione Arresto Pulito

@@ -233,31 +233,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ====================================
-    // GEOLOCALIZZAZIONE (opzionale)
-    // ====================================
-    window.mobishare = window.mobishare || {};
-
-    window.mobishare.getLocation = function () {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error('Geolocalizzazione non supportata'));
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
-                position => resolve({
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                }),
-                error => reject(error)
-            );
-        });
-    };
 
     // ====================================
     // UTILITY FUNCTIONS
     // ====================================
+
+    window.mobishare = window.mobishare || {};
+
     window.mobishare.formatCurrency = function (value) {
         return new Intl.NumberFormat('it-IT', {
             style: 'currency',
@@ -340,3 +322,89 @@ function confirmAction(message, callback) {
 }
 
 console.log('Mobishare JavaScript caricato correttamente');
+
+
+
+
+// ==================================================
+// CONNESSIONE SIGNALR AL BACKEND
+// ==================================================
+
+// Recupero eventuale token JWT (se usi autenticazione)
+const token = sessionStorage.getItem("JwtToken") || localStorage.getItem("JwtToken");
+
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl("https://localhost:7001/hub/notifiche", {
+        accessTokenFactory: () => token // verrà ignorato se non serve
+    })
+    .withAutomaticReconnect([0, 2000, 5000, 10000])
+    .configureLogging(signalR.LogLevel.Information)
+    .build();
+
+// ==================================================
+// EVENTI RICEVUTI DAL SERVER
+// ==================================================
+
+// Aggiornamento credito utente
+connection.on("CreditoAggiornato", function (nuovoCredito) {
+    const el = document.getElementById("credito-utente");
+    if (el) {
+        el.textContent = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' })
+            .format(nuovoCredito);
+        showSuccessMessage(`Credito aggiornato: ${el.textContent}`);
+    }
+});
+
+// Aggiornamento telemetria (mezzi, batterie, ecc.)
+connection.on("AggiornamentoTelemetria", function (data) {
+    console.log("Telemetria ricevuta:", data);
+    // esempio: aggiorna dashboard o tabella mezzi
+    // aggiornaStatoMezzo(data.idMezzo, data.livelloBatteria, data.stato);
+});
+
+// Notifiche per admin
+connection.on("RiceviNotificaAdmin", function (titolo, testo) {
+    showSuccessMessage(`[ADMIN] ${titolo}: ${testo}`);
+});
+
+// Test generico
+connection.on("RiceviMessaggio", function (user, message) {
+    console.log(`Messaggio da ${user}: ${message}`);
+});
+
+// ==================================================
+// GESTIONE RICONNESSIONE E CHIUSURA
+// ==================================================
+connection.onreconnecting(error => {
+    console.warn("SignalR: connessione persa, riconnessione in corso...", error);
+    showWarningMessage("Connessione persa. Tentativo di riconnessione...");
+});
+
+connection.onreconnected(connectionId => {
+    console.log("SignalR riconnesso:", connectionId);
+    showSuccessMessage("Riconnesso al server");
+});
+
+connection.onclose(error => {
+    console.error("SignalR: connessione chiusa:", error);
+    showErrorMessage("Connessione persa definitivamente.");
+    // Tenta di riconnettersi anche dopo chiusura
+    setTimeout(startSignalR, 5000);
+});
+
+// ==================================================
+// FUNZIONE DI AVVIO CON RETRY AUTOMATICO
+// ==================================================
+async function startSignalR() {
+    try {
+        await connection.start();
+        console.log("✅ SignalR connesso al backend");
+    } catch (err) {
+        console.error("❌ Errore durante la connessione SignalR:", err);
+        // Riprova dopo 5 secondi
+        setTimeout(startSignalR, 5000);
+    }
+}
+
+// Avvio iniziale
+startSignalR();

@@ -15,6 +15,20 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 
+///<summary>
+///MqttIoTService -> Ruolo gestore tecnico della comunicazione MQTT
+///Livello Infrastruttura/Rete 
+///Logiche gestite:
+///     Connessione e riconnesione al broker MQTT
+///     Subscrive e publish sui topic 
+///     ricezione messaggi grezzi e smistamento (RouteMessageAsync)
+///     Generazione e invio eventi .NET (MezzoStatusReceived, RispostaComandoReceived)
+///     Non aggiorna il db e non conosce la logica applicativa 
+///     Si limita a ricevere pacchetti, deserializzarli e propagarli sottoforma di eventi
+/// </summary>
+
+
+
 namespace Mobishare.Infrastructure.IoT.Services
 {
     /// <summary>
@@ -77,12 +91,12 @@ namespace Mobishare.Infrastructure.IoT.Services
         // =====================
 
         /// <summary>
-        /// Avvio del servizio come HostedService.
+        /// Avvio del servizio come HostedService. -> Gestisce avvio client MQTT
         /// </summary>
         public Task StartAsync(CancellationToken ct) => StartInternalAsync(ct);
 
         /// <summary>
-        /// Arresto del servizio come HostedService.
+        /// Arresto del servizio come HostedService. -> Gestisce chiusura client MQTT
         /// </summary>
         public Task StopAsync(CancellationToken ct) => StopInternalAsync(ct);
 
@@ -392,7 +406,7 @@ namespace Mobishare.Infrastructure.IoT.Services
         }
 
         /// <summary>
-        /// Deserializza e propaga un messaggio di stato mezzo.
+        /// Deserializza telemetria e propaga un messaggio di stato mezzo (lancia evento MezzoStatusReceived)
         /// </summary>
         private async Task HandleMezzoStatusMessageAsync(int idParcheggio, string payload, string topic)
         {

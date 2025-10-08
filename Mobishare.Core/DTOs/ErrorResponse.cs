@@ -4,6 +4,9 @@
     {
         public string Errore { get; set; } = string.Empty;
 
+        public string? Messaggio { get; set; }
+        public string? Dettagli { get; set; }
+
         // Campi opzionali null se non usati
         public decimal? Saldo { get; set; }
         public decimal? Richiesto { get; set; }
