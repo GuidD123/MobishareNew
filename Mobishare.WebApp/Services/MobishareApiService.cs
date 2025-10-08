@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Headers;
+﻿using Mobishare.Core.DTOs;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -34,12 +35,12 @@ public class MobishareApiService : IMobishareApiService
     // AUTENTICAZIONE
     // ====================================
 
-    public async Task<LoginResponse?> LoginAsync(string email, string password)
+    public async Task<LoginResponseDTO?> LoginAsync(string email, string password)
     {
         try
         {
-            var response = await _http.PostAsJsonAsync("/api/utenti/login",
-                new { email, password });
+            var response = await _http.PostAsJsonAsync("api/utenti/login",
+                new LoginRequest { Email = email, Password = password });
 
             if (!response.IsSuccessStatusCode)
                 return null;
@@ -51,24 +52,27 @@ public class MobishareApiService : IMobishareApiService
                 return null;
 
             var dati = wrapper.Dati;
+            if (!dati.TryGetProperty("token", out var tokenProp))
+                return null;
 
-            return new LoginResponse(
-                Token: dati.GetProperty("token").GetString() ?? "",
-                Id: dati.GetProperty("id").GetInt32(),
-                Nome: dati.GetProperty("nome").GetString() ?? "",
-                Ruolo: dati.GetProperty("ruolo").GetString() ?? "",
-                Credito: dati.GetProperty("credito").GetDecimal(),
-                Sospeso: dati.GetProperty("sospeso").GetBoolean()
-            );
+            return new LoginResponseDTO
+            {
+                Token = dati.GetProperty("token").GetString() ?? "",
+                Id = dati.GetProperty("id").GetInt32(),
+                Nome = dati.GetProperty("nome").GetString() ?? "",
+                Ruolo = dati.GetProperty("ruolo").GetString() ?? "",
+                Credito = dati.GetProperty("credito").GetDecimal(),
+                Sospeso = dati.GetProperty("sospeso").GetBoolean()
+            };
         }
         catch { return null; }
     }
 
-    public async Task<bool> RegisterAsync(RegisterDto request)
+    public async Task<bool> RegisterAsync(RegisterDTO request)
     {
         try
         {
-            var response = await _http.PostAsJsonAsync("/api/utenti", request);
+            var response = await _http.PostAsJsonAsync("api/utenti", request);
             return response.IsSuccessStatusCode;
         }
         catch { return false; }
@@ -78,12 +82,12 @@ public class MobishareApiService : IMobishareApiService
     // UTENTE
     // ====================================
 
-    public async Task<UtenteDto?> GetUtenteAsync(int id)
+    public async Task<UtenteDTO?> GetUtenteAsync(int id)
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.GetAsync($"/api/utenti/{id}");
+            var response = await _http.GetAsync($"api/utenti/{id}");
 
             if (!response.IsSuccessStatusCode)
                 return null;
@@ -96,30 +100,31 @@ public class MobishareApiService : IMobishareApiService
 
             var dati = wrapper.Dati;
 
-            return new UtenteDto(
-                Id: dati.GetProperty("id").GetInt32(),
-                Nome: dati.GetProperty("nome").GetString() ?? "",
-                Email: dati.GetProperty("email").GetString() ?? "",
-                Ruolo: dati.GetProperty("ruolo").GetString() ?? "",
-                Credito: dati.GetProperty("credito").GetDecimal(),
-                Sospeso: dati.GetProperty("sospeso").GetBoolean()
-            );
+            return new UtenteDTO 
+            {
+                Id = dati.GetProperty("id").GetInt32(),
+                Nome = dati.GetProperty("nome").GetString() ?? "",
+                Email = dati.GetProperty("email").GetString() ?? "",
+                Ruolo = dati.GetProperty("ruolo").GetString() ?? "",
+                Credito = dati.GetProperty("credito").GetDecimal(),
+                Sospeso = dati.GetProperty("sospeso").GetBoolean()
+            };
         }
         catch { return null; }
     }
 
-    public async Task<bool> CambiaPasswordAsync(CambiaPswDto dto)
+    public async Task<bool> CambiaPasswordAsync(CambiaPswDTO dto)
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.PutAsJsonAsync("/api/utenti/cambia-password", dto);
+            var response = await _http.PutAsJsonAsync("api/utenti/cambia-password", dto);
             return response.IsSuccessStatusCode;
         }
         catch { return false; }
     }
 
-    public async Task<bool> AggiornaProfiloAsync(int id, AggiornaProfiloDto dto)
+   /* public async Task<bool> AggiornaProfiloAsync(int id, AggiornaProfiloDto dto)
     {
         try
         {
@@ -130,52 +135,52 @@ public class MobishareApiService : IMobishareApiService
         }
         catch { return false; }
     }
-
+   */
     // ====================================
     // RICARICHE
     // ====================================
 
-    public async Task<List<RicaricaDto>> GetRicaricheUtenteAsync(int utenteId)
+    public async Task<List<RicaricaResponseDTO>> GetRicaricheUtenteAsync(int utenteId)
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.GetAsync($"/api/ricariche/{utenteId}");
+            var response = await _http.GetAsync($"api/ricariche/{utenteId}");
 
             if (!response.IsSuccessStatusCode)
                 return new();
 
             var wrapper = await response.Content
-                .ReadFromJsonAsync<ApiSuccessResponse<List<RicaricaDto>>>(_jsonOptions);
+                .ReadFromJsonAsync<ApiSuccessResponse<List<RicaricaResponseDTO>>>(_jsonOptions);
 
             return wrapper?.Dati ?? new();
         }
         catch { return new(); }
     }
 
-    public async Task<bool> NuovaRicaricaAsync(NuovaRicaricaDto dto)
+    public async Task<bool> NuovaRicaricaAsync(NuovaRicaricaDTO dto)
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.PostAsJsonAsync("/api/ricariche", dto);
+            var response = await _http.PostAsJsonAsync("api/ricariche", dto);
             return response.IsSuccessStatusCode;
         }
         catch { return false; }
     }
 
-    public async Task<SaldoDto?> GetSaldoUtenteAsync(int utenteId)
+    public async Task<SaldoResponseDTO?> GetSaldoUtenteAsync(int utenteId)
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.GetAsync($"/api/ricariche/utente/{utenteId}/saldo");
+            var response = await _http.GetAsync($"api/ricariche/utente/{utenteId}/saldo");
 
             if (!response.IsSuccessStatusCode)
                 return null;
 
             var wrapper = await response.Content
-                .ReadFromJsonAsync<ApiSuccessResponse<SaldoDto>>(_jsonOptions);
+                .ReadFromJsonAsync<ApiSuccessResponse<SaldoResponseDTO>>(_jsonOptions);
 
             return wrapper?.Dati;
         }
@@ -186,7 +191,7 @@ public class MobishareApiService : IMobishareApiService
     // CORSE
     // ====================================
 
-    public async Task<List<CorsaDto>> GetCorseAsync(int? idUtente = null, string? matricolaMezzo = null)
+    public async Task<List<CorsaResponseDTO>> GetCorseAsync(int? idUtente = null, string? matricolaMezzo = null)
     {
         try
         {
@@ -196,85 +201,85 @@ public class MobishareApiService : IMobishareApiService
             if (!string.IsNullOrEmpty(matricolaMezzo)) queryParams.Add($"matricolaMezzo={matricolaMezzo}");
 
             var query = queryParams.Count > 0 ? "?" + string.Join("&", queryParams) : "";
-            var response = await _http.GetAsync($"/api/corse{query}");
+            var response = await _http.GetAsync($"api/corse{query}");
 
             if (!response.IsSuccessStatusCode)
                 return new();
 
             var wrapper = await response.Content
-                .ReadFromJsonAsync<ApiSuccessResponse<List<CorsaDto>>>(_jsonOptions);
+                .ReadFromJsonAsync<ApiSuccessResponse<List<CorsaResponseDTO>>>(_jsonOptions);
 
             return wrapper?.Dati ?? new();
         }
         catch { return new(); }
     }
 
-    public async Task<List<CorsaDto>> GetStoricoCorseUtenteAsync(int idUtente)
+    public async Task<List<CorsaResponseDTO>> GetStoricoCorseUtenteAsync(int idUtente)
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.GetAsync($"/api/corse/utente/{idUtente}");
+            var response = await _http.GetAsync($"api/corse/utente/{idUtente}");
 
             if (!response.IsSuccessStatusCode)
                 return new();
 
             var wrapper = await response.Content
-                .ReadFromJsonAsync<ApiSuccessResponse<List<CorsaDto>>>(_jsonOptions);
+                .ReadFromJsonAsync<ApiSuccessResponse<List<CorsaResponseDTO>>>(_jsonOptions);
 
             return wrapper?.Dati ?? new();
         }
         catch { return new(); }
     }
 
-    public async Task<CorsaDto?> GetCorsaAsync(int id)
+    public async Task<CorsaResponseDTO?> GetCorsaAsync(int id)
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.GetAsync($"/api/corse/{id}");
+            var response = await _http.GetAsync($"api/corse/{id}");
 
             if (!response.IsSuccessStatusCode)
                 return null;
 
             var wrapper = await response.Content
-                .ReadFromJsonAsync<ApiSuccessResponse<CorsaDto>>(_jsonOptions);
+                .ReadFromJsonAsync<ApiSuccessResponse<CorsaResponseDTO>>(_jsonOptions);
 
             return wrapper?.Dati;
         }
         catch { return null; }
     }
 
-    public async Task<CorsaDto?> IniziaCorsaAsync(AvviaCorsaDto dto)
+    public async Task<CorsaResponseDTO?> IniziaCorsaAsync(AvviaCorsaDTO dto)
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.PostAsJsonAsync("/api/corse/inizia", dto);
+            var response = await _http.PostAsJsonAsync("api/corse/inizia", dto);
 
             if (!response.IsSuccessStatusCode)
                 return null;
 
             var wrapper = await response.Content
-                .ReadFromJsonAsync<ApiSuccessResponse<CorsaDto>>(_jsonOptions);
+                .ReadFromJsonAsync<ApiSuccessResponse<CorsaResponseDTO>>(_jsonOptions);
 
             return wrapper?.Dati;
         }
         catch { return null; }
     }
 
-    public async Task<CorsaDto?> TerminaCorsaAsync(int id, FineCorsaDto dto)
+    public async Task<CorsaResponseDTO?> TerminaCorsaAsync(int id, FineCorsaDTO dto)
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.PutAsJsonAsync($"/api/corse/{id}", dto);
+            var response = await _http.PutAsJsonAsync($"api/corse/{id}", dto);
 
             if (!response.IsSuccessStatusCode)
                 return null;
 
             var wrapper = await response.Content
-                .ReadFromJsonAsync<ApiSuccessResponse<CorsaDto>>(_jsonOptions);
+                .ReadFromJsonAsync<ApiSuccessResponse<CorsaResponseDTO>>(_jsonOptions);
 
             return wrapper?.Dati;
         }
@@ -285,48 +290,66 @@ public class MobishareApiService : IMobishareApiService
     // MEZZI
     // ====================================
 
-    public async Task<List<MezzoDto>> GetMezziAsync()
+    public async Task<List<MezzoResponseDTO>> GetMezziAsync()
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.GetAsync("/api/mezzi");
+            var response = await _http.GetAsync("api/mezzi");
 
             if (!response.IsSuccessStatusCode)
                 return new();
 
             var wrapper = await response.Content
-                .ReadFromJsonAsync<ApiSuccessResponse<List<MezzoDto>>>(_jsonOptions);
+                .ReadFromJsonAsync<ApiSuccessResponse<List<MezzoResponseDTO>>>(_jsonOptions);
 
             return wrapper?.Dati ?? new();
         }
         catch { return new(); }
     }
 
-    public async Task<MezzoDto?> GetMezzoAsync(int id)
+    public async Task<MezzoResponseDTO?> GetMezzoAsync(int id)
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.GetAsync($"/api/mezzi/{id}");
+            var response = await _http.GetAsync($"api/mezzi/{id}");
 
             if (!response.IsSuccessStatusCode)
                 return null;
 
             var wrapper = await response.Content
-                .ReadFromJsonAsync<ApiSuccessResponse<MezzoDto>>(_jsonOptions);
+                .ReadFromJsonAsync<ApiSuccessResponse<MezzoResponseDTO>>(_jsonOptions);
 
             return wrapper?.Dati;
         }
         catch { return null; }
     }
 
-    public async Task<List<MezzoDto>> GetMezziDisponibiliAsync()
+    public async Task<MezzoResponseDTO?> GetMezzoByMatricolaAsync(string matricola)
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.GetAsync("/api/mezzi/disponibili");
+            var response = await _http.GetAsync($"api/mezzi/matricola/{matricola}");
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var wrapper = await response.Content
+                .ReadFromJsonAsync<ApiSuccessResponse<MezzoResponseDTO>>(_jsonOptions);
+
+            return wrapper?.Dati;
+        }
+        catch { return null; }
+    }
+
+    public async Task<List<MezzoResponseDTO>> GetMezziDisponibiliAsync()
+    {
+        try
+        {
+            AddAuthorizationHeader();
+            var response = await _http.GetAsync("api/mezzi/disponibili");
 
             if (!response.IsSuccessStatusCode)
                 return new();
@@ -339,18 +362,18 @@ public class MobishareApiService : IMobishareApiService
 
             // Il backend ritorna { totale, mezzi }
             var mezziArray = wrapper.Dati.GetProperty("mezzi");
-            return JsonSerializer.Deserialize<List<MezzoDto>>(mezziArray.GetRawText(), _jsonOptions)
+            return JsonSerializer.Deserialize<List<MezzoResponseDTO>>(mezziArray.GetRawText(), _jsonOptions)
                    ?? new();
         }
         catch { return new(); }
     }
 
-    public async Task<List<MezzoDto>> GetMezziPerParcheggioAsync(int idParcheggio)
+    public async Task<List<MezzoResponseDTO>> GetMezziPerParcheggioAsync(int idParcheggio)
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.GetAsync($"/api/mezzi/parcheggio/{idParcheggio}");
+            var response = await _http.GetAsync($"api/mezzi/parcheggio/{idParcheggio}");
 
             if (!response.IsSuccessStatusCode)
                 return new();
@@ -363,7 +386,7 @@ public class MobishareApiService : IMobishareApiService
 
             // Il backend ritorna { parcheggio, totaleMezzi, mezzi, riepilogo }
             var mezziArray = wrapper.Dati.GetProperty("mezzi");
-            return JsonSerializer.Deserialize<List<MezzoDto>>(mezziArray.GetRawText(), _jsonOptions)
+            return JsonSerializer.Deserialize<List<MezzoResponseDTO>>(mezziArray.GetRawText(), _jsonOptions)
                    ?? new();
         }
         catch { return new(); }
@@ -373,36 +396,36 @@ public class MobishareApiService : IMobishareApiService
     // PARCHEGGI
     // ====================================
 
-    public async Task<List<ParcheggioDto>> GetParcheggiAsync()
+    public async Task<List<ParcheggioResponseDTO>> GetParcheggiAsync()
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.GetAsync("/api/parcheggi");
+            var response = await _http.GetAsync("api/parcheggi");
 
             if (!response.IsSuccessStatusCode)
                 return new();
 
             var wrapper = await response.Content
-                .ReadFromJsonAsync<ApiSuccessResponse<List<ParcheggioDto>>>(_jsonOptions);
+                .ReadFromJsonAsync<ApiSuccessResponse<List<ParcheggioResponseDTO>>>(_jsonOptions);
 
             return wrapper?.Dati ?? new();
         }
         catch { return new(); }
     }
 
-    public async Task<ParcheggioDto?> GetParcheggioAsync(int id)
+    public async Task<ParcheggioResponseDTO?> GetParcheggioAsync(int id)
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.GetAsync($"/api/parcheggi/{id}");
+            var response = await _http.GetAsync($"api/parcheggi/{id}");
 
             if (!response.IsSuccessStatusCode)
                 return null;
 
             var wrapper = await response.Content
-                .ReadFromJsonAsync<ApiSuccessResponse<ParcheggioDto>>(_jsonOptions);
+                .ReadFromJsonAsync<ApiSuccessResponse<ParcheggioResponseDTO>>(_jsonOptions);
 
             return wrapper?.Dati;
         }
@@ -413,35 +436,35 @@ public class MobishareApiService : IMobishareApiService
     // ADMIN (Gestore)
     // ====================================
 
-    public async Task<List<UtenteDto>> GetTuttiUtentiAsync()
+    public async Task<List<UtenteDTO>> GetTuttiUtentiAsync()
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.GetAsync("/api/utenti");
+            var response = await _http.GetAsync("api/utenti");
 
             if (!response.IsSuccessStatusCode)
                 return new();
 
             // Questo endpoint ritorna lista diretta, non wrapped
             return await response.Content
-                .ReadFromJsonAsync<List<UtenteDto>>(_jsonOptions) ?? new();
+                .ReadFromJsonAsync<List<UtenteDTO>>(_jsonOptions) ?? new();
         }
         catch { return new(); }
     }
 
-    public async Task<List<UtenteDto>> GetUtentiSospesiAsync()
+    public async Task<List<UtenteDTO>> GetUtentiSospesiAsync()
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.GetAsync("/api/utenti/sospesi");
+            var response = await _http.GetAsync("api/utenti/sospesi");
 
             if (!response.IsSuccessStatusCode)
                 return new();
 
             var wrapper = await response.Content
-                .ReadFromJsonAsync<ApiSuccessResponse<List<UtenteDto>>>(_jsonOptions);
+                .ReadFromJsonAsync<ApiSuccessResponse<List<UtenteDTO>>>(_jsonOptions);
 
             return wrapper?.Dati ?? new();
         }
@@ -453,25 +476,25 @@ public class MobishareApiService : IMobishareApiService
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.PostAsync($"/api/utenti/{id}/riattiva", null);
+            var response = await _http.PostAsync($"api/utenti/{id}/riattiva", null);
             return response.IsSuccessStatusCode;
         }
         catch { return false; }
     }
 
-    public async Task<DashboardDto?> GetDashboardAsync(int idUtente)
+    public async Task<DashboardDTO?> GetDashboardAsync(int idUtente)
     {
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.GetAsync($"/api/dashboard?idUtente={idUtente}");
+            var response = await _http.GetAsync($"api/dashboard?idUtente={idUtente}");
 
             if (!response.IsSuccessStatusCode)
                 return null;
 
             // Questo endpoint ritorna direttamente l'oggetto, non wrapped
             return await response.Content
-                .ReadFromJsonAsync<DashboardDto>(_jsonOptions);
+                .ReadFromJsonAsync<DashboardDTO>(_jsonOptions);
         }
         catch { return null; }
     }

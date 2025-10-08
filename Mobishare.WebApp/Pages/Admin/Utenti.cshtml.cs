@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Mobishare.WebApp.Services;
+using Mobishare.Core.DTOs; 
 
 namespace Mobishare.WebApp.Pages.Admin;
 
@@ -13,8 +14,8 @@ public class UtentiModel : PageModel
         _apiService = apiService;
     }
 
-    public List<UtenteDto> TuttiUtenti { get; set; } = new();
-    public List<UtenteDto> UtentiSospesi { get; set; } = new();
+    public List<UtenteDTO> TuttiUtenti { get; set; } = new();
+    public List<UtenteDTO> UtentiSospesi { get; set; } = new();
     public bool MostraSoloSospesi { get; set; }
     public string? SuccessMessage { get; set; }
     public string? ErrorMessage { get; set; }

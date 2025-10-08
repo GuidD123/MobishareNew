@@ -2,7 +2,7 @@
 
 namespace Mobishare.Core.DTOs
 {
-    public class RegisterDto
+    public class RegisterDTO
     {
 
         [Required]

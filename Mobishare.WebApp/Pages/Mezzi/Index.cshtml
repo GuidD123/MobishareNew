@@ -2,17 +2,36 @@
 @model Mobishare.WebApp.Pages.Mezzi.IndexModel
 @{
     ViewData["Title"] = "Mezzi Disponibili";
+    Layout = "_Layout";
 }
 
 <div class="container mt-4">
-    <h2><i class="bi bi-bicycle"></i> Mezzi Disponibili</h2>
+    <h2 class="mb-4">
+        <i class="bi bi-bicycle text-primary"></i> Mezzi Disponibili
+    </h2>
     
-    @if (Model.Sospeso)
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill"></i> @Model.SuccessMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    
+    @if (Model.UtenteCorrente?.Sospeso ?? false)
     {
         <div class="alert alert-danger">
             <i class="bi bi-exclamation-triangle-fill"></i>
             <strong>Account sospeso!</strong> Non puoi noleggiare mezzi fino al saldo del debito.
-            <a href="/Profilo/Ricarica" class="alert-link">Ricarica ora</a>
+            <a asp-page="/Ricariche/Index" class="alert-link">Ricarica ora</a>
         </div>
     }
     
@@ -20,14 +39,53 @@
     {
         <div class="alert alert-warning">
             <i class="bi bi-info-circle-fill"></i>
-            Hai già una corsa in corso. <a href="/Corse/Corrente" class="alert-link">Visualizzala qui</a>
+            Hai già una corsa in corso. 
+            <a asp-page="/Corse/CorsaCorrente" class="alert-link">Visualizzala qui</a>
         </div>
     }
+
+    <!-- Filtri -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Tipo Mezzo</label>
+                        <select name="tipoFiltro" class="form-select" asp-for="TipoFiltro">
+                            <option value="">Tutti i tipi</option>
+                            <option value="Bicicletta">🚴 Bicicletta</option>
+                            <option value="BiciElettrica">🚲 Bici Elettrica</option>
+                            <option value="Monopattino">🛴 Monopattino</option>
+                            <option value="MonopattinoElettrico">⚡ Monopattino Elettrico</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Parcheggio</label>
+                        <select name="parcheggioFiltro" class="form-select" asp-for="ParcheggioFiltro">
+                            <option value="">Tutti i parcheggi</option>
+                            @foreach (var p in Model.ParcheggiDisponibili)
+                            {
+                                <option value="@p.Id">@p.Nome - @p.Zona</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">&nbsp;</label>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i> Filtra
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
     
     @if (!Model.Mezzi.Any())
     {
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> Nessun mezzo disponibile al momento.
+        <div class="alert alert-info text-center py-5">
+            <i class="bi bi-info-circle display-4"></i>
+            <h4 class="mt-3">Nessun mezzo disponibile</h4>
+            <p class="text-muted">Prova a cambiare i filtri o riprova più tardi</p>
         </div>
     }
     else
@@ -35,57 +93,92 @@
         <div class="row">
             @foreach (var mezzo in Model.Mezzi)
             {
-                <div class="col-md-4 mb-4">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">
-                                @switch(mezzo.TipoMezzo.ToLower())
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                @switch(mezzo.Tipo.ToLower())
                                 {
                                     case "bicicletta":
-                                        <i class="bi bi-bicycle text-success"></i>
+                                        <text>🚴 Bicicletta</text>
+                                        break;
+                                    case "biciclettaelettrica":
+                                    case "ebike":
+                                        <text>🚲 Bici Elettrica</text>
                                         break;
                                     case "monopattino":
-                                        <i class="bi bi-scooter text-primary"></i>
+                                        <text>🛴 Monopattino</text>
                                         break;
-                                    case "auto":
-                                        <i class="bi bi-car-front text-info"></i>
+                                    case "monopattinoelettrico":
+                                    case "escooter":
+                                        <text>⚡ Monopattino Elettrico</text>
                                         break;
                                     default:
-                                        <i class="bi bi-ev-station"></i>
+                                        @mezzo.Tipo
                                         break;
                                 }
-                                @mezzo.TipoMezzo
                             </h5>
-                            <p class="card-text">
-                                <strong>Targa:</strong> @mezzo.Targa<br>
-                                <strong>Tariffa:</strong> €@mezzo.TariffaOraria.ToString("F2")/ora<br>
-                                @if (mezzo.BatteriaPercentuale.HasValue)
-                                {
-                                    <strong>Batteria:</strong> 
-                                    <span class="badge bg-@(mezzo.BatteriaPercentuale > 50 ? "success" : mezzo.BatteriaPercentuale > 20 ? "warning" : "danger")">
-                                        @mezzo.BatteriaPercentuale%
-                                    </span>
-                                    <br>
-                                }
-                                @if (mezzo.IdParcheggio.HasValue)
-                                {
-                                    <strong>Parcheggio:</strong> ID @mezzo.IdParcheggio<br>
-                                }
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2">
+                                <strong>Matricola:</strong> 
+                                <span class="badge bg-primary">@mezzo.Matricola</span>
+                            </p>
+                            <p class="mb-2">
+                                <strong>Stato:</strong> 
+                                <span class="badge bg-success">@mezzo.Stato</span>
                             </p>
                             
-                            @if (!Model.Sospeso && !Model.HasCorsaInCorso)
+                            @if (mezzo.LivelloBatteria.HasValue)
                             {
-                                <form method="post">
-                                    <input type="hidden" name="MezzoId" value="@mezzo.Id" />
+                                var livello = mezzo.LivelloBatteria.Value;
+                                var coloreBatteria = livello > 60 ? "success" : livello > 30 ? "warning" : "danger";
+                                <p class="mb-2">
+                                    <strong>Batteria:</strong> 
+                                    <span class="badge bg-@coloreBatteria">
+                                        <i class="bi bi-battery-charging"></i> @livello%
+                                    </span>
+                                </p>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(mezzo.NomeParcheggio))
+                            {
+                                <p class="mb-2">
+                                    <strong>Parcheggio:</strong> 
+                                    <span class="text-muted">@mezzo.NomeParcheggio</span>
+                                </p>
+                            }
+                            
+                            @if (!Model.UtenteCorrente?.Sospeso ?? true && !Model.HasCorsaInCorso)
+                            {
+                                <form method="post" class="mt-3">
+                                    <input type="hidden" name="matricolaMezzo" value="@mezzo.Matricola" />
+                                    <input type="hidden" name="idParcheggio" value="@mezzo.IdParcheggioCorrente" />
                                     <button type="submit" class="btn btn-success w-100">
-                                        <i class="bi bi-play-circle"></i> Noleggia
+                                        <i class="bi bi-play-circle"></i> Noleggia Ora
                                     </button>
                                 </form>
+                            }
+                            else if (Model.UtenteCorrente?.Sospeso ?? false)
+                            {
+                                <button class="btn btn-secondary w-100 mt-3" disabled>
+                                    <i class="bi bi-lock"></i> Account Sospeso
+                                </button>
+                            }
+                            else if (Model.HasCorsaInCorso)
+                            {
+                                <button class="btn btn-secondary w-100 mt-3" disabled>
+                                    <i class="bi bi-lock"></i> Corsa già attiva
+                                </button>
                             }
                         </div>
                     </div>
                 </div>
             }
+        </div>
+        
+        <div class="alert alert-info mt-3">
+            <strong>Totale mezzi disponibili:</strong> @Model.Mezzi.Count
         </div>
     }
 </div>

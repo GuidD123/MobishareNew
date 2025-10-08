@@ -73,11 +73,11 @@ namespace Mobishare.Infrastructure.IoT.HostedServices
 
                 // NB: nel payload il campo è IdMezzo (coerente con MqttIoTService)
                 var mezzo = await db.Mezzi
-                    .FirstOrDefaultAsync(m => m.Matricola == e.StatusMessage.IdMezzo, ct);
+                    .FirstOrDefaultAsync(m => m.Matricola == e.StatusMessage.Matricola, ct);
 
                 if (mezzo is null)
                 {
-                    _logger.LogWarning("Mezzo non trovato per telemetria. Matricola={Matricola}", e.StatusMessage.IdMezzo);
+                    _logger.LogWarning("Mezzo non trovato per telemetria. Matricola={Matricola}", e.StatusMessage.Matricola);
                     return;
                 }
 

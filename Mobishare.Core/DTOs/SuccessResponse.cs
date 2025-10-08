@@ -11,4 +11,10 @@ namespace Mobishare.Core.DTOs
         public string Messaggio { get; set; } = string.Empty;
         public object? Dati { get; set; }
     }
+
+    public class SuccessResponse<T>
+    {
+        public string Messaggio { get; set; } = string.Empty;
+        public T? Dati { get; set; }
+    }
 }

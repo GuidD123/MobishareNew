@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Mobishare.WebApp.Services;
+using Mobishare.Core.DTOs;
 
 namespace Mobishare.WebApp.Pages.Parcheggi;
 
@@ -13,7 +14,7 @@ public class IndexModel : PageModel
         _apiService = apiService;
     }
 
-    public List<ParcheggioDto> Parcheggi { get; set; } = new();
+    public List<ParcheggioResponseDTO> Parcheggi { get; set; } = new();
     public List<string> ZoneUniche { get; set; } = new();
     public string? ErrorMessage { get; set; }
 
@@ -26,7 +27,7 @@ public class IndexModel : PageModel
     public async Task<IActionResult> OnGetAsync()
     {
         // Verifica autenticazione
-        var userId = HttpContext.Session.GetInt32("UserId");
+        int? userId = HttpContext.Session.GetInt32("UserId");
         if (userId == null)
         {
             return RedirectToPage("/Auth/Login");
@@ -37,7 +38,7 @@ public class IndexModel : PageModel
             // Carica tutti i parcheggi
             var tuttiParcheggi = await _apiService.GetParcheggiAsync();
 
-            if (tuttiParcheggi == null || !tuttiParcheggi.Any())
+            if (tuttiParcheggi == null || tuttiParcheggi.Count == 0)
             {
                 ErrorMessage = "Nessun parcheggio disponibile al momento.";
                 return Page();

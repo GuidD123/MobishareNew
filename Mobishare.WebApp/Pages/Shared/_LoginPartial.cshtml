@@ -1,0 +1,200 @@
+﻿@using Mobishare.WebApp.Helpers
+@inject IHttpContextAccessor HttpContextAccessor
+
+@{
+    var session = HttpContextAccessor.HttpContext?.Session;
+    var isAuthenticated = session?.IsAuthenticated() ?? false;
+    var userName = session?.GetUserName();
+    var userRole = session?.GetUserRole();
+    var credito = session?.GetCredito();
+    var isGestore = session?.IsGestore() ?? false;
+    var isSospeso = session?.IsSospeso() ?? false;
+}
+
+@if (isAuthenticated)
+{
+     //UTENTE AUTENTICATO
+    <ul class="navbar-nav ms-auto">
+        
+        <!-- Dropdown Profilo Utente -->
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-flex align-items-center" 
+               href="#" 
+               id="userDropdown" 
+               role="button" 
+               data-bs-toggle="dropdown" 
+               aria-expanded="false">
+                
+                <!-- Icona e Nome -->
+                <i class="bi bi-person-circle me-2" style="font-size: 1.5rem;"></i>
+                <span class="fw-semibold">@userName</span>
+                
+                <!-- Badge Credito (solo per utenti normali) -->
+                @if (credito.HasValue && !isGestore)
+                {
+                    <span class="badge bg-success ms-2">
+                        €@credito.Value.ToString("F2")
+                    </span>
+                }
+
+                <!-- Badge Sospeso (se applicabile) -->
+                @if (isSospeso)
+                {
+                    <span class="badge bg-danger ms-2">
+                        <i class="bi bi-exclamation-triangle"></i> Sospeso
+                    </span>
+                }
+            </a>
+
+            <!-- Menu Dropdown -->
+            <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown" style="min-width: 280px;">
+                
+                <!-- Header Dropdown con info utente -->
+                <li class="px-3 py-2 border-bottom">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-person-circle text-success" style="font-size: 2.5rem;"></i>
+                        <div class="ms-3">
+                            <h6 class="mb-0 fw-bold">@userName</h6>
+                            <small class="text-muted">
+                                <i class="bi bi-shield-check me-1"></i>@userRole
+                            </small>
+                            @if (credito.HasValue && !isGestore)
+                            {
+                                <div class="mt-1">
+                                    <small class="text-success fw-semibold">
+                                        <i class="bi bi-wallet2 me-1"></i>Credito: €@credito.Value.ToString("F2")
+                                    </small>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </li>
+
+                <!-- Separatore -->
+                <li><hr class="dropdown-divider"></li>
+
+                <!-- Menu specifico per GESTORE -->
+                @if (isGestore)
+                {
+                    <li>
+                        <h6 class="dropdown-header">
+                            <i class="bi bi-gear-fill me-1"></i>Area Gestore
+                        </h6>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" asp-page="/Gestore/Dashboard">
+                            <i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" asp-page="/Gestore/Mezzi">
+                            <i class="bi bi-bicycle me-2 text-success"></i>Gestione Mezzi
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" asp-page="/Gestore/Parcheggi">
+                            <i class="bi bi-geo-alt me-2 text-info"></i>Gestione Parcheggi
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" asp-page="/Gestore/Utenti">
+                            <i class="bi bi-people me-2 text-warning"></i>Gestione Utenti
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" asp-page="/Gestore/Statistiche">
+                            <i class="bi bi-graph-up me-2 text-danger"></i>Statistiche
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                }
+                else
+                {
+                    <!-- Menu specifico per UTENTE -->
+                    <li>
+                        <h6 class="dropdown-header">
+                            <i class="bi bi-person-fill me-1"></i>Il Mio Account
+                        </h6>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" asp-page="/Utente/Dashboard">
+                            <i class="bi bi-house-door me-2 text-primary"></i>Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" asp-page="/Utente/Profilo">
+                            <i class="bi bi-person me-2 text-info"></i>Il mio Profilo
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    
+                    <li>
+                        <h6 class="dropdown-header">
+                            <i class="bi bi-bicycle me-1"></i>Attività
+                        </h6>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" asp-page="/Utente/Corse">
+                            <i class="bi bi-clock-history me-2 text-success"></i>Le mie Corse
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" asp-page="/Utente/Ricariche">
+                            <i class="bi bi-wallet2 me-2 text-warning"></i>Ricariche
+                            @if (credito.HasValue)
+                            {
+                                <span class="badge bg-success float-end">€@credito.Value.ToString("F2")</span>
+                            }
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" asp-page="/Utente/Transazioni">
+                            <i class="bi bi-receipt me-2 text-secondary"></i>Storico Pagamenti
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                }
+
+                <!-- Impostazioni (comune a tutti) -->
+                <li>
+                    <a class="dropdown-item" asp-page="/Account/Settings">
+                        <i class="bi bi-gear me-2 text-secondary"></i>Impostazioni
+                    </a>
+                </li>
+
+                <!-- Separatore finale -->
+                <li><hr class="dropdown-divider"></li>
+
+                <!-- Logout (Form POST per sicurezza) -->
+                <li class="px-2 pb-2">
+                    <form asp-page="/Account/Logout" method="post" class="d-grid">
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <i class="bi bi-box-arrow-right me-2"></i>Logout
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </li>
+    </ul>
+}
+else
+{
+   //UTENTE NON AUTENTICATO
+    <ul class="navbar-nav ms-auto">
+        <!-- Link Login -->
+        <li class="nav-item">
+            <a class="nav-link" asp-page="/Account/Login">
+                <i class="bi bi-box-arrow-in-right me-1"></i>
+                Accedi
+            </a>
+        </li>
+        
+        <!-- Bottone Registrati -->
+        <li class="nav-item ms-2">
+            <a class="btn btn-success btn-sm" asp-page="/Account/Register">
+                <i class="bi bi-person-plus me-1"></i>
+                Registrati
+            </a>
+        </li>
+    </ul>
+}

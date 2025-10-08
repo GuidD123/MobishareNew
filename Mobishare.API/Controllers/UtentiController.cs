@@ -88,7 +88,7 @@ namespace Mobishare.API.Controllers
 
         //POST: api/utenti -> Registrazione di un nuovo utente
         [HttpPost]
-        public async Task<ActionResult<SuccessResponse>> PostUtente([FromBody] RegisterDto dto)
+        public async Task<ActionResult<SuccessResponse>> PostUtente([FromBody] RegisterDTO dto)
         {
             if (!ModelState.IsValid)
                 throw new ValoreNonValidoException("Dati registrazione", "Modello non valido");
@@ -120,7 +120,7 @@ namespace Mobishare.API.Controllers
         //LOGIN 
         // POST: api/utenti/login -> login con email e password
         [HttpPost("login")]
-        public async Task<ActionResult<SuccessResponse>> Login([FromBody] LoginRequest request)
+        public async Task<ActionResult<SuccessResponse<LoginResponseDTO>>> Login([FromBody] LoginRequest request)
         {
             if (!ModelState.IsValid)
                 throw new ValoreNonValidoException("Login", "Modello non valido");
@@ -155,17 +155,17 @@ namespace Mobishare.API.Controllers
                 claims: claims
             );
 
-            return Ok(new SuccessResponse
+            return Ok(new SuccessResponse<LoginResponseDTO>
             {
                 Messaggio = "Login effettuato",
-                Dati = new
+                Dati = new LoginResponseDTO
                 {
-                    id = utente.Id,
-                    nome = utente.Nome,
-                    ruolo = utente.Ruolo.ToString(),
-                    credito = utente.Credito,
-                    sospeso = utente.Sospeso,
-                    token = new JwtSecurityTokenHandler().WriteToken(token)
+                    Id = utente.Id,
+                    Nome = utente.Nome,
+                    Ruolo = utente.Ruolo.ToString(),
+                    Credito = utente.Credito,
+                    Sospeso = utente.Sospeso,
+                    Token = new JwtSecurityTokenHandler().WriteToken(token)
                 }
             });
         }
@@ -198,9 +198,10 @@ namespace Mobishare.API.Controllers
             });
         }
 
- 
+
 
         //GET: api/utenti/{id} -> tira fuori info di un utente 
+        [Authorize]
         [HttpGet("{id}")]
         public async Task<ActionResult<SuccessResponse>> GetUtente(int id)
         {

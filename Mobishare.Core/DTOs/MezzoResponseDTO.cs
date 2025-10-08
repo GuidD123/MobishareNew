@@ -13,7 +13,7 @@ namespace Mobishare.Core.DTOs
         public string Matricola { get; set; } = string.Empty;
         public string Tipo { get; set; } = string.Empty;
         public string Stato { get; set; } = string.Empty;
-        public int LivelloBatteria { get; set; }
+        public int? LivelloBatteria { get; set; }
         public int? IdParcheggioCorrente { get; set; }
         public string? NomeParcheggio { get; set; }
     }

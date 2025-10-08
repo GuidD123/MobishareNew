@@ -18,7 +18,7 @@ namespace Mobishare.API.Controllers
         private readonly IMqttIoTService _mqttIoTService = mqttPublisher;
 
 
-        // GET: api/mezzi
+        // GET: api/mezzi -> serve all'admin per vedere tutti i mezzi della flotta (disponibili, occupati e guasti) 
         [Authorize(Roles = "Gestore")]
         [HttpGet]
         public async Task<ActionResult<SuccessResponse>> GetMezzi()
@@ -46,7 +46,7 @@ namespace Mobishare.API.Controllers
 
 
 
-        // GET: api/mezzi/{id} -> aperta a utenti 
+        // GET: api/mezzi/{id} -> utile in backend/admin/opInterne
         [HttpGet("{id}")]
         public async Task<ActionResult<SuccessResponse>> GetMezzo(int id)
         {
@@ -67,6 +67,36 @@ namespace Mobishare.API.Controllers
             return Ok(new SuccessResponse
             {
                 Messaggio = "Dettaglio mezzo",
+                Dati = dto
+            });
+        }
+
+
+        // GET: api/mezzi/matricola/{matricola} -> unico modo per utente di vedere mezzo 
+        [HttpGet("matricola/{matricola}")]
+        public async Task<ActionResult<SuccessResponse>> GetMezzoByMatricola(string matricola)
+        {
+            var mezzo = await _context.Mezzi
+                .Include(m => m.ParcheggioCorrente)
+                .FirstOrDefaultAsync(m => m.Matricola == matricola);
+
+            if (mezzo == null)
+                throw new ElementoNonTrovatoException("Mezzo", matricola);
+
+            var dto = new MezzoResponseDTO
+            {
+                Id = mezzo.Id,
+                Matricola = mezzo.Matricola,
+                Tipo = mezzo.Tipo.ToString(),
+                Stato = mezzo.Stato.ToString(),
+                LivelloBatteria = mezzo.LivelloBatteria,
+                IdParcheggioCorrente = mezzo.IdParcheggioCorrente,
+                NomeParcheggio = mezzo.ParcheggioCorrente?.Nome
+            };
+
+            return Ok(new SuccessResponse
+            {
+                Messaggio = "Mezzo trovato",
                 Dati = dto
             });
         }

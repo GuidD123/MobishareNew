@@ -9,6 +9,7 @@ using Mobishare.Infrastructure.IoT.Interfaces;
 using Mobishare.Infrastructure.IoT.Services;
 using Mobishare.Infrastructure.Services;
 using System.Text;
+using System.Text.Json;
 
 /// <summary>
 /// Punto di ingresso principale dell'applicazione ASP.NET Core per Mobishare.
@@ -23,7 +24,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        //options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     });
 #endregion
 

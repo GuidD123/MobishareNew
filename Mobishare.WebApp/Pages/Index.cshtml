@@ -4,12 +4,13 @@
     ViewData["Title"] = "Home - Mobishare";
 }
 
-<div class="container text-center mt-5">
-    <h1 class="display-4">Benvenuto in Mobishare</h1>
-    <p class="lead">Sharing di mezzi elettrici facile e veloce</p>
+<div class="container text-center mt-5 bg-white">
+    <h1 class="display-4 text-dark">Benvenuto in Mobishare</h1>
+    <p class="lead text-dark">Sharing di mezzi elettrici facile e veloce</p>
     
     @if (Model.IsLogged)
     {
+        <!-- UTENTE LOGGATO -->
         <div class="mt-5">
             <h3>Ciao @Model.NomeUtente!</h3>
             
@@ -26,69 +27,96 @@
                 <div class="alert alert-danger">
                     <i class="bi bi-exclamation-triangle-fill"></i>
                     Account sospeso per debito non saldato. 
-                    <a href="/Profilo/Ricarica" class="alert-link">Ricarica ora</a>
+                    <a href="/Ricariche" class="btn btn-warning ms-2">Ricarica ora</a>
                 </div>
             }
             else if (Model.HasCorsaInCorso)
             {
                 <div class="alert alert-warning">
                     <i class="bi bi-bicycle"></i> Hai una corsa in corso!
-                    <br>
-                    <a href="/Corse/Corrente" class="btn btn-primary mt-2">Visualizza corsa</a>
+                    <a href="/Corse" class="btn btn-primary ms-2">Vai alle Corse</a>
                 </div>
             }
             else
             {
-                <a href="/Mezzi" class="btn btn-success btn-lg me-2">
-                    <i class="bi bi-bicycle"></i> Noleggia un mezzo
-                </a>
-                <a href="/Corse" class="btn btn-outline-primary btn-lg">
-                    <i class="bi bi-clock-history"></i> Le mie corse
-                </a>
+                <div class="mt-4">
+                    <a href="/Mezzi" class="btn btn-success btn-lg">
+                        <i class="bi bi-bicycle"></i> Noleggia un mezzo
+                    </a>
+                </div>
             }
+
+            <!-- Menu Rapido -->
+            <div class="row mt-5">
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="bi bi-bicycle display-4 text-primary"></i>
+                            <h5 class="card-title mt-3">Mezzi Disponibili</h5>
+                            <p class="card-text">Trova e noleggia mezzi vicino a te</p>
+                            <a href="/Mezzi" class="btn btn-primary">Esplora</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="bi bi-clock-history display-4 text-success"></i>
+                            <h5 class="card-title mt-3">Le Mie Corse</h5>
+                            <p class="card-text">Storico e dettagli delle tue corse</p>
+                            <a href="/Corse" class="btn btn-success">Visualizza</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="bi bi-wallet2 display-4 text-warning"></i>
+                            <h5 class="card-title mt-3">Ricariche</h5>
+                            <p class="card-text">Gestisci il tuo credito</p>
+                            <a href="/Ricariche" class="btn btn-warning">Ricarica</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     }
     else
     {
+        <!-- UTENTE NON LOGGATO -->
         <div class="mt-5">
-            <a href="/Account/Login" class="btn btn-primary btn-lg me-2">
-                <i class="bi bi-box-arrow-in-right"></i> Accedi
-            </a>
-            <a href="/Account/Register" class="btn btn-outline-secondary btn-lg">
-                <i class="bi bi-person-plus"></i> Registrati
-            </a>
+            <p class="text-muted mb-4">Accedi per iniziare a utilizzare il servizio</p>
+            
+            <!-- Sezione Informativa -->
+            <div class="row mt-5 text-start">
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 bg-white shadow-sm">
+                        <div class="card-body text-center bg-white">
+                            <i class="bi bi-lightning-charge display-4 text-success"></i>
+                            <h5 class="card-title mt-3 text-dark">Sostenibile</h5>
+                            <p class="card-text text-dark">Tutti i nostri mezzi sono 100% elettrici</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 bg-white shadow-sm">
+                        <div class="card-body text-center bg-white">
+                            <i class="bi bi-geo-alt display-4 text-primary"></i>
+                            <h5 class="card-title mt-3 text-dark">Ovunque</h5>
+                            <p class="card-text text-dark">Parcheggi diffusi in tutta la città</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 bg-white shadow-sm">
+                        <div class="card-body text-center bg-white">
+                            <i class="bi bi-currency-euro display-4 text-warning"></i>
+                            <h5 class="card-title mt-3 text-dark">Conveniente</h5>
+                            <p class="card-text text-dark">Tariffe competitive e trasparenti</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     }
-</div>
-
-<div class="container mt-5">
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card text-center">
-                <div class="card-body">
-                    <i class="bi bi-lightning-charge display-1 text-success"></i>
-                    <h5 class="card-title mt-3">Mezzi Elettrici</h5>
-                    <p class="card-text">Monopattini, bici e auto elettriche</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card text-center">
-                <div class="card-body">
-                    <i class="bi bi-geo-alt display-1 text-primary"></i>
-                    <h5 class="card-title mt-3">Parcheggi Smart</h5>
-                    <p class="card-text">Trova il parcheggio più vicino</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card text-center">
-                <div class="card-body">
-                    <i class="bi bi-wallet2 display-1 text-warning"></i>
-                    <h5 class="card-title mt-3">Credito Prepagato</h5>
-                    <p class="card-text">Ricarica e usa</p>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>

@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Mobishare.WebApp.Services;
+using Mobishare.Core.DTOs;
+using Mobishare.Core.Enums;
 
 namespace Mobishare.WebApp.Pages.Ricariche;
 
@@ -14,8 +16,8 @@ public class IndexModel : PageModel
         _apiService = apiService;
     }
 
-    public SaldoDto? Saldo { get; set; }
-    public List<RicaricaDto> Ricariche { get; set; } = new();
+    public SaldoResponseDTO? Saldo { get; set; }
+    public List<RicaricaResponseDTO> Ricariche { get; set; } = new();
     public string? SuccessMessage { get; set; }
     public string? ErrorMessage { get; set; }
 
@@ -31,7 +33,7 @@ public class IndexModel : PageModel
 
         [Required(ErrorMessage = "Seleziona un metodo di pagamento")]
         [Display(Name = "Metodo di Pagamento")]
-        public string TipoRicarica { get; set; } = "Carta";
+        public TipoRicarica TipoRicarica { get; set; }
     }
 
     public async Task<IActionResult> OnGetAsync()
@@ -72,11 +74,12 @@ public class IndexModel : PageModel
 
         try
         {
-            var dto = new NuovaRicaricaDto(
-                IdUtente: userId.Value,
-                ImportoRicarica: InputRicarica.ImportoRicarica,
-                TipoRicarica: InputRicarica.TipoRicarica
-            );
+            var dto = new NuovaRicaricaDTO
+            {
+                IdUtente = userId.Value,
+                ImportoRicarica = InputRicarica.ImportoRicarica,
+                TipoRicarica = InputRicarica.TipoRicarica
+            };
 
             var success = await _apiService.NuovaRicaricaAsync(dto);
 

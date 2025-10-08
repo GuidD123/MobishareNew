@@ -1,4 +1,4 @@
-﻿namespace Mobishare.Infrastructure.IoT.Config
+﻿namespace Mobishare.Infrastructure.IoT.Events.Config
 {
     /// <summary>
     /// Configurazione per la connessione MQTT.

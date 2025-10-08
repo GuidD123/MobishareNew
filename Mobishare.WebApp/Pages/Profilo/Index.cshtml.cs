@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Mobishare.WebApp.Services;
+using Mobishare.Core.DTOs;
 
 namespace Mobishare.WebApp.Pages.Profilo;
 
@@ -14,7 +15,7 @@ public class IndexModel : PageModel
         _apiService = apiService;
     }
 
-    public UtenteDto? Utente { get; set; }
+    public UtenteDTO? Utente { get; set; }
     public string? SuccessMessage { get; set; }
     public string? ErrorMessage { get; set; }
 
@@ -85,7 +86,7 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAggiornaNomeAsync()
+   /* public async Task<IActionResult> OnPostAggiornaNomeAsync()
     {
         // Ricarica dati utente per visualizzazione
         var userId = HttpContext.Session.GetInt32("UserId");
@@ -132,7 +133,7 @@ public class IndexModel : PageModel
         }
 
         return Page();
-    }
+    }*/
 
     public async Task<IActionResult> OnPostCambiaPasswordAsync()
     {
@@ -152,10 +153,11 @@ public class IndexModel : PageModel
 
         try
         {
-            var dto = new CambiaPswDto(
-                VecchiaPassword: InputPassword.VecchiaPassword,
-                NuovaPassword: InputPassword.NuovaPassword
-            );
+            var dto = new CambiaPswDTO
+            {
+                VecchiaPassword = InputPassword.VecchiaPassword,
+                NuovaPassword = InputPassword.NuovaPassword
+            };
 
             var success = await _apiService.CambiaPasswordAsync(dto);
 

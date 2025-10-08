@@ -11,6 +11,7 @@ namespace Mobishare.Core.DTOs
         public int Id { get; set; }
         public int IdUtente { get; set; }
         public string MatricolaMezzo { get; set; } = string.Empty;
+        public string TipoMezzo { get; set; } = string.Empty;
         public int? IdParcheggioPrelievo { get; set; }
         public int? IdParcheggioRilascio { get; set; }
         public DateTime DataOraInizio { get; set; }

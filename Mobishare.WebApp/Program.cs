@@ -3,61 +3,124 @@ using Mobishare.WebApp.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // ========================================
-// SERVIZI
+// SERVIZI APPLICATIVI
 // ========================================
 
+// Razor Pages
 builder.Services.AddRazorPages();
 
+builder.Services.AddDistributedMemoryCache(); 
+
+// HttpClient per chiamate al Backend API
 builder.Services.AddHttpClient<IMobishareApiService, MobishareApiService>(client =>
 {
-    var baseUrl = builder.Configuration["MobishareApi:BaseUrl"] ?? "http://localhost:5000";
+    var baseUrl = builder.Configuration["MobishareApi:BaseUrl"] ?? "https://localhost:7001";
+    if (baseUrl.EndsWith("/"))
+        baseUrl = baseUrl.TrimEnd('/');
     client.BaseAddress = new Uri(baseUrl);
-    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Accept.Add(
+        new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
 
+// Alternativa: HttpClient generico (se non hai IMobishareApiService)
+builder.Services.AddHttpClient();
+
+// Session per gestire login/logout
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.Name = ".Mobishare.Session";
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+
+    //Durante lo sviluppo lascia questi due valori più permissivi:
+    //ricodarsi di rimettere SecurePolicy.Always e SameSite.Strict.
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
 });
 
+// HttpContextAccessor (necessario per _LoginPartial.cshtml)
 builder.Services.AddHttpContextAccessor();
+
+// Cookie Policy
+builder.Services.Configure<CookiePolicyOptions>(options =>
+{
+    options.CheckConsentNeeded = context => false; // Per sviluppo
+    options.MinimumSameSitePolicy = SameSiteMode.Strict;
+});
 
 // Logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
+// CORS (se necessario per chiamate API da JavaScript)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowBackend", policy =>
+    {
+        policy.WithOrigins(builder.Configuration["MobishareApi:BaseUrl"] ?? "https://localhost:7001")
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
 // ========================================
 // BUILD APP
 // ========================================
-
 var app = builder.Build();
 
 // ========================================
 // MIDDLEWARE PIPELINE
 // ========================================
 
+// Exception Handling
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
+else
+{
+    app.UseDeveloperExceptionPage(); // Mostra errori dettagliati in sviluppo
+}
 
-// Security Headers - USA APPEND invece di Add
+// Security Headers 
 app.Use(async (context, next) =>
 {
     context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
     context.Response.Headers.Append("X-Frame-Options", "DENY");
     context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
     await next();
 });
 
+// HTTPS Redirect
 app.UseHttpsRedirection();
+
+// File Statici (CSS, JS, immagini)
 app.UseStaticFiles();
-app.UseRouting();
+
+// Cookie Policy
+app.UseCookiePolicy();
+
+// Routing
+app.UseRouting(); //definisce endpoint corrente 
+
+// Session -> dev'essere disponibile in tutte le pagine razor ma prima di MapRazoPages()
 app.UseSession();
+
+// CORS (se configurato)
+app.UseCors("AllowBackend");
+
+// Authorization (se usi [Authorize] - opzionale senza Identity)
+app.UseAuthorization();
+
+// Map Razor Pages
 app.MapRazorPages();
 
+// ========================================
+// RUN APP
+// ========================================
 app.Run();

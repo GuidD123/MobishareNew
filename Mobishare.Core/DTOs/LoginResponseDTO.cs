@@ -1,0 +1,17 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Mobishare.Core.DTOs;
+
+public class LoginResponseDTO
+{
+    public string Token { get; set; } = string.Empty;
+    public int Id { get; set; }
+    public string Nome { get; set; } = string.Empty;
+    public string Ruolo { get; set; } = string.Empty;
+    public decimal Credito { get; set; }
+    public bool Sospeso { get; set; }
+}

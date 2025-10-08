@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Mobishare.WebApp.Services;
+using Mobishare.Core.DTOs; 
 
-namespace Mobishare.WebApp.Pages.Dashboard;
+namespace Mobishare.WebApp.Pages.DashboardAdmin;
 
 public class IndexModel : PageModel
 {
@@ -13,8 +14,8 @@ public class IndexModel : PageModel
         _apiService = apiService;
     }
 
-    public DashboardDto? Dashboard { get; set; }
-    public SaldoDto? Saldo { get; set; }
+    public DashboardDTO? Dashboard { get; set; }
+    public SaldoResponseDTO? Saldo { get; set; }
     public bool IsGestore { get; set; }
     public string? ErrorMessage { get; set; }
 
