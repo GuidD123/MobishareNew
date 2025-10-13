@@ -6,6 +6,7 @@
 }
 
 <div class="container mt-4">
+    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>
             <i class="bi bi-clock-history text-primary"></i> Le Mie Corse
@@ -15,22 +16,25 @@
         </a>
     </div>
 
+    <!-- Messaggio di Successo -->
     @if (!string.IsNullOrEmpty(Model.SuccessMessage))
     {
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="bi bi-check-circle-fill"></i> @Model.SuccessMessage
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Chiudi"></button>
         </div>
     }
 
+    <!-- Messaggio di Errore -->
     @if (!string.IsNullOrEmpty(Model.ErrorMessage))
     {
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="bi bi-exclamation-triangle-fill"></i> @Model.ErrorMessage
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Chiudi"></button>
         </div>
     }
 
+    <!-- Nessuna Corsa Disponibile -->
     @if (!Model.Corse.Any())
     {
         <div class="alert alert-info text-center py-5">
@@ -75,7 +79,9 @@
         <!-- Tabella Corse -->
         <div class="card shadow-sm">
             <div class="card-header bg-light">
-                <h5 class="mb-0"><i class="bi bi-list-ul"></i> Storico Completo</h5>
+                <h5 class="mb-0">
+                    <i class="bi bi-list-ul"></i> Storico Completo
+                </h5>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -89,14 +95,24 @@
                                 <th>Parcheggi</th>
                                 <th>Durata</th>
                                 <th>Costo</th>
+                                <th>Azioni</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var corsa in Model.Corse.OrderByDescending(c => c.DataOraInizio))
                             {
                                 <tr class="@(corsa.DataOraFine == null ? "table-warning" : "")">
-                                    <td><strong>#@corsa.Id</strong></td>
-                                    <td>@corsa.DataOraInizio.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <!-- ID Corsa -->
+                                    <td>
+                                        <strong>#@corsa.Id</strong>
+                                    </td>
+
+                                    <!-- Data Inizio -->
+                                    <td>
+                                        @corsa.DataOraInizio.ToString("dd/MM/yyyy HH:mm")
+                                    </td>
+
+                                    <!-- Data Fine -->
                                     <td>
                                         @if (corsa.DataOraFine.HasValue)
                                         {
@@ -104,34 +120,40 @@
                                         }
                                         else
                                         {
-                                            <span class="badge bg-warning">In corso</span>
+                                            <span class="badge bg-warning text-dark">In corso</span>
                                         }
                                     </td>
+
+                                    <!-- Mezzo -->
                                     <td>
                                         <span class="badge bg-primary">@corsa.MatricolaMezzo</span>
                                     </td>
+
+                                    <!-- Parcheggi -->
                                     <td>
-                                        <small class="text-muted">
+                                        <small>
                                             <i class="bi bi-arrow-right"></i> Da: #@corsa.IdParcheggioPrelievo
                                             @if (corsa.IdParcheggioRilascio.HasValue)
                                             {
-                                                <br/>
-                                                <i class="bi bi-arrow-left"></i> @: A: #@corsa.IdParcheggioRilascio
+                                                @:<br />
+                                                @:<i class="bi bi-arrow-left"></i> A: #@corsa.IdParcheggioRilascio
                                             }
                                         </small>
                                     </td>
+
+                                    <!-- Durata -->
                                     <td>
                                         @if (corsa.DataOraFine.HasValue)
                                         {
-                                            var durata = (corsa.DataOraFine.Value - corsa.DataOraInizio).TotalMinutes;
-                                            <span>@((int)durata) min</span>
+                                            <span>@((int)(corsa.DataOraFine.Value - corsa.DataOraInizio).TotalMinutes) min</span>
                                         }
                                         else
                                         {
-                                            var durataCorrente = (DateTime.UtcNow - corsa.DataOraInizio).TotalMinutes;
-                                            <span class="text-warning">@((int)durataCorrente) min</span>
+                                            <span class="text-warning">@((int)(DateTime.UtcNow - corsa.DataOraInizio).TotalMinutes) min</span>
                                         }
                                     </td>
+
+                                    <!-- Costo -->
                                     <td>
                                         @if (corsa.CostoFinale.HasValue)
                                         {
@@ -142,6 +164,26 @@
                                             <span class="text-muted">In corso</span>
                                         }
                                     </td>
+
+                                    <!-- Azioni -->
+                                    <td>
+                                        @if (!corsa.DataOraFine.HasValue)
+                                        {
+                                            <button type="button" 
+                                                    class="btn btn-danger btn-sm" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#modalTerminaCorsa"
+                                                    data-id="@corsa.Id"
+                                                    data-matricola="@corsa.MatricolaMezzo"
+                                                    data-data="@corsa.DataOraInizio.ToString("dd/MM/yyyy HH:mm")">
+                                                <i class="bi bi-stop-circle"></i> Termina
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">Terminata</span>
+                                        }
+                                    </td>
                                 </tr>
                             }
                         </tbody>
@@ -149,5 +191,94 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal Terminazione Corsa -->
+        <div class="modal fade" 
+             id="modalTerminaCorsa" 
+             tabindex="-1" 
+             aria-labelledby="modalTerminaCorsaLabel" 
+             aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="post" asp-page-handler="TerminaCorsa">
+                        <!-- Header Modal -->
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title" id="modalTerminaCorsaLabel">
+                                <i class="bi bi-stop-circle"></i> Termina Corsa
+                            </h5>
+                            <button type="button" 
+                                    class="btn-close btn-close-white" 
+                                    data-bs-dismiss="modal" 
+                                    aria-label="Chiudi">
+                            </button>
+                        </div>
+
+                        <!-- Body Modal -->
+                        <div class="modal-body">
+                            <input type="hidden" id="idCorsaInput" name="idCorsa" />
+
+                            <p>
+                                Stai terminando la corsa con mezzo 
+                                <strong id="matricolaMezzo"></strong>
+                                <br/>
+                                <small class="text-muted">
+                                    Iniziata alle <span id="dataInizio"></span>
+                                </small>
+                            </p>
+
+                            <div class="mb-3">
+                                <label for="idParcheggioRilascio" class="form-label">
+                                    Seleziona parcheggio di rilascio:
+                                </label>
+                                <select id="idParcheggioRilascio" 
+                                        name="idParcheggioRilascio" 
+                                        class="form-select" 
+                                        required>
+                                    <option value="">-- Seleziona parcheggio --</option>
+                                    @foreach (var p in Model.Parcheggi)
+                                    {
+                                        <option value="@p.Id">@p.Nome</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Footer Modal -->
+                        <div class="modal-footer">
+                            <button type="button" 
+                                    class="btn btn-secondary" 
+                                    data-bs-dismiss="modal">
+                                Annulla
+                            </button>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-check-circle"></i> Conferma terminazione
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     }
 </div>
+
+@section Scripts {
+    <script>
+        (function() {
+            var modal = document.getElementById('modalTerminaCorsa');
+            
+            if (modal) {
+                modal.addEventListener('show.bs.modal', function(e) {
+                    var btn = e.relatedTarget;
+                    
+                    // Popola i campi del modal con i dati della corsa
+                    document.getElementById('idCorsaInput').value = btn.getAttribute('data-id');
+                    document.getElementById('matricolaMezzo').textContent = btn.getAttribute('data-matricola');
+                    document.getElementById('dataInizio').textContent = btn.getAttribute('data-data');
+                    
+                    // Reset del dropdown parcheggio
+                    document.getElementById('idParcheggioRilascio').value = '';
+                });
+            }
+        })();
+    </script>
+}

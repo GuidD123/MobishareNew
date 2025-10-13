@@ -28,7 +28,7 @@
     
     @if (Model.UtenteCorrente?.Sospeso ?? false)
     {
-        <div class="alert alert-danger">
+        <div class="alert alert-danger alert-permanent" data-auto-dismiss="false">
             <i class="bi bi-exclamation-triangle-fill"></i>
             <strong>Account sospeso!</strong> Non puoi noleggiare mezzi fino al saldo del debito.
             <a asp-page="/Ricariche/Index" class="alert-link">Ricarica ora</a>
@@ -37,7 +37,7 @@
     
     @if (Model.HasCorsaInCorso)
     {
-        <div class="alert alert-warning">
+        <div class="alert alert-warning alert-permanent" data-auto-dismiss="false">
             <i class="bi bi-info-circle-fill"></i>
             Hai già una corsa in corso. 
             <a asp-page="/Corse/CorsaCorrente" class="alert-link">Visualizzala qui</a>
@@ -45,12 +45,17 @@
     }
 
     <!-- Filtri -->
-    <div class="card mb-4">
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="bi bi-funnel"></i> Filtri di Ricerca
+            </h5>
+        </div>
         <div class="card-body">
             <form method="get">
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Tipo Mezzo</label>
+                        <label class="form-label"><i class="bi bi-bicycle"></i> Tipo Mezzo</label>
                         <select name="tipoFiltro" class="form-select" asp-for="TipoFiltro">
                             <option value="">Tutti i tipi</option>
                             <option value="Bicicletta">🚴 Bicicletta</option>
@@ -60,7 +65,7 @@
                         </select>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Parcheggio</label>
+                        <label class="form-label"><i class="bi bi-geo-alt"></i> Parcheggio</label>
                         <select name="parcheggioFiltro" class="form-select" asp-for="ParcheggioFiltro">
                             <option value="">Tutti i parcheggi</option>
                             @foreach (var p in Model.ParcheggiDisponibili)
@@ -79,13 +84,34 @@
             </form>
         </div>
     </div>
+
+    <!-- Info: Mezzi filtrati per batteria scarica -->
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        <strong>Nota:</strong> I mezzi elettrici con batteria inferiore al 20% non vengono mostrati per garantire un servizio ottimale.
+    </div>
     
     @if (!Model.Mezzi.Any())
     {
-        <div class="alert alert-info text-center py-5">
-            <i class="bi bi-info-circle display-4"></i>
+        <div class="alert alert-warning text-center py-5">
+            <i class="bi bi-exclamation-triangle display-4 text-warning"></i>
             <h4 class="mt-3">Nessun mezzo disponibile</h4>
-            <p class="text-muted">Prova a cambiare i filtri o riprova più tardi</p>
+            <p class="text-muted">
+                @if (!string.IsNullOrEmpty(Model.TipoFiltro) || Model.ParcheggioFiltro.HasValue)
+                {
+                    <span>Prova a modificare i filtri per vedere più mezzi</span>
+                }
+                else
+                {
+                    <span>Non ci sono mezzi disponibili al momento. Riprova più tardi.</span>
+                }
+            </p>
+            @if (!string.IsNullOrEmpty(Model.TipoFiltro) || Model.ParcheggioFiltro.HasValue)
+            {
+                <a href="/Mezzi" class="btn btn-primary mt-3">
+                    <i class="bi bi-arrow-counterclockwise"></i> Rimuovi Filtri
+                </a>
+            }
         </div>
     }
     else
@@ -93,16 +119,21 @@
         <div class="row">
             @foreach (var mezzo in Model.Mezzi)
             {
+                var tipoMezzoLower = mezzo.Tipo.ToLower();
+                var isMezzoElettrico = tipoMezzoLower.Contains("elettric") || tipoMezzoLower.Contains("ebike") || tipoMezzoLower.Contains("escooter");
+                
                 <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card h-100 shadow-sm">
+                    <div class="card h-100 shadow-sm hover-card">
                         <div class="card-header bg-light">
                             <h5 class="mb-0">
                                 @switch(mezzo.Tipo.ToLower())
                                 {
                                     case "bicicletta":
+                                    case "bici":
                                         <text>🚴 Bicicletta</text>
                                         break;
                                     case "biciclettaelettrica":
+                                    case "bicielettricia":
                                     case "ebike":
                                         <text>🚲 Bici Elettrica</text>
                                         break;
@@ -121,22 +152,60 @@
                         </div>
                         <div class="card-body">
                             <p class="mb-2">
-                                <strong>Matricola:</strong> 
+                                <strong><i class="bi bi-tag"></i> Matricola:</strong> 
                                 <span class="badge bg-primary">@mezzo.Matricola</span>
                             </p>
                             <p class="mb-2">
-                                <strong>Stato:</strong> 
+                                <strong><i class="bi bi-check-circle"></i> Stato:</strong> 
                                 <span class="badge bg-success">@mezzo.Stato</span>
                             </p>
                             
                             @if (mezzo.LivelloBatteria.HasValue)
                             {
                                 var livello = mezzo.LivelloBatteria.Value;
-                                var coloreBatteria = livello > 60 ? "success" : livello > 30 ? "warning" : "danger";
+                                string coloreBatteria;
+                                string iconaBatteria;
+                                
+                                if (livello > 80)
+                                {
+                                    coloreBatteria = "success";
+                                    iconaBatteria = "battery-full";
+                                }
+                                else if (livello > 60)
+                                {
+                                    coloreBatteria = "success";
+                                    iconaBatteria = "battery-half";
+                                }
+                                else if (livello > 30)
+                                {
+                                    coloreBatteria = "warning";
+                                    iconaBatteria = "battery-half";
+                                }
+                                else
+                                {
+                                    coloreBatteria = "danger";
+                                    iconaBatteria = "battery";
+                                }
+                                
                                 <p class="mb-2">
-                                    <strong>Batteria:</strong> 
+                                    <strong><i class="bi bi-battery-charging"></i> Batteria:</strong> 
                                     <span class="badge bg-@coloreBatteria">
-                                        <i class="bi bi-battery-charging"></i> @livello%
+                                        <i class="bi bi-@iconaBatteria"></i> @livello%
+                                    </span>
+                                    @if (livello <= 30 && livello >= 20)
+                                    {
+                                        <small class="text-warning d-block mt-1">
+                                            <i class="bi bi-exclamation-triangle"></i> Batteria in esaurimento
+                                        </small>
+                                    }
+                                </p>
+                            }
+                            else if (isMezzoElettrico)
+                            {
+                                <p class="mb-2">
+                                    <strong><i class="bi bi-battery-charging"></i> Batteria:</strong> 
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-question-circle"></i> N/D
                                     </span>
                                 </p>
                             }
@@ -144,14 +213,16 @@
                             @if (!string.IsNullOrEmpty(mezzo.NomeParcheggio))
                             {
                                 <p class="mb-2">
-                                    <strong>Parcheggio:</strong> 
+                                    <strong><i class="bi bi-geo-alt"></i> Parcheggio:</strong> 
                                     <span class="text-muted">@mezzo.NomeParcheggio</span>
                                 </p>
                             }
                             
+                            <hr class="my-3">
+                            
                             @if (!Model.UtenteCorrente?.Sospeso ?? true && !Model.HasCorsaInCorso)
                             {
-                                <form method="post" class="mt-3">
+                                <form method="post" class="mt-3" onsubmit="return confirm('Confermi il noleggio di questo mezzo?');">
                                     <input type="hidden" name="matricolaMezzo" value="@mezzo.Matricola" />
                                     <input type="hidden" name="idParcheggio" value="@mezzo.IdParcheggioCorrente" />
                                     <button type="submit" class="btn btn-success w-100">
@@ -177,8 +248,41 @@
             }
         </div>
         
-        <div class="alert alert-info mt-3">
-            <strong>Totale mezzi disponibili:</strong> @Model.Mezzi.Count
+        <div class="card shadow-sm mt-4">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h5 class="mb-0">
+                            <i class="bi bi-info-circle text-primary"></i> 
+                            Totale mezzi disponibili: <strong>@Model.Mezzi.Count</strong>
+                        </h5>
+                        <small class="text-muted">
+                            Mezzi pronti per il noleggio con carica sufficiente
+                        </small>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        @if (!string.IsNullOrEmpty(Model.TipoFiltro) || Model.ParcheggioFiltro.HasValue)
+                        {
+                            <a href="/Mezzi" class="btn btn-outline-primary">
+                                <i class="bi bi-arrow-counterclockwise"></i> Rimuovi Filtri
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
         </div>
     }
 </div>
+
+@section Scripts {
+    <style>
+        .hover-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .hover-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        }
+    </style>
+}

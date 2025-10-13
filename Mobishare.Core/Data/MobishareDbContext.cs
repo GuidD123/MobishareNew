@@ -26,5 +26,22 @@ namespace Mobishare.Core.Data
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(MobishareDbContext).Assembly); 
         }
 
+        //metodo utility richiamabile ovunque per aggiornare il credito (valutare)\
+        public async Task RegistraTransazioneAsync(int idUtente, decimal importo, StatoPagamento stato, int? idCorsa = null, int? idRicarica = null)
+        {
+            var transazione = new Transazione
+            {
+                IdUtente = idUtente,
+                Importo = importo,
+                Stato = stato,
+                IdCorsa = idCorsa,
+                IdRicarica = idRicarica,
+                DataTransazione = DateTime.UtcNow
+            };
+
+            Transazioni.Add(transazione);
+            await SaveChangesAsync();
+        }
+
     }
 }

@@ -8,15 +8,24 @@
 document.addEventListener('DOMContentLoaded', function () {
 
     // ====================================
-    // AUTO-DISMISS ALERTS
+    // AUTO-DISMISS ALERTS (CORRETTI)
     // ====================================
-    const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
+    // Chiudi SOLO gli alert temporanei, NON quelli permanenti o con data-auto-dismiss="false"
+    const alerts = document.querySelectorAll('.alert:not(.alert-permanent):not([data-auto-dismiss="false"]):not(.no-auto-dismiss)');
     alerts.forEach(alert => {
-        // Auto-dismiss dopo 5 secondi
-        setTimeout(() => {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        }, 5000);
+        // Auto-dismiss SOLO per alert di successo/info temporanei
+        if (alert.classList.contains('alert-success') || alert.classList.contains('alert-info')) {
+            setTimeout(() => {
+                const bsAlert = bootstrap.Alert.getInstance(alert);
+                if (bsAlert) {
+                    bsAlert.close();
+                } else {
+                    // Se non è già un'istanza Bootstrap, creala
+                    new bootstrap.Alert(alert).close();
+                }
+            }, 5000);
+        }
+        // Alert di errore e warning restano aperti fino a dismissione manuale
     });
 
     // ====================================
@@ -147,20 +156,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // ====================================
-    // AGGIORNAMENTO CREDITO IN TEMPO REALE
-    // (opzionale - se implementi SignalR o polling)
-    // ====================================
-    function aggiornaCredito() {
-        const creditoElement = document.getElementById('credito-utente');
-        if (creditoElement) {
-            // Qui potresti fare una chiamata AJAX per aggiornare il credito
-            // fetch('/api/utente/credito')
-            //     .then(response => response.json())
-            //     .then(data => creditoElement.textContent = `€ ${data.credito.toFixed(2)}`);
-        }
-    }
-
-    // ====================================
     // COUNTDOWN TIMER PER CORSE
     // ====================================
     const countdownElements = document.querySelectorAll('[data-countdown]');
@@ -233,11 +228,27 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // ====================================
+    // CONFERMA NOLEGGIO MEZZO
+    // ====================================
+    const noleggiaButtons = document.querySelectorAll('[data-confirm-noleggio]');
+    noleggiaButtons.forEach(button => {
+        button.addEventListener('click', function (e) {
+            const matricola = this.getAttribute('data-matricola');
+            const tipo = this.getAttribute('data-tipo');
+            const tariffa = this.getAttribute('data-tariffa');
+
+            const message = `Confermi il noleggio del ${tipo} (${matricola})?\nTariffa: €${tariffa}/minuto`;
+
+            if (!confirm(message)) {
+                e.preventDefault();
+            }
+        });
+    });
 
     // ====================================
     // UTILITY FUNCTIONS
     // ====================================
-
     window.mobishare = window.mobishare || {};
 
     window.mobishare.formatCurrency = function (value) {
@@ -257,24 +268,6 @@ document.addEventListener('DOMContentLoaded', function () {
             minute: '2-digit'
         }).format(date);
     };
-
-    // ====================================
-    // CONFERMA NOLEGGIO MEZZO
-    // ====================================
-    const noleggiaButtons = document.querySelectorAll('[data-confirm-noleggio]');
-    noleggiaButtons.forEach(button => {
-        button.addEventListener('click', function (e) {
-            const matricola = this.getAttribute('data-matricola');
-            const tipo = this.getAttribute('data-tipo');
-            const tariffa = this.getAttribute('data-tariffa');
-
-            const message = `Confermi il noleggio del ${tipo} (${matricola})?\nTariffa: €${tariffa}/minuto`;
-
-            if (!confirm(message)) {
-                e.preventDefault();
-            }
-        });
-    });
 
 });
 
@@ -314,6 +307,34 @@ function showErrorMessage(message) {
     }, 5000);
 }
 
+// Mostra messaggio di avviso temporaneo (giallo)
+function showWarningMessage(message) {
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-warning alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+    alert.style.zIndex = '9999';
+    alert.innerHTML = `
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alert);
+
+    setTimeout(() => alert.remove(), 4000);
+}
+
+// Mostra messaggio informativo temporaneo (azzurro)
+function showInfoMessage(message) {
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-info alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+    alert.style.zIndex = '9999';
+    alert.innerHTML = `
+        <i class="bi bi-info-circle-fill me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alert);
+
+    setTimeout(() => alert.remove(), 4000);
+}
+
 // Conferma azione
 function confirmAction(message, callback) {
     if (confirm(message)) {
@@ -323,19 +344,16 @@ function confirmAction(message, callback) {
 
 console.log('Mobishare JavaScript caricato correttamente');
 
-
-
-
 // ==================================================
 // CONNESSIONE SIGNALR AL BACKEND
 // ==================================================
 
-// Recupero eventuale token JWT (se usi autenticazione)
+// Recupero eventuale token JWT
 const token = sessionStorage.getItem("JwtToken") || localStorage.getItem("JwtToken");
 
 const connection = new signalR.HubConnectionBuilder()
     .withUrl("https://localhost:7001/hub/notifiche", {
-        accessTokenFactory: () => token // verrà ignorato se non serve
+        accessTokenFactory: () => token //ignorato se non serve
     })
     .withAutomaticReconnect([0, 2000, 5000, 10000])
     .configureLogging(signalR.LogLevel.Information)
@@ -345,14 +363,69 @@ const connection = new signalR.HubConnectionBuilder()
 // EVENTI RICEVUTI DAL SERVER
 // ==================================================
 
-// Aggiornamento credito utente
+// Aggiornamento credito utente - AGGIORNATO per cercare l'elemento corretto
 connection.on("CreditoAggiornato", function (nuovoCredito) {
-    const el = document.getElementById("credito-utente");
-    if (el) {
-        el.textContent = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' })
-            .format(nuovoCredito);
-        showSuccessMessage(`Credito aggiornato: ${el.textContent}`);
+    // Cerca tutti gli elementi che mostrano il credito
+    const creditoElements = document.querySelectorAll('.credito-value, [data-credito], #credito-utente');
+
+    creditoElements.forEach(el => {
+        if (el) {
+            const formattedCredito = new Intl.NumberFormat('it-IT', {
+                style: 'currency',
+                currency: 'EUR'
+            }).format(nuovoCredito);
+
+            el.textContent = formattedCredito;
+
+            // Aggiorna il colore in base al valore
+            el.classList.remove('text-success', 'text-danger', 'text-warning');
+            if (nuovoCredito > 5) {
+                el.classList.add('text-success');
+            } else if (nuovoCredito > 0) {
+                el.classList.add('text-warning');
+            } else {
+                el.classList.add('text-danger');
+            }
+        }
+    });
+
+    showSuccessMessage(`Credito aggiornato: ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(nuovoCredito)}`);
+});
+
+connection.on("PagamentoCompletato", data => {
+    showSuccessMessage(`Pagamento completato: ${data.importo}€ (${data.stato})`);
+
+    // Ricarica la pagina se siamo sulla dashboard o ricariche
+    if (window.location.pathname.includes('/Dashboard') || window.location.pathname.includes('/Ricariche')) {
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
     }
+});
+
+connection.on("PagamentoFallito", data => {
+    showErrorMessage(`Pagamento fallito: ${data.importo}€`);
+});
+
+connection.on("PagamentoAggiornato", data => {
+    showInfoMessage(`Pagamento aggiornato: ${data.importo}€ (${data.stato})`);
+});
+
+connection.on("NuovaTransazione", data => {
+    showInfoMessage(`Nuova transazione: ${data.tipo} ${data.importo}€`);
+});
+
+connection.on("AccountRiattivato", data => {
+    showSuccessMessage(`Account riattivato: ${data.nome}. ${data.messaggio}`);
+
+    // Ricarica la pagina dopo 2 secondi per aggiornare lo stato
+    setTimeout(() => {
+        window.location.reload();
+    }, 2000);
+});
+
+connection.on("RiceviNotificaAdmin", (titolo, testo) => {
+    showInfoMessage(`[ADMIN] ${titolo}: ${testo}`);
 });
 
 // Aggiornamento telemetria (mezzi, batterie, ecc.)
@@ -362,14 +435,40 @@ connection.on("AggiornamentoTelemetria", function (data) {
     // aggiornaStatoMezzo(data.idMezzo, data.livelloBatteria, data.stato);
 });
 
-// Notifiche per admin
-connection.on("RiceviNotificaAdmin", function (titolo, testo) {
-    showSuccessMessage(`[ADMIN] ${titolo}: ${testo}`);
-});
-
 // Test generico
 connection.on("RiceviMessaggio", function (user, message) {
     console.log(`Messaggio da ${user}: ${message}`);
+});
+
+// Notifica sospensione utente - MIGLIORATO
+connection.on("UtenteSospeso", data => {
+    // Mostra un alert permanente di sospensione
+    const existingAlert = document.querySelector('.alert-sospensione');
+    if (existingAlert) {
+        existingAlert.remove();
+    }
+
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-sospensione position-fixed top-0 start-50 translate-middle-x mt-3 shadow-lg';
+    alertDiv.style.zIndex = '10000';
+    alertDiv.style.minWidth = '400px';
+    alertDiv.setAttribute('data-auto-dismiss', 'false');
+    alertDiv.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="bi bi-exclamation-octagon-fill display-6 me-3"></i>
+            <div>
+                <h5 class="mb-1"><strong>Account Sospeso</strong></h5>
+                <p class="mb-0">${data.messaggio}</p>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(alertDiv);
+
+    // Reindirizza dopo 5 secondi
+    setTimeout(() => {
+        window.location.href = "/Account/Logout";
+    }, 5000);
 });
 
 // ==================================================
@@ -388,8 +487,6 @@ connection.onreconnected(connectionId => {
 connection.onclose(error => {
     console.error("SignalR: connessione chiusa:", error);
     showErrorMessage("Connessione persa definitivamente.");
-    // Tenta di riconnettersi anche dopo chiusura
-    setTimeout(startSignalR, 5000);
 });
 
 // ==================================================
@@ -398,9 +495,9 @@ connection.onclose(error => {
 async function startSignalR() {
     try {
         await connection.start();
-        console.log("✅ SignalR connesso al backend");
+        console.log("SignalR connesso al backend");
     } catch (err) {
-        console.error("❌ Errore durante la connessione SignalR:", err);
+        console.error("Errore durante la connessione SignalR:", err);
         // Riprova dopo 5 secondi
         setTimeout(startSignalR, 5000);
     }

@@ -18,10 +18,6 @@
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		  <PrivateAssets>all</PrivateAssets>
 		</PackageReference>
-
-		<!-- DataAnnotations (per validazioni su Models/DTO) -->
-
-		<!-- AutoMapper per semplificare mappatura DTO <-> Entity -->
 	</ItemGroup>
 
 </Project>

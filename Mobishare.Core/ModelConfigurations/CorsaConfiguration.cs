@@ -62,7 +62,7 @@ namespace Mobishare.Core.ModelConfigurations
                    .IsRequired(false);
 
             // Relazione con Utente (tramite IdUtente)
-            builder.HasOne<Utente>()
+            builder.HasOne<Utente>(c => c.Utente)
                    .WithMany(u => u.Corse)
                    .HasForeignKey(c => c.IdUtente)
                    .OnDelete(DeleteBehavior.Restrict);

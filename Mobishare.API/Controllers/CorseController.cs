@@ -12,6 +12,7 @@ using Mobishare.Infrastructure.IoT.Interfaces;
 using Mobishare.Infrastructure.SignalRHubs;
 using Mobishare.Infrastructure.SignalRHubs.Services;
 using System.Security.Claims;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace Mobishare.API.Controllers
 {
@@ -48,20 +49,21 @@ namespace Mobishare.API.Controllers
                 query = query.Where(c => c.MatricolaMezzo == mat);
             }
 
-            var corse = await query
-                .OrderByDescending(c => c.DataOraInizio)
-                .Select(c => new CorsaResponseDTO
-                {
-                    Id = c.Id,
-                    IdUtente = c.IdUtente,
-                    MatricolaMezzo = c.MatricolaMezzo,
-                    IdParcheggioPrelievo = c.IdParcheggioPrelievo,
-                    IdParcheggioRilascio = c.IdParcheggioRilascio,
-                    DataOraInizio = c.DataOraInizio,
-                    DataOraFine = c.DataOraFine,
-                    CostoFinale = c.CostoFinale
-                })
-                .ToListAsync();
+            var corse = await (from c in query
+                               join m in _context.Mezzi on c.MatricolaMezzo equals m.Matricola
+                               orderby c.DataOraInizio descending
+                               select new CorsaResponseDTO
+                               {
+                                   Id = c.Id,
+                                   IdUtente = c.IdUtente,
+                                   MatricolaMezzo = c.MatricolaMezzo,
+                                   TipoMezzo = m.Tipo.ToString(),
+                                   IdParcheggioPrelievo = c.IdParcheggioPrelievo,
+                                   IdParcheggioRilascio = c.IdParcheggioRilascio,
+                                   DataOraInizio = c.DataOraInizio,
+                                   DataOraFine = c.DataOraFine,
+                                   CostoFinale = c.CostoFinale
+                               }).ToListAsync();
 
             return Ok(new SuccessResponse
             {
@@ -77,6 +79,9 @@ namespace Mobishare.API.Controllers
         [HttpGet("utente/{idUtente:int}")]
         public async Task<ActionResult<SuccessResponse>> GetStoricoCorseUtente(int idUtente)
         {
+
+            var query = _context.Corse.AsNoTracking().AsQueryable();
+
             //verifica input idUtente 
             if (idUtente <= 0)
                 throw new ValoreNonValidoException(nameof(idUtente), "deve essere maggiore di 0");
@@ -84,6 +89,7 @@ namespace Mobishare.API.Controllers
             //legge idUtente dal JWT (claim) -> int.Parse(..) lo converte in int, se manca il claim -> lancia una 403 OperazioneNonConsentita
             var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? throw new OperazioneNonConsentitaException("Utente non autenticato"));
+            
             var isGestore = User.IsInRole("Gestore"); //verifica ruolo da tokens
             if (!isGestore && callerId != idUtente) //consente accesso solo se il chiamante è il proprietario della corsa oppure è un Gestore (vede le corse di tutti)
                 throw new OperazioneNonConsentitaException("Non autorizzato a visualizzare corse di altri utenti");
@@ -93,21 +99,21 @@ namespace Mobishare.API.Controllers
                 ?? throw new ElementoNonTrovatoException("Utente", idUtente);
 
             // Recupera le corse di quell'utente
-            var corse = await _context.Corse.AsNoTracking()
-                .Where(c => c.IdUtente == idUtente)
-                .OrderByDescending(c => c.DataOraInizio) // ordine: più recenti prima
-                .Select(c => new CorsaResponseDTO
-                {
-                    Id = c.Id,
-                    IdUtente = c.IdUtente,
-                    MatricolaMezzo = c.MatricolaMezzo,
-                    IdParcheggioPrelievo = c.IdParcheggioPrelievo,
-                    IdParcheggioRilascio = c.IdParcheggioRilascio,
-                    DataOraInizio = c.DataOraInizio,
-                    DataOraFine = c.DataOraFine,
-                    CostoFinale = c.CostoFinale
-                })
-                .ToListAsync();
+            var corse = await (from c in query
+                               join m in _context.Mezzi on c.MatricolaMezzo equals m.Matricola
+                               orderby c.DataOraInizio descending
+                               select new CorsaResponseDTO
+                               {
+                                   Id = c.Id,
+                                   IdUtente = c.IdUtente,
+                                   MatricolaMezzo = c.MatricolaMezzo,
+                                   TipoMezzo = m.Tipo.ToString(),  // ← QUESTO È IMPORTANTE!
+                                   IdParcheggioPrelievo = c.IdParcheggioPrelievo,
+                                   IdParcheggioRilascio = c.IdParcheggioRilascio,
+                                   DataOraInizio = c.DataOraInizio,
+                                   DataOraFine = c.DataOraFine,
+                                   CostoFinale = c.CostoFinale
+                               }).ToListAsync();
 
             return Ok(new SuccessResponse
             {
@@ -125,26 +131,29 @@ namespace Mobishare.API.Controllers
             if (id <= 0)
                 throw new ValoreNonValidoException(nameof(id), "deve essere maggiore di 0");
 
-            var corsa = await _context.Corse.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id)
+            // ✅ Aggiungi join
+            var dto = await (from c in _context.Corse.AsNoTracking()
+                             join m in _context.Mezzi on c.MatricolaMezzo equals m.Matricola
+                             where c.Id == id
+                             select new CorsaResponseDTO
+                             {
+                                 Id = c.Id,
+                                 IdUtente = c.IdUtente,
+                                 MatricolaMezzo = c.MatricolaMezzo,
+                                 TipoMezzo = m.Tipo.ToString(),  // ✅
+                                 IdParcheggioPrelievo = c.IdParcheggioPrelievo,
+                                 IdParcheggioRilascio = c.IdParcheggioRilascio,
+                                 DataOraInizio = c.DataOraInizio,
+                                 DataOraFine = c.DataOraFine,
+                                 CostoFinale = c.CostoFinale
+                             }).FirstOrDefaultAsync()
                 ?? throw new ElementoNonTrovatoException("Corsa", id);
 
             var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? throw new OperazioneNonConsentitaException("Utente non autenticato"));
             var isGestore = User.IsInRole("Gestore");
-            if (!isGestore && corsa.IdUtente != callerId)
+            if (!isGestore && dto.IdUtente != callerId)
                 throw new OperazioneNonConsentitaException("Non autorizzato a visualizzare questa corsa");
-
-            var dto = new CorsaResponseDTO
-            {
-                Id = corsa.Id,
-                IdUtente = corsa.IdUtente,
-                MatricolaMezzo = corsa.MatricolaMezzo,
-                IdParcheggioPrelievo = corsa.IdParcheggioPrelievo,
-                IdParcheggioRilascio = corsa.IdParcheggioRilascio,
-                DataOraInizio = corsa.DataOraInizio,
-                DataOraFine = corsa.DataOraFine,
-                CostoFinale = corsa.CostoFinale
-            };
 
             return Ok(new SuccessResponse
             {
@@ -242,6 +251,7 @@ namespace Mobishare.API.Controllers
                     Id = corsa.Id,
                     IdUtente = corsa.IdUtente,
                     MatricolaMezzo = corsa.MatricolaMezzo,
+                    TipoMezzo = mezzo.Tipo.ToString(),
                     IdParcheggioPrelievo = corsa.IdParcheggioPrelievo,
                     DataOraInizio = corsa.DataOraInizio
                 };
@@ -325,8 +335,11 @@ namespace Mobishare.API.Controllers
                 corsaEsistente.CostoFinale = costo;
 
                 utente.Credito -= costo;
+
                 if (utente.Credito < 0)
-                    utente.Sospeso = true;
+                {
+                    await SospendiUtenteAsync(utente, "Credito negativo dopo la corsa");
+                }
 
                 bool problemaSegnalato = dto.SegnalazioneProblema;
                 bool batteriaScarica = (mezzo.Tipo == TipoMezzo.MonopattinoElettrico || mezzo.Tipo == TipoMezzo.BiciElettrica)
@@ -344,6 +357,23 @@ namespace Mobishare.API.Controllers
                     corsaEsistente.IdParcheggioRilascio ?? 0,
                     corsaEsistente.MatricolaMezzo
                 );
+
+                await _context.RegistraTransazioneAsync(
+                    idUtente: utente.Id,
+                    importo: -corsaEsistente.CostoFinale.GetValueOrDefault(),
+                    stato: StatoPagamento.Completato,
+                    idCorsa: corsaEsistente.Id
+                );
+
+                await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                .SendAsync("NuovaTransazione", new
+                {
+                    Importo = -corsaEsistente.CostoFinale,
+                    Tipo = "Corsa",
+                    Data = DateTime.UtcNow
+                });
+
+
 
                 try
                 {
@@ -388,6 +418,7 @@ namespace Mobishare.API.Controllers
                     Id = corsaEsistente.Id,
                     IdUtente = corsaEsistente.IdUtente,
                     MatricolaMezzo = corsaEsistente.MatricolaMezzo,
+                    TipoMezzo = mezzo.Tipo.ToString(),
                     IdParcheggioPrelievo = corsaEsistente.IdParcheggioPrelievo,
                     IdParcheggioRilascio = corsaEsistente.IdParcheggioRilascio,
                     DataOraInizio = corsaEsistente.DataOraInizio,
@@ -515,6 +546,45 @@ namespace Mobishare.API.Controllers
             });
         }
 
+        // gestione sospensione utente 
+        private async Task SospendiUtenteAsync(Utente utente, string motivo)
+        {
+            if (!utente.Sospeso)
+            {
+                utente.Sospeso = true;
+                await _context.SaveChangesAsync();
+
+                //Notifica all’utente
+                try
+                {
+                    await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                        .SendAsync("UtenteSospeso", new
+                        {
+                            id = utente.Id,
+                            nome = utente.Nome,
+                            messaggio = $"Il tuo account è stato sospeso: {motivo}"
+                        });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "SignalR: impossibile inviare notifica sospensione utente {Id}", utente.Id);
+                }
+
+                //Notifica ai gestori
+                try
+                {
+                    await _hubContext.Clients.Group("admin")
+                        .SendAsync("RiceviNotificaAdmin", "Utente sospeso",
+                            $"L’utente {utente.Nome} (ID {utente.Id}) è stato sospeso. Motivo: {motivo}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "SignalR: impossibile notificare admin per sospensione utente {Id}", utente.Id);
+                }
+
+                _logger.LogWarning("Utente {Id} sospeso: {Motivo}", utente.Id, motivo);
+            }
+        }
 
     }
 }

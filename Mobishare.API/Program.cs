@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Mobishare.API.BackgroundServices;
 using Mobishare.API.DTO;
 using Mobishare.API.Middleware;
 using Mobishare.Core.Data;
@@ -120,7 +121,15 @@ builder.Services.AddHostedService<MqttIoTBackgroundService>();
 
 #region Configurazione Servizi Personalizzati
 builder.Services.AddSingleton<PasswordService>();
+
+// Servizio di monitoraggio corse (Scoped perché usa DbContext)
+builder.Services.AddScoped<IRideMonitoringService, RideMonitoringService>();
+
+// Background Service per monitoraggio automatico corse
+builder.Services.AddHostedService<RideMonitoringBackgroundService>();
 #endregion
+
+
 
 
 #region Configurazione Swagger (Documentazione API)

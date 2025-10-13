@@ -15,65 +15,129 @@
         </div>
     </div>
 
-    <!-- Alert messaggi -->
+    <!-- Alert messaggi di successo -->
     @if (!string.IsNullOrEmpty(Model.SuccessMessage))
     {
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            @Model.SuccessMessage
+        <div class="alert alert-success alert-dismissible fade show" role="alert" data-auto-dismiss="false">
+            <i class="bi bi-check-circle-fill"></i> @Model.SuccessMessage
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
 
+    <!-- Alert errori -->
     @if (!string.IsNullOrEmpty(Model.ErrorMessage))
     {
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            @Model.ErrorMessage
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" data-auto-dismiss="false">
+            <i class="bi bi-exclamation-triangle-fill"></i> @Model.ErrorMessage
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
 
-    <!-- Alert utente sospeso -->
+    <!-- Alert utente sospeso - NON DISMISSIBILE -->
     @if (Model.Sospeso)
     {
-        <div class="alert alert-danger">
-            <strong>Account Sospeso</strong>
-            <p class="mb-2">Il tuo account è stato sospeso. Ricarica il credito per continuare a utilizzare i servizi.</p>
-            <a href="/Ricariche" class="btn btn-warning btn-sm">Ricarica Ora</a>
+        <div class="alert alert-danger border-danger shadow-sm alert-permanent" role="alert" data-auto-dismiss="false">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill display-6 me-3"></i>
+                <div class="flex-grow-1">
+                    <h5 class="alert-heading mb-2">
+                        <strong>⚠️ Account Sospeso</strong>
+                    </h5>
+                    <p class="mb-2">Il tuo account è stato sospeso a causa di credito insufficiente. Ricarica il credito per continuare a utilizzare i servizi.</p>
+                    <hr class="my-2">
+                    <p class="mb-0 small">
+                        <strong>Credito attuale:</strong> <span class="text-danger fw-bold">@Model.Credito.ToString("C2")</span>
+                    </p>
+                </div>
+                <div>
+                    <a href="/Ricariche" class="btn btn-warning">
+                        <i class="bi bi-wallet2"></i> Ricarica Ora
+                    </a>
+                </div>
+            </div>
         </div>
     }
 
-    <!-- Cards Statistiche -->
+    <!-- Cards Statistiche - SEMPRE VISIBILI -->
     <div class="row mb-4">
         <!-- Credito -->
         <div class="col-md-4 mb-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body text-center">
-                    <h6 class="text-muted mb-2">Credito Disponibile</h6>
-                    <h2 class="mb-0 @(Model.Credito > 0 ? "text-success" : "text-danger")">
+            <div class="card h-100 shadow-sm border-start border-4 @(Model.Credito > 0 ? "border-success" : "border-danger")">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-muted mb-0">Credito Disponibile</h6>
+                        <i class="bi bi-wallet2 text-muted fs-4"></i>
+                    </div>
+                    <h2 class="mb-2 @(Model.Credito > 0 ? "text-success" : "text-danger") fw-bold credito-value" data-credito>
                         @Model.Credito.ToString("C2")
                     </h2>
-                    <a href="/Ricariche" class="btn btn-success btn-sm mt-3">Ricarica</a>
+                    @if (Model.Credito <= 0)
+                    {
+                        <small class="text-danger d-block mb-2">
+                            <i class="bi bi-exclamation-circle"></i> Credito esaurito
+                        </small>
+                    }
+                    else if (Model.Credito < 5)
+                    {
+                        <small class="text-warning d-block mb-2">
+                            <i class="bi bi-exclamation-triangle"></i> Credito in esaurimento
+                        </small>
+                    }
+                    <a href="/Ricariche" class="btn btn-success btn-sm w-100 mt-2">
+                        <i class="bi bi-plus-circle"></i> Ricarica
+                    </a>
                 </div>
             </div>
         </div>
 
         <!-- Corse Totali -->
         <div class="col-md-4 mb-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body text-center">
-                    <h6 class="text-muted mb-2">Corse Completate</h6>
-                    <h2 class="mb-0 text-primary">@Model.TotaleCorseCompletate</h2>
-                    <a href="/Corse" class="btn btn-primary btn-sm mt-3">Vedi Storico</a>
+            <div class="card h-100 shadow-sm border-start border-4 border-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-muted mb-0">Corse Completate</h6>
+                        <i class="bi bi-bicycle text-muted fs-4"></i>
+                    </div>
+                    <h2 class="mb-2 text-primary fw-bold">@Model.TotaleCorseCompletate</h2>
+                    <small class="text-muted d-block mb-2">
+                        @if (Model.TotaleCorseCompletate == 0)
+                        {
+                            <span>Inizia la tua prima corsa!</span>
+                        }
+                        else if (Model.TotaleCorseCompletate == 1)
+                        {
+                            <span>Ottimo inizio!</span>
+                        }
+                        else
+                        {
+                            <span>Continua così!</span>
+                        }
+                    </small>
+                    <a href="/Corse" class="btn btn-outline-primary btn-sm w-100 mt-2">
+                        <i class="bi bi-clock-history"></i> Vedi Storico
+                    </a>
                 </div>
             </div>
         </div>
 
         <!-- Spesa Totale -->
         <div class="col-md-4 mb-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body text-center">
-                    <h6 class="text-muted mb-2">Spesa Totale</h6>
-                    <h2 class="mb-0 text-info">@Model.SpesaTotale.ToString("C2")</h2>
+            <div class="card h-100 shadow-sm border-start border-4 border-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-muted mb-0">Spesa Totale</h6>
+                        <i class="bi bi-cash-stack text-muted fs-4"></i>
+                    </div>
+                    <h2 class="mb-2 text-info fw-bold">@Model.SpesaTotale.ToString("C2")</h2>
+                    <small class="text-muted d-block mb-2">
+                        Da @Model.TotaleCorseCompletate cors@(Model.TotaleCorseCompletate == 1 ? "a" : "e")
+                    </small>
+                    @if (Model.TotaleCorseCompletate > 0)
+                    {
+                        <small class="text-muted d-block">
+                            Media: @((Model.SpesaTotale / Math.Max(Model.TotaleCorseCompletate, 1)).ToString("C2"))/corsa
+                        </small>
+                    }
                 </div>
             </div>
         </div>
@@ -82,20 +146,33 @@
     <!-- Corsa in corso (se esiste) -->
     @if (Model.HasCorsaInCorso)
     {
-        <div class="card mb-4 border-warning">
+        <div class="card mb-4 border-warning shadow">
             <div class="card-header bg-warning text-dark">
-                <h5 class="mb-0">Corsa in Corso</h5>
+                <h5 class="mb-0">
+                    <i class="bi bi-bicycle"></i> Corsa in Corso
+                    <span class="badge bg-dark float-end">ATTIVA</span>
+                </h5>
             </div>
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col-md-8">
-                        <p class="mb-1"><strong>Mezzo:</strong> @Model.CorsaAttiva?.TipoMezzo - @Model.CorsaAttiva?.MatricolaMezzo</p>
-                        <p class="mb-1"><strong>Inizio:</strong> @Model.CorsaAttiva?.DataOraInizio.ToString("dd/MM/yyyy HH:mm")</p>
-                        <p class="mb-0"><strong>Durata:</strong> <span id="durataCorsa">Calcolo in corso...</span></p>
+                        <p class="mb-2">
+                            <strong><i class="bi bi-scooter"></i> Mezzo:</strong> 
+                            @Model.CorsaAttiva?.TipoMezzo - 
+                            <span class="badge bg-primary">@Model.CorsaAttiva?.MatricolaMezzo</span>
+                        </p>
+                        <p class="mb-2">
+                            <strong><i class="bi bi-calendar3"></i> Inizio:</strong> 
+                            @Model.CorsaAttiva?.DataOraInizio.ToString("dd/MM/yyyy HH:mm")
+                        </p>
+                        <p class="mb-0">
+                            <strong><i class="bi bi-clock"></i> Durata:</strong> 
+                            <span id="durataCorsa" class="badge bg-dark fs-6">Calcolo in corso...</span>
+                        </p>
                     </div>
                     <div class="col-md-4 text-end">
-                        <a href="/Corse/CorsaCorrente" class="btn btn-warning btn-lg">
-                            Visualizza Corsa
+                        <a href="/Corse/CorsaCorrente" class="btn btn-warning btn-lg pulse-animation">
+                            <i class="bi bi-eye"></i> Visualizza Corsa
                         </a>
                     </div>
                 </div>
@@ -105,12 +182,13 @@
     else if (!Model.Sospeso)
     {
         <!-- Azione principale: Noleggia mezzo -->
-        <div class="card mb-4 border-success">
+        <div class="card mb-4 border-success shadow">
             <div class="card-body text-center py-5">
+                <i class="bi bi-bicycle display-1 text-success mb-3"></i>
                 <h3 class="mb-3">Pronto per una nuova corsa?</h3>
-                <p class="text-muted mb-4">Trova un mezzo disponibile e inizia subito</p>
+                <p class="text-muted mb-4">Trova un mezzo disponibile e inizia subito la tua avventura</p>
                 <a href="/Mezzi" class="btn btn-success btn-lg">
-                    Noleggia un Mezzo
+                    <i class="bi bi-search"></i> Noleggia un Mezzo
                 </a>
             </div>
         </div>
@@ -119,57 +197,65 @@
     <!-- Azioni Rapide -->
     <div class="row">
         <div class="col-12 mb-3">
-            <h4>Azioni Rapide</h4>
+            <h4><i class="bi bi-lightning-charge"></i> Azioni Rapide</h4>
         </div>
 
         <div class="col-md-3 mb-3">
-            <div class="card h-100 shadow-sm">
+            <div class="card h-100 shadow-sm hover-card">
                 <div class="card-body text-center">
                     <div class="mb-3">
                         <i class="bi bi-bicycle display-4 text-primary"></i>
                     </div>
                     <h5 class="card-title">Mezzi Disponibili</h5>
                     <p class="card-text text-muted">Trova mezzi vicino a te</p>
-                    <a href="/Mezzi" class="btn btn-primary btn-sm">Esplora</a>
+                    <a href="/Mezzi" class="btn btn-primary btn-sm">
+                        <i class="bi bi-search"></i> Esplora
+                    </a>
                 </div>
             </div>
         </div>
 
         <div class="col-md-3 mb-3">
-            <div class="card h-100 shadow-sm">
+            <div class="card h-100 shadow-sm hover-card">
                 <div class="card-body text-center">
                     <div class="mb-3">
                         <i class="bi bi-clock-history display-4 text-success"></i>
                     </div>
                     <h5 class="card-title">Storico Corse</h5>
                     <p class="card-text text-muted">Tutte le tue corse passate</p>
-                    <a href="/Corse" class="btn btn-success btn-sm">Visualizza</a>
+                    <a href="/Corse" class="btn btn-success btn-sm">
+                        <i class="bi bi-list-ul"></i> Visualizza
+                    </a>
                 </div>
             </div>
         </div>
 
         <div class="col-md-3 mb-3">
-            <div class="card h-100 shadow-sm">
+            <div class="card h-100 shadow-sm hover-card">
                 <div class="card-body text-center">
                     <div class="mb-3">
                         <i class="bi bi-wallet2 display-4 text-warning"></i>
                     </div>
                     <h5 class="card-title">Ricariche</h5>
                     <p class="card-text text-muted">Gestisci il tuo credito</p>
-                    <a href="/Ricariche" class="btn btn-warning btn-sm">Ricarica</a>
+                    <a href="/Ricariche" class="btn btn-warning btn-sm">
+                        <i class="bi bi-plus-circle"></i> Ricarica
+                    </a>
                 </div>
             </div>
         </div>
 
         <div class="col-md-3 mb-3">
-            <div class="card h-100 shadow-sm">
+            <div class="card h-100 shadow-sm hover-card">
                 <div class="card-body text-center">
                     <div class="mb-3">
                         <i class="bi bi-person-circle display-4 text-info"></i>
                     </div>
                     <h5 class="card-title">Profilo</h5>
                     <p class="card-text text-muted">Gestisci il tuo account</p>
-                    <a href="/Profilo" class="btn btn-info btn-sm">Modifica</a>
+                    <a href="/Profilo" class="btn btn-info btn-sm">
+                        <i class="bi bi-gear"></i> Modifica
+                    </a>
                 </div>
             </div>
         </div>
@@ -194,15 +280,16 @@
                 const durataElement = document.getElementById('durataCorsa');
                 if (durataElement) {
                     if (hours > 0) {
-                        durataElement.textContent = hours + ' ore e ' + minutes + ' minuti';
+                        durataElement.textContent = hours + (hours === 1 ? ' ora e ' : ' ore e ') + minutes + (minutes === 1 ? ' minuto' : ' minuti');
                     } else {
-                        durataElement.textContent = minutes + ' minuti';
+                        durataElement.textContent = minutes + (minutes === 1 ? ' minuto' : ' minuti');
                     }
                 }
             }
             
+            // Aggiorna subito e poi ogni minuto
             aggiornaDurata();
-            setInterval(aggiornaDurata, 60000); // Aggiorna ogni minuto
+            setInterval(aggiornaDurata, 60000);
         </script>
     }
 }

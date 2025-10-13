@@ -108,10 +108,19 @@ namespace Mobishare.API.Controllers
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
+                    await _context.RegistraTransazioneAsync(
+                        idUtente: utente.Id,
+                        importo: dto.ImportoRicarica,
+                        stato: StatoPagamento.Completato,
+                        idRicarica: ricarica.Id
+                    );
+
+
+
                     try
                     {
                         //notifica utente avvenuta ricarica
-                        await _hubContext.Clients.Group($"utenti-{utente.Id}")
+                        await _hubContext.Clients.Group($"utenti:{utente.Id}")
                             .SendAsync("CreditoAggiornato", utente.Credito);
 
                         //notifica admin avvenuta ricarica
@@ -152,6 +161,11 @@ namespace Mobishare.API.Controllers
 
                     _logger.LogWarning("Ricarica fallita: Utente {UserId}, Importo {Importo}€, Tipo {Tipo}",
                         dto.IdUtente, dto.ImportoRicarica, dto.TipoRicarica);
+
+                    if (utente.Credito < 0)
+                    {
+                        await SospendiUtenteAsync(utente, "Pagamento fallito - credito negativo");
+                    }
 
                     throw new PagamentoFallitoException("Pagamento rifiutato. Verifica i dati della carta o riprova.");
                 }
@@ -299,5 +313,47 @@ namespace Mobishare.API.Controllers
 
             return successo;
         }
+
+        
+        // gestione sospensione utente 
+        private async Task SospendiUtenteAsync(Utente utente, string motivo)
+        {
+            if (!utente.Sospeso)
+            {
+                utente.Sospeso = true;
+                await _context.SaveChangesAsync();
+
+                //Notifica all’utente
+                try
+                {
+                    await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                        .SendAsync("UtenteSospeso", new
+                        {
+                            id = utente.Id,
+                            nome = utente.Nome,
+                            messaggio = $"Il tuo account è stato sospeso: {motivo}"
+                        });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "SignalR: impossibile inviare notifica sospensione utente {Id}", utente.Id);
+                }
+
+                //Notifica ai gestori
+                try
+                {
+                    await _hubContext.Clients.Group("admin")
+                        .SendAsync("RiceviNotificaAdmin", "Utente sospeso",
+                            $"L’utente {utente.Nome} (ID {utente.Id}) è stato sospeso. Motivo: {motivo}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "SignalR: impossibile notificare admin per sospensione utente {Id}", utente.Id);
+                }
+
+                _logger.LogWarning("Utente {Id} sospeso: {Motivo}", utente.Id, motivo);
+            }
+        }
+
     }
 }

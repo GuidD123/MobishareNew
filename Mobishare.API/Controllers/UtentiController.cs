@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -10,17 +11,19 @@ using Mobishare.Core.Models;
 using Mobishare.Core.Enums;
 using Mobishare.Infrastructure.Services;
 using Mobishare.Core.DTOs;
-using Mobishare.Core.Exceptions; 
+using Mobishare.Core.Exceptions;
+using Mobishare.Infrastructure.SignalRHubs;
+
 
 namespace Mobishare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UtentiController(MobishareDbContext context, PasswordService passwordService) : ControllerBase
+    public class UtentiController(MobishareDbContext context, PasswordService passwordService, IHubContext<NotificheHub> hubContext) : ControllerBase
     {
         private readonly MobishareDbContext _context = context;
         private readonly PasswordService _passwordService = passwordService;
-
+        private readonly IHubContext<NotificheHub> _hubContext = hubContext;
 
         //ZONA ADMIN 
 
@@ -71,6 +74,21 @@ namespace Mobishare.API.Controllers
 
             utente.Sospeso = false;
             await _context.SaveChangesAsync();
+
+            //notifica all'utente (se collegato)
+            await _hubContext.Clients.Group($"utenti-{utente.Id}")
+            .SendAsync("AccountRiattivato", new
+            {
+                idUtente = utente.Id,
+                nome = utente.Nome,
+                messaggio = "Il tuo account è stato riattivato. Puoi nuovamente usare Mobishare!"
+            });
+
+            //Notifica agli adminse collegato
+            await _hubContext.Clients.Group("admin")
+                .SendAsync("RiceviNotificaAdmin", "Utente riattivato",
+                    $"Il gestore ha riattivato l’utente {utente.Nome} (ID {utente.Id})");
+
 
             return Ok(new SuccessResponse
             {

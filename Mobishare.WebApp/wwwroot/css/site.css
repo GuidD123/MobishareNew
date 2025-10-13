@@ -648,3 +648,94 @@ footer {
         border: 1px solid #ddd;
     }
 }
+
+
+/* ============================================
+   ALERTS
+   ============================================ */
+
+/* Prevenzione auto-dismiss alert critici */
+.no-auto-dismiss,
+.alert-permanent,
+.alert[data-auto-dismiss="false"] {
+    position: relative !important;
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Assicura che le card siano sempre visibili */
+.card {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+}
+
+/* Stile migliorato per alert sospensione */
+.alert-danger.border-danger {
+    animation: none !important;
+    transition: none !important;
+}
+
+/* Hover effect per le card */
+.hover-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+
+/* Animazione pulse per corsa attiva */
+.pulse-animation {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+    }
+}
+
+/* Fix per badge durata corsa */
+#durataCorsa {
+    display: inline-block !important;
+    opacity: 1 !important;
+}
+
+/* Stile per le card statistiche */
+.card .card-body h2 {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.border-start.border-4 {
+    border-left-width: 4px !important;
+}
+
+/* Alert sospensione SignalR */
+.alert-sospensione {
+    border: 3px solid #dc3545 !important;
+    background-color: #f8d7da !important;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+    .pulse-animation {
+        width: 100%;
+        margin-top: 1rem;
+    }
+
+    .hover-card {
+        margin-bottom: 1rem;
+    }
+}

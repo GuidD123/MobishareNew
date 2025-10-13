@@ -74,5 +74,16 @@ namespace Mobishare.Infrastructure.SignalRHubs
             await Clients.Group("admin")
                          .SendAsync("RiceviNotificaAdmin", titolo, testo);
         }
+
+        //notificare quando cambia lo stato di un utente
+        public async Task NotificaAggiornamentoUtente(int userId, bool sospeso)
+        {
+            await Clients.Group("admin").SendAsync("AggiornamentoUtente", new
+            {
+                IdUtente = userId,
+                Stato = sospeso ? "Sospeso" : "Attivo"
+            });
+        }
+
     }
 }
