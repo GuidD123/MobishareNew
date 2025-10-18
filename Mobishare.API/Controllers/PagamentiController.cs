@@ -21,6 +21,7 @@ namespace Mobishare.API.Controllers
         private readonly IHubContext<NotificheHub> _hubContext = hubContext;
         private readonly ILogger<PagamentiController> _logger = logger;
 
+        //per consultare storico transazioni
         // GET: api/pagamenti/utente/{idUtente}
         [Authorize(Roles = "gestore,utente")]
         [HttpGet("utente/{idUtente}")]
@@ -48,6 +49,7 @@ namespace Mobishare.API.Controllers
             });
         }
 
+        //per consultare storico transazioni
         // GET: api/pagamenti/miei
         [Authorize(Roles = "utente")]
         [HttpGet("miei")]
@@ -190,6 +192,32 @@ namespace Mobishare.API.Controllers
                 }
             });
         }
+
+        /*//collegamento al controller CorseController per gestire il pagamento della corsa al suo termine 
+        public async Task<Transazione> RegistraPagamentoCorsaAsync(int idUtente, decimal importo, int idCorsa)
+        {
+            var transazione = new Transazione
+            {
+                IdUtente = idUtente,
+                Importo = importo,
+                Stato = StatoPagamento.Completato,
+                DataTransazione = DateTime.UtcNow,
+                IdCorsa = idCorsa
+            };
+
+            _context.Transazioni.Add(transazione);
+            await _context.SaveChangesAsync();
+
+            await _hubContext.Clients.Group($"utenti:{idUtente}")
+                .SendAsync("PagamentoCompletato", new
+                {
+                    Importo = importo,
+                    Stato = "Completato",
+                    Data = transazione.DataTransazione
+                });
+
+            return transazione;
+        }*/
 
 
     }

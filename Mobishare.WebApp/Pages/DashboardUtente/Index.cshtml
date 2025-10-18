@@ -36,11 +36,11 @@
     <!-- Alert utente sospeso - NON DISMISSIBILE -->
     @if (Model.Sospeso)
     {
-        <div class="alert alert-danger border-danger shadow-sm alert-permanent" role="alert" data-auto-dismiss="false">
+        <div class="alert alert-danger border-danger shadow-sm alert-permanent" role="alert" data-auto-dismiss="false" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-left: 5px solid #dc2626;">
             <div class="d-flex align-items-center">
-                <i class="bi bi-exclamation-octagon-fill display-6 me-3"></i>
+                <i class="bi bi-exclamation-octagon-fill display-6 me-3" style="color: #dc2626;"></i>
                 <div class="flex-grow-1">
-                    <h5 class="alert-heading mb-2">
+                    <h5 class="alert-heading mb-2" style="color: #991b1b;">
                         <strong>⚠️ Account Sospeso</strong>
                     </h5>
                     <p class="mb-2">Il tuo account è stato sospeso a causa di credito insufficiente. Ricarica il credito per continuare a utilizzare i servizi.</p>
@@ -49,8 +49,8 @@
                         <strong>Credito attuale:</strong> <span class="text-danger fw-bold">@Model.Credito.ToString("C2")</span>
                     </p>
                 </div>
-                <div>
-                    <a href="/Ricariche" class="btn btn-warning">
+                <div class="ms-5">
+                    <a href="/Ricariche" class="btn btn-warning" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border: none; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">
                         <i class="bi bi-wallet2"></i> Ricarica Ora
                     </a>
                 </div>
@@ -249,19 +249,17 @@
             <div class="card h-100 shadow-sm hover-card">
                 <div class="card-body text-center">
                     <div class="mb-3">
-                        <i class="bi bi-person-circle display-4 text-info"></i>
+                        <i class="bi bi-headset display-4 text-info"></i>
                     </div>
-                    <h5 class="card-title">Profilo</h5>
-                    <p class="card-text text-muted">Gestisci il tuo account</p>
-                    <a href="/Profilo" class="btn btn-info btn-sm">
-                        <i class="bi bi-gear"></i> Modifica
+                    <h5 class="card-title">Assistenza</h5>
+                    <p class="card-text text-muted">Serve aiuto? Contattaci</p>
+                    <a href="/Assistenza" class="btn btn-info btn-sm">
+                        <i class="bi bi-question-circle"></i> Supporto
                     </a>
                 </div>
             </div>
         </div>
     </div>
-
-</div>
 
 @section Scripts {
     @if (Model.HasCorsaInCorso && Model.CorsaAttiva != null)

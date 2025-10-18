@@ -7,7 +7,7 @@ using Mobishare.API.Middleware;
 using Mobishare.Core.Data;
 using Mobishare.Infrastructure.IoT.HostedServices;
 using Mobishare.Infrastructure.IoT.Interfaces;
-using Mobishare.Infrastructure.IoT.Services;
+using Mobishare.Infrastructure.IoT.Services;    
 using Mobishare.Infrastructure.Services;
 using Mobishare.Infrastructure.SignalRHubs;
 using Mobishare.Infrastructure.SignalRHubs.HostedServices;
@@ -129,7 +129,8 @@ builder.Services.AddScoped<IRideMonitoringService, RideMonitoringService>();
 builder.Services.AddHostedService<RideMonitoringBackgroundService>();
 #endregion
 
-
+// Service per il pagamento 
+builder.Services.AddScoped<PagamentoService>();
 
 
 #region Configurazione Swagger (Documentazione API)

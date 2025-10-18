@@ -9,6 +9,7 @@ using Mobishare.Core.Enums;
 using Mobishare.Core.Exceptions;
 using Mobishare.Core.Models;
 using Mobishare.Infrastructure.IoT.Interfaces;
+using Mobishare.Infrastructure.Services;
 using Mobishare.Infrastructure.SignalRHubs;
 using Mobishare.Infrastructure.SignalRHubs.Services;
 using System.Security.Claims;
@@ -18,13 +19,15 @@ namespace Mobishare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class CorseController(MobishareDbContext context, IMqttIoTService mqttIoTService, ILogger<CorseController> logger, IHubContext<NotificheHub> hubContext, NotificationOutboxService notifiche) : ControllerBase
+    public class CorseController(MobishareDbContext context, IMqttIoTService mqttIoTService, ILogger<CorseController> logger, IHubContext<NotificheHub> hubContext, NotificationOutboxService notifiche, PagamentoService pagamentoService) : ControllerBase
     {
         private readonly MobishareDbContext _context = context;
         private readonly IMqttIoTService _mqttIoTService = mqttIoTService;
         private readonly ILogger<CorseController> _logger = logger;
         private readonly IHubContext<NotificheHub> _hubContext = hubContext;
         private readonly NotificationOutboxService _notifiche = notifiche;
+        private readonly PagamentoService _pagamentoService = pagamentoService;
+
 
 
         // GET: api/corse? idUtente=& matricolaMezzo=..
@@ -334,13 +337,6 @@ namespace Mobishare.API.Controllers
 
                 corsaEsistente.CostoFinale = costo;
 
-                utente.Credito -= costo;
-
-                if (utente.Credito < 0)
-                {
-                    await SospendiUtenteAsync(utente, "Credito negativo dopo la corsa");
-                }
-
                 bool problemaSegnalato = dto.SegnalazioneProblema;
                 bool batteriaScarica = (mezzo.Tipo == TipoMezzo.MonopattinoElettrico || mezzo.Tipo == TipoMezzo.BiciElettrica)
                                        && mezzo.LivelloBatteria < 20;
@@ -349,6 +345,7 @@ namespace Mobishare.API.Controllers
                     ? StatoMezzo.NonPrelevabile
                     : StatoMezzo.Disponibile;
 
+                //salva modifiche corsa +  mezzo
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
@@ -358,12 +355,27 @@ namespace Mobishare.API.Controllers
                     corsaEsistente.MatricolaMezzo
                 );
 
-                await _context.RegistraTransazioneAsync(
+
+                //servizio accede al db per registrare la transazione e aggiornare il credito utente, quindi viene chiamato fuori dalla transazione locale di PutCorsa
+                await _pagamentoService.RegistraMovimentoAsync(
+                    idUtente: utente.Id,
+                    importo: -costo,
+                    stato: StatoPagamento.Completato,
+                    tipo: "Corsa",
+                    idCorsa: corsaEsistente.Id
+                );
+
+                if (utente.Credito < 0)
+                {
+                    await SospendiUtenteAsync(utente, "Credito negativo dopo la corsa");
+                }
+
+                /*await _context.RegistraTransazioneAsync(
                     idUtente: utente.Id,
                     importo: -corsaEsistente.CostoFinale.GetValueOrDefault(),
                     stato: StatoPagamento.Completato,
                     idCorsa: corsaEsistente.Id
-                );
+                );*/
 
                 await _hubContext.Clients.Group($"utenti:{utente.Id}")
                 .SendAsync("NuovaTransazione", new

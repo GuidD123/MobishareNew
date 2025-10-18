@@ -88,6 +88,25 @@ public class IndexModel : PageModel
                 _logger.LogWarning("GetUtenteAsync ha restituito null per userId {UserId}", userId.Value);
             }
 
+
+            //caricamento saldo utente aggiornato da API 
+            _logger.LogInformation("Caricamento saldo utente {UserId}", userId.Value);
+
+            var saldo = await _apiService.GetSaldoUtenteAsync(userId.Value);
+            if (saldo != null)
+            {
+                Credito = saldo.CreditoAttuale;
+                Sospeso = !saldo.UtenteAttivo;
+                SpesaTotale = saldo.TotaleSpese;
+
+                _logger.LogInformation("Saldo utente: Credito={Credito}, TotaleSpese={Spese}, UtenteAttivo={Attivo}",
+                    saldo.CreditoAttuale, saldo.TotaleSpese, saldo.UtenteAttivo);
+            }
+            else
+            {
+                _logger.LogWarning("GetSaldoUtenteAsync ha restituito null per userId {UserId}", userId.Value);
+            }
+
             // Carica storico corse per statistiche
             _logger.LogInformation("Caricamento storico corse per utente {UserId}", userId.Value);
 

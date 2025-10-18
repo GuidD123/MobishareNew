@@ -1,24 +1,26 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Mobishare.Core.Data;
 using Mobishare.Core.DTOs;
 using Mobishare.Core.Enums;
 using Mobishare.Core.Exceptions;
 using Mobishare.Core.Models;
-using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.SignalR;
+using Mobishare.Infrastructure.Services;
 using Mobishare.Infrastructure.SignalRHubs;
+using System.ComponentModel.DataAnnotations;
 
 
 namespace Mobishare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class RicaricheController(MobishareDbContext context, ILogger<RicaricheController> logger, IHubContext<NotificheHub> hubContext) : ControllerBase
+    public class RicaricheController(MobishareDbContext context, ILogger<RicaricheController> logger, IHubContext<NotificheHub> hubContext, PagamentoService pagamentoService) : ControllerBase
     {
         private readonly MobishareDbContext _context = context;
         private readonly ILogger<RicaricheController> _logger = logger;
         private readonly IHubContext<NotificheHub> _hubContext = hubContext;
+        private readonly PagamentoService _pagamentoService = pagamentoService;
 
 
         // GET: api/ricariche/{idUtente} - Storico ricariche utente
@@ -89,7 +91,7 @@ namespace Mobishare.API.Controllers
 
                 if (successoPagamento)
                 {
-                    // Pagamento riuscito - aggiorna credito utente
+                    /*// Pagamento riuscito - aggiorna credito utente
                     ricarica.Stato = StatoPagamento.Completato;
                     utente.Credito += dto.ImportoRicarica;
 
@@ -133,7 +135,20 @@ namespace Mobishare.API.Controllers
                     catch (Exception ex)
                     {
                         _logger.LogWarning(ex, "Impossibile inviare notifica SignalR per utente {Id}", utente.Id);
-                    }
+                    }*/
+
+                    ricarica.Stato = StatoPagamento.Completato;
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    //delega tutto al servizio al PagamentoService
+                    await _pagamentoService.RegistraMovimentoAsync(
+                        idUtente: utente.Id,
+                        importo: dto.ImportoRicarica,
+                        stato: StatoPagamento.Completato,
+                        tipo: "Ricarica",
+                        idRicarica: ricarica.Id
+                    );
 
                     var payload = new RicaricaResponseDTO
                     {
@@ -259,18 +274,21 @@ namespace Mobishare.API.Controllers
              ?? throw new ElementoNonTrovatoException("Utente", idUtente);
 
             // Calcola statistiche ricariche
-            var totaleRicariche = await _context.Ricariche
+            var totaleRicariche = _context.Ricariche
                 .Where(r => r.IdUtente == idUtente && r.Stato == StatoPagamento.Completato)
-                .SumAsync(r => r.ImportoRicarica);
+                .AsEnumerable()
+                .Sum(r => r.ImportoRicarica);
 
-            var ricaricheInSospeso = await _context.Ricariche
+            var ricaricheInSospeso = _context.Ricariche
                 .Where(r => r.IdUtente == idUtente && r.Stato == StatoPagamento.InSospeso)
-                .SumAsync(r => r.ImportoRicarica);
+                .AsEnumerable()
+                .Sum(r => r.ImportoRicarica);
 
             // Calcola spese corse - totale 
-            var totaleSpeseCorse = await _context.Corse
+            var totaleSpeseCorse = _context.Corse
                 .Where(c => c.IdUtente == idUtente && c.CostoFinale.HasValue)
-                .SumAsync(c => c.CostoFinale!.Value);
+                .AsEnumerable()
+                .Sum(c => c.CostoFinale!.Value);
 
             var ultima = await _context.Ricariche
                 .Where(r => r.IdUtente == idUtente)

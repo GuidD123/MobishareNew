@@ -1,7 +1,4 @@
-﻿// Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
-// for details on configuring this project to bundle and minify static web assets.
-
-// ============================================
+﻿// ============================================
 // MOBISHARE - JAVASCRIPT PRINCIPALE
 // ============================================
 
@@ -271,6 +268,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 
+//centralizza aggiornamento del credito in un'unica funzione, chiamata da tutti gli eventi SignalR che lo toccano 
+function aggiornaCredito(nuovoCredito) {
+    const creditoElements = document.querySelectorAll('.credito-value, [data-credito], #credito-utente');
+
+    creditoElements.forEach(el => {
+        el.textContent = new Intl.NumberFormat('it-IT', {
+            style: 'currency',
+            currency: 'EUR'
+        }).format(nuovoCredito);
+
+        el.classList.remove('text-success', 'text-warning', 'text-danger');
+        if (nuovoCredito > 5) el.classList.add('text-success');
+        else if (nuovoCredito > 0) el.classList.add('text-warning');
+        else el.classList.add('text-danger');
+    });
+}
+
+
 // ============================================
 // FUNZIONI GLOBALI
 // ============================================
@@ -359,12 +374,14 @@ const connection = new signalR.HubConnectionBuilder()
     .configureLogging(signalR.LogLevel.Information)
     .build();
 
+
+
 // ==================================================
 // EVENTI RICEVUTI DAL SERVER
 // ==================================================
 
 // Aggiornamento credito utente - AGGIORNATO per cercare l'elemento corretto
-connection.on("CreditoAggiornato", function (nuovoCredito) {
+/*connection.on("CreditoAggiornato", function (nuovoCredito) {
     // Cerca tutti gli elementi che mostrano il credito
     const creditoElements = document.querySelectorAll('.credito-value, [data-credito], #credito-utente');
 
@@ -395,12 +412,31 @@ connection.on("CreditoAggiornato", function (nuovoCredito) {
 connection.on("PagamentoCompletato", data => {
     showSuccessMessage(`Pagamento completato: ${data.importo}€ (${data.stato})`);
 
-    // Ricarica la pagina se siamo sulla dashboard o ricariche
-    if (window.location.pathname.includes('/Dashboard') || window.location.pathname.includes('/Ricariche')) {
-        setTimeout(() => {
-            window.location.reload();
-        }, 2000);
+    // Aggiorna credito sul posto se incluso nei dati
+    if (data.nuovoCredito !== undefined) {
+        const creditoElements = document.querySelectorAll('.credito-value, [data-credito], #credito-utente');
+        creditoElements.forEach(el => {
+            el.textContent = new Intl.NumberFormat('it-IT', {
+                style: 'currency',
+                currency: 'EUR'
+            }).format(data.nuovoCredito);
+
+            el.classList.remove('text-success', 'text-warning', 'text-danger');
+            if (data.nuovoCredito > 5) el.classList.add('text-success');
+            else if (data.nuovoCredito > 0) el.classList.add('text-warning');
+            else el.classList.add('text-danger');
+        });
     }
+});*/
+
+connection.on("CreditoAggiornato", function (nuovoCredito) {
+    aggiornaCredito(nuovoCredito);
+    showSuccessMessage(`Credito aggiornato: ${mobishare.formatCurrency(nuovoCredito)}`);
+});
+
+connection.on("PagamentoCompletato", data => {
+    showSuccessMessage(`Pagamento completato: ${data.importo}€ (${data.stato})`);
+    if (data.nuovoCredito !== undefined) aggiornaCredito(data.nuovoCredito);
 });
 
 connection.on("PagamentoFallito", data => {

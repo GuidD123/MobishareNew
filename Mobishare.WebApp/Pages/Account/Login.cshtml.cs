@@ -120,8 +120,7 @@ namespace Mobishare.WebApp.Pages.Account
                         _logger.LogInformation("Dati utente ricevuti: ID={Id}, Nome={Nome}, Ruolo={Ruolo}",
                             loginResponse.Dati.Id, loginResponse.Dati.Nome, loginResponse.Dati.Ruolo);
 
-                        // IMPORTANTE: Salva TUTTI i dati in Session PRIMA del redirect
-                 
+                        // IMPORTANTE: Salva TUTTI i dati in Session PRIMA del redirect      
                         HttpContext.Session.SetString("JwtToken", loginResponse.Dati.Token);
                         HttpContext.Session.SetInt32("UserId", loginResponse.Dati.Id);
                         HttpContext.Session.SetString("UserName", loginResponse.Dati.Nome);

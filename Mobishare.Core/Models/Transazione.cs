@@ -17,5 +17,6 @@ namespace Mobishare.Core.Models
         public decimal Importo { get; set; }   // + ricarica, - corsa
         public StatoPagamento Stato { get; set; }   //StatoTransazione: completato, in sospeso, fallito..
         public DateTime DataTransazione { get; set; }
+        public string Tipo { get; set; } = "Generico";
     }
 }

@@ -17,6 +17,23 @@ public class IndexModel(IMobishareApiService apiService) : PageModel
 
     public async Task OnGetAsync()
     {
+
+        var ruolo = HttpContext.Session.GetString("UserRole");
+
+        if (!string.IsNullOrEmpty(ruolo))
+        {
+            if (ruolo.Equals("Gestore", StringComparison.OrdinalIgnoreCase))
+            {
+                Response.Redirect("/DashboardAdmin/Index");
+                return;
+            }
+            else
+            {
+                Response.Redirect("/DashboardUtente/Index");
+                return;
+            }
+        }
+
         var userId = HttpContext.Session.GetInt32("UserId");
 
         if (userId.HasValue)
