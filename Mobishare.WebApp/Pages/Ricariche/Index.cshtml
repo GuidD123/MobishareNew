@@ -27,6 +27,7 @@
     }
 
     <div class="row">
+
         <!-- Saldo Attuale -->
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm border-success">
@@ -110,9 +111,8 @@
                                 Metodo di Pagamento
                             </label>
                             <select asp-for="InputRicarica.TipoRicarica" class="form-select">
-                                <option value="Carta">💳 Carta di Credito</option>
-                                <option value="PayPal">💰 PayPal</option>
-                                <option value="Bonifico">🏦 Bonifico Bancario</option>
+                                <option value="@Mobishare.Core.Enums.TipoRicarica.CartaDiCredito">💳 Carta di Credito</option>
+                                <option value="@Mobishare.Core.Enums.TipoRicarica.PayPal">💰 PayPal</option>
                             </select>
                         </div>
 
@@ -161,6 +161,10 @@
                 <div class="card-body">
                     @if (Model.Saldo != null)
                     {
+                         var totale = Model.Saldo.TotaleRicariche + Model.Saldo.TotaleSpese;
+                         var percRicariche = totale > 0 ? (Model.Saldo.TotaleRicariche / totale * 100) : 0;
+                         var percSpese = totale > 0 ? (Model.Saldo.TotaleSpese / totale * 100) : 0;
+
                         <div class="text-center mb-3">
                             <div class="display-6 text-primary">
                                 @Model.Ricariche.Count
@@ -173,22 +177,24 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="text-muted">Entrate</span>
-                                <strong class="text-success">+€@Model.Saldo.TotaleRicariche.ToString("0.00")</strong>
+                                <strong class="text-success">+€@Math.Abs(Model.Saldo.TotaleRicariche).ToString("0.00")</strong>
                             </div>
+
                             <div class="progress" style="height: 10px;">
                                 <div class="progress-bar bg-success" role="progressbar" 
-                                     style="width: @((Model.Saldo.TotaleRicariche / (Model.Saldo.TotaleRicariche + Model.Saldo.TotaleSpese) * 100).ToString("0"))%"></div>
+                                     style="width: @percRicariche%"></div>
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="text-muted">Uscite</span>
-                                <strong class="text-danger">-€@Model.Saldo.TotaleSpese.ToString("0.00")</strong>
+                                <strong class="text-danger">-€@Math.Abs(Model.Saldo.TotaleSpese).ToString("0.00")</strong>
                             </div>
+
                             <div class="progress" style="height: 10px;">
                                 <div class="progress-bar bg-danger" role="progressbar" 
-                                     style="width: @((Model.Saldo.TotaleSpese / (Model.Saldo.TotaleRicariche + Model.Saldo.TotaleSpese) * 100).ToString("0"))%"></div>
+                                     style="width:@percSpese%"></div>
                             </div>
                         </div>
 
@@ -232,7 +238,7 @@
                                     <td>@ricarica.DataRicarica.ToString("dd/MM/yyyy HH:mm")</td>
                                     <td class="fw-bold text-success">+€@ricarica.ImportoRicarica.ToString("0.00")</td>
                                     <td>
-                                        @if (ricarica.Tipo == "Carta")
+                                        @if (ricarica.Tipo == "CartaDiCredito")
                                         {
                                             <span>💳 Carta</span>
                                         }

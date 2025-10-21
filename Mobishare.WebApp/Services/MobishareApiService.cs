@@ -214,6 +214,28 @@ public class MobishareApiService : IMobishareApiService
         catch { return new(); }
     }
 
+    public async Task<CorsaResponseDTO?> GetCorsaAttivaAsync()
+    {
+        try
+        {
+            AddAuthorizationHeader();
+            var response = await _http.GetAsync("api/corse/attiva");
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var wrapper = await response.Content
+                .ReadFromJsonAsync<ApiSuccessResponse<CorsaResponseDTO>>(_jsonOptions);
+
+            return wrapper?.Dati;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+
     public async Task<List<CorsaResponseDTO>> GetStoricoCorseUtenteAsync(int idUtente)
     {
         try

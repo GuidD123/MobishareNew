@@ -29,6 +29,7 @@ public interface IMobishareApiService
     Task<List<CorsaResponseDTO>> GetCorseAsync(int? idUtente = null, string? matricolaMezzo = null);
     Task<List<CorsaResponseDTO>> GetStoricoCorseUtenteAsync(int idUtente);
     Task<CorsaResponseDTO?> GetCorsaAsync(int id);
+    Task<CorsaResponseDTO?> GetCorsaAttivaAsync();
     Task<CorsaResponseDTO?> IniziaCorsaAsync(AvviaCorsaDTO dto);
     Task<CorsaResponseDTO?> TerminaCorsaAsync(int id, FineCorsaDTO dto);
 

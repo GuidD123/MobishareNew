@@ -355,6 +355,37 @@ namespace Mobishare.IoT.Gateway.Services
             mezzo.UltimoAggiornamento = DateTime.UtcNow;
 
             await InviaStatusMezzoAsync(mezzo);
+
+            // Avvia thread simulazione scarica batteria
+            _ = Task.Run(async () =>
+            {
+                while (mezzo.Stato == StatoMezzo.InUso && mezzo.LivelloBatteria > 0)
+                {
+                    // Simula consumo proporzionale
+                    var consumo = mezzo.Tipo switch
+                    {
+                        TipoMezzo.MonopattinoElettrico => _random.Next(2, 5), // 2–5% ogni ciclo
+                        TipoMezzo.BiciElettrica => _random.Next(1, 3),       // 1–3% ogni ciclo
+                        _ => 0
+                    };
+
+                    mezzo.LivelloBatteria = Math.Max(0, mezzo.LivelloBatteria - consumo);
+
+                    // Se scende sotto 20%, segna come non prelevabile
+                    if (mezzo.LivelloBatteria < 20 && mezzo.Tipo != TipoMezzo.BiciMuscolare)
+                    {
+                        mezzo.Stato = StatoMezzo.NonPrelevabile;
+                        mezzo.ColoreSpia = ColoreSpia.Rosso;
+                    }
+
+                    // Pubblica aggiornamento telemetria
+                    await InviaStatusMezzoAsync(mezzo);
+
+                    // Attendi 10 secondi prima del prossimo aggiornamento
+                    await Task.Delay(TimeSpan.FromSeconds(10));
+                }
+            });
+
             return true;
         }
 

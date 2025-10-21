@@ -45,16 +45,23 @@ public class CorsaCorrenteModel : PageModel
 
         try
         {
-            var tutteCorse = await _apiService.GetCorseAsync(idUtente: userId);
-            CorsaAttiva = tutteCorse.FirstOrDefault(c => c.DataOraFine == null);
+            CorsaAttiva = await _apiService.GetCorsaAttivaAsync();
 
             if (CorsaAttiva != null)
             {
-                var durata = DateTime.UtcNow - CorsaAttiva.DataOraInizio;
+                var durata = DateTime.Now - CorsaAttiva.DataOraInizio;
                 DurataMinuti = (int)durata.TotalMinutes;
 
-                const decimal COSTO_BASE = 1.00m;
-                const decimal COSTO_AL_MINUTO = 0.10m;
+                const decimal COSTO_BASE = 0.50m;
+
+                decimal costoAlMinuto = CorsaAttiva.TipoMezzo switch
+                {
+                    "MonopattinoElettrico" => 0.25m,
+                    "BiciElettrica" => 0.20m,
+                    "BiciMuscolare" => 0.10m,
+                    _ => 0.10m // fallback di sicurezza
+                };
+
 
                 if (DurataMinuti <= 30)
                 {
@@ -63,7 +70,7 @@ public class CorsaCorrenteModel : PageModel
                 else
                 {
                     var minutiExtra = DurataMinuti - 30;
-                    CostoStimato = COSTO_BASE + (minutiExtra * COSTO_AL_MINUTO);
+                    CostoStimato = COSTO_BASE + (minutiExtra * costoAlMinuto);
                 }
 
                 ParcheggiDisponibili = await _apiService.GetParcheggiAsync();

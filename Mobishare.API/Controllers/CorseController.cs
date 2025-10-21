@@ -76,6 +76,42 @@ namespace Mobishare.API.Controllers
         }
 
 
+        //legge id utente dal JWT -> ritorna corsa con DataOraFine == null -> accessibile solo da utente -> include TipoMezzo con join a Mezzo
+        // GET: api/corse/attiva -> corsa in corso dell'utente autenticato
+        [Authorize(Roles = "Utente")]
+        [HttpGet("attiva")]
+        public async Task<ActionResult<SuccessResponse>> GetCorsaAttiva()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new OperazioneNonConsentitaException("Utente non autenticato"));
+
+            var corsa = await (from c in _context.Corse.AsNoTracking()
+                               join m in _context.Mezzi.AsNoTracking()
+                                   on c.MatricolaMezzo equals m.Matricola
+                               where c.IdUtente == userId && c.DataOraFine == null
+                               select new CorsaResponseDTO
+                               {
+                                   Id = c.Id,
+                                   IdUtente = c.IdUtente,
+                                   MatricolaMezzo = c.MatricolaMezzo,
+                                   TipoMezzo = m.Tipo.ToString(),
+                                   IdParcheggioPrelievo = c.IdParcheggioPrelievo,
+                                   DataOraInizio = c.DataOraInizio,
+                                   CostoFinale = c.CostoFinale
+                               }).FirstOrDefaultAsync();
+
+            if (corsa == null)
+                return NotFound(new ErrorResponse { Messaggio = "Nessuna corsa attiva trovata." });
+
+            return Ok(new SuccessResponse
+            {
+                Messaggio = "Corsa attiva trovata",
+                Dati = corsa
+            });
+        }
+
+
+
 
         // GET: api/corse/utente/{idUtente} -> storico corse di un utente
         [Authorize]
@@ -143,7 +179,7 @@ namespace Mobishare.API.Controllers
                                  Id = c.Id,
                                  IdUtente = c.IdUtente,
                                  MatricolaMezzo = c.MatricolaMezzo,
-                                 TipoMezzo = m.Tipo.ToString(),  // ✅
+                                 TipoMezzo = m.Tipo.ToString(),
                                  IdParcheggioPrelievo = c.IdParcheggioPrelievo,
                                  IdParcheggioRilascio = c.IdParcheggioRilascio,
                                  DataOraInizio = c.DataOraInizio,
@@ -227,7 +263,7 @@ namespace Mobishare.API.Controllers
                     IdUtente = utente.Id,  // ⚡ NON più dto.IdUtente
                     MatricolaMezzo = dto.MatricolaMezzo,
                     IdParcheggioPrelievo = dto.IdParcheggioPrelievo,
-                    DataOraInizio = DateTime.UtcNow
+                    DataOraInizio = DateTime.Now
                 };
 
                 _context.Corse.Add(corsa);
@@ -307,11 +343,12 @@ namespace Mobishare.API.Controllers
 
                 // Calcolo costo della corsa
                 TimeSpan durata = corsaEsistente.DataOraFine.Value - corsaEsistente.DataOraInizio;
+                var durataMinuti = Math.Min(durata.TotalMinutes, 360); 
                 decimal costo = Tariffe.COSTO_BASE;
 
-                if (durata.TotalMinutes > 30)
+                if (durataMinuti > 30)
                 {
-                    decimal minutiExtra = (decimal)durata.TotalMinutes - 30;
+                    decimal minutiExtra = (decimal)durataMinuti - 30;
                     switch (mezzo.Tipo)
                     {
                         case TipoMezzo.MonopattinoElettrico:
@@ -325,6 +362,8 @@ namespace Mobishare.API.Controllers
                             break;
                     }
                 }
+                if (costo > 100)
+                    costo = 100; //tetto massimo
 
                 _logger.LogInformation("Fine corsa {CorsaId}: durata {DurataMinuti:F1} min, costo {Costo:F2}€, utente {UtenteId}, mezzo {Matricola}",
                     corsaEsistente.Id,

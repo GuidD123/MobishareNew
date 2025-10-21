@@ -286,7 +286,7 @@ namespace Mobishare.API.Controllers
 
             // Calcola spese corse - totale 
             var totaleSpeseCorse = _context.Corse
-                .Where(c => c.IdUtente == idUtente && c.CostoFinale.HasValue)
+                .Where(c => c.IdUtente == idUtente && c.CostoFinale.HasValue && c.DataOraFine.HasValue && c.Stato == StatoCorsa.Completata)
                 .AsEnumerable()
                 .Sum(c => c.CostoFinale!.Value);
 

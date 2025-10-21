@@ -22,8 +22,6 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
-
 #region Configurazione Controllers Base
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -115,6 +113,7 @@ builder.Services.AddHostedService(sp => (MqttIoTService)sp.GetRequiredService<IM
 // Registra il BackgroundService che integra IoT e DB e avvia automaticamente
 builder.Services.AddHostedService<MqttIoTBackgroundService>();
 
+//scenari IoT
 //builder.Services.AddScoped<IIoTScenarioService, IoTScenarioService>();
 #endregion
 
@@ -129,8 +128,11 @@ builder.Services.AddScoped<IRideMonitoringService, RideMonitoringService>();
 builder.Services.AddHostedService<RideMonitoringBackgroundService>();
 #endregion
 
+
+#region PagamentoService
 // Service per il pagamento 
 builder.Services.AddScoped<PagamentoService>();
+#endregion
 
 
 #region Configurazione Swagger (Documentazione API)
@@ -192,10 +194,10 @@ builder.Logging.AddDebug();
 builder.Services.AddSignalR();
 #endregion
 
+
 builder.Services.AddSingleton<NotificationOutboxService>();
 
 builder.Services.AddHostedService<NotificationRetryService>();
-
 
 
 // Costruisce l'applicazione

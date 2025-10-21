@@ -48,10 +48,14 @@ public class IndexModel : PageModel
         await CaricaDatiAsync(userId.Value);
 
         // Messaggio da TempData (se presente)
-        if (TempData["SuccessMessage"] != null)
+        if (TempData["SuccessMessage"] is string msg)
+        {
+            SuccessMessage = msg;
+        }
+        /*if (TempData["SuccessMessage"] != null)
         {
             SuccessMessage = TempData["SuccessMessage"]?.ToString();
-        }
+        }*/
 
         return Page();
     }
@@ -83,7 +87,7 @@ public class IndexModel : PageModel
 
             var success = await _apiService.NuovaRicaricaAsync(dto);
 
-            if (success)
+            /*if (success)
             {
                 SuccessMessage = $"Ricarica di €{InputRicarica.ImportoRicarica:0.00} completata con successo!";
 
@@ -93,6 +97,11 @@ public class IndexModel : PageModel
                 // Reset form
                 ModelState.Clear();
                 InputRicarica = new();
+            }*/
+            if (success)
+            {
+                TempData["SuccessMessage"] = $"Ricarica di €{InputRicarica.ImportoRicarica:0.00} completata con successo!";
+                return RedirectToPage(); // evita il reinvio POST al refresh
             }
             else
             {

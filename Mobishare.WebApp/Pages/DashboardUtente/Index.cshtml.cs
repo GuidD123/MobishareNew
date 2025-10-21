@@ -115,12 +115,22 @@ public class IndexModel : PageModel
             _logger.LogInformation("Storico corse caricato: {Count} corse totali", corse.Count);
 
             TotaleCorseCompletate = corse.Count(c => c.DataOraFine.HasValue);
-            SpesaTotale = corse
-                .Where(c => c.CostoFinale.HasValue)
-                .Sum(c => c.CostoFinale!.Value);
+            if (saldo != null)
+            {
+                SpesaTotale = saldo.TotaleSpese;
+            }
+            else
+            {
+                _logger.LogWarning("Saldo nullo per userId {UserId}", userId.Value);
+                SpesaTotale = 0;
+            }
 
-            // Verifica corsa in corso
-            var corsaInCorso = corse.FirstOrDefault(c => c.DataOraFine == null);
+                /*SpesaTotale = corse
+                    .Where(c => c.CostoFinale.HasValue)
+                    .Sum(c => c.CostoFinale!.Value);*/
+
+                // Verifica corsa in corso
+                var corsaInCorso = corse.FirstOrDefault(c => c.DataOraFine == null);
             if (corsaInCorso != null)
             {
                 _logger.LogInformation("Trovata corsa in corso: ID={IdCorsa}, Matricola={Matricola}",
