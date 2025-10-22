@@ -260,7 +260,7 @@ app.MapGet("/health", async (MobishareDbContext context) =>
         return Results.Ok(new
         {
             status = "Healthy",
-            timestamp = DateTime.UtcNow,
+            timestamp = DateTime.Now,
             database = "Connected",
             version = "1.0.0"
         });

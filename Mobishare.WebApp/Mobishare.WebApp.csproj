@@ -28,4 +28,10 @@
 	<ProjectReference Include="..\Mobishare.Core\Mobishare.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="Pages\Account\Logout.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

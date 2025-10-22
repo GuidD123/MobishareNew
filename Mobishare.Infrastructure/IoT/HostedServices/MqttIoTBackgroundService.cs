@@ -113,7 +113,7 @@ namespace Mobishare.Infrastructure.IoT.HostedServices
                     mezzo.Stato,
                     mezzo.LivelloBatteria,
                     e.IdParcheggio,
-                    TimeStamp = DateTime.UtcNow
+                    TimeStamp = DateTime.Now
                 }, ct);
 
                 _logger.LogInformation("Telemetria inoltrata via SignalR per mezzo {Matricola}", mezzo.Matricola);

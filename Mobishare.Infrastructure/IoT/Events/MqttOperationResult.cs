@@ -23,7 +23,7 @@
         /// <summary>
         /// Timestamp dell'operazione (UTC)
         /// </summary>
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public DateTime Timestamp { get; set; } = DateTime.Now;
 
         /// <summary>
         /// Factory method per operazione riuscita

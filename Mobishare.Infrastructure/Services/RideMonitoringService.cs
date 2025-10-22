@@ -71,7 +71,7 @@ namespace Mobishare.Infrastructure.Services
                         ? corsa.DataOraInizio
                         : corsa.DataOraInizio.ToUniversalTime();
 
-                    var durataMinuti = (DateTime.UtcNow - startTime).TotalMinutes;
+                    var durataMinuti = (DateTime.Now - startTime).TotalMinutes;
 
                     if (durataMinuti < 0)
                     {
@@ -96,7 +96,7 @@ namespace Mobishare.Infrastructure.Services
                             durataMinuti);
 
                         // 6. Termina la corsa
-                        corsa.DataOraFine = DateTime.UtcNow;
+                        corsa.DataOraFine = DateTime.Now;
                         corsa.Stato = StatoCorsa.Completata;
                         corsa.CostoFinale = utente.Credito;
 

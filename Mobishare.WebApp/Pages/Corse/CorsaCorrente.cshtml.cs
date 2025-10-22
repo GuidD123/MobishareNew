@@ -40,7 +40,7 @@ public class CorsaCorrenteModel : PageModel
         var userId = HttpContext.Session.GetInt32("UserId");
         if (userId == null)
         {
-            return RedirectToPage("/Auth/Login");
+            return RedirectToPage("/Account/Login");
         }
 
         try
@@ -90,7 +90,7 @@ public class CorsaCorrenteModel : PageModel
         var userId = HttpContext.Session.GetInt32("UserId");
         if (userId == null)
         {
-            return RedirectToPage("/Auth/Login");
+            return RedirectToPage("/Account/Login");
         }
 
         if (!ModelState.IsValid)
@@ -103,7 +103,7 @@ public class CorsaCorrenteModel : PageModel
         {
             var dto = new FineCorsaDTO
             {
-                DataOraFineCorsa= DateTime.UtcNow,
+                DataOraFineCorsa= DateTime.Now,
                 IdParcheggioRilascio= InputFineCorsa.IdParcheggioRilascio,
                 SegnalazioneProblema= InputFineCorsa.SegnalazioneProblema
             };

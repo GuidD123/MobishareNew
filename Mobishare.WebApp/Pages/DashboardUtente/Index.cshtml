@@ -5,12 +5,16 @@
     Layout = "_Layout";
 }
 
-<div class="container mt-4">
-    
-    <!-- Header con benvenuto -->
-    <div class="row mb-4">
+<div class="container mt-4 fade-in">
+
+    <!-- Header con saluto dinamico -->
+    <div class="row mb-4 dashboard-header">
         <div class="col-12">
-            <h2>Benvenuto, @Model.NomeUtente</h2>
+            @{
+                var ora = DateTime.Now.Hour;
+                string saluto = ora < 12 ? "Buongiorno" : ora < 18 ? "Buon pomeriggio" : "Buonasera";
+            }
+            <h2>@saluto, @Model.NomeUtente 👋</h2>
             <p class="text-muted">Gestisci le tue corse e il tuo account</p>
         </div>
     </div>
@@ -33,10 +37,11 @@
         </div>
     }
 
-    <!-- Alert utente sospeso - NON DISMISSIBILE -->
+    <!-- Alert utente sospeso -->
     @if (Model.Sospeso)
     {
-        <div class="alert alert-danger border-danger shadow-sm alert-permanent" role="alert" data-auto-dismiss="false" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-left: 5px solid #dc2626;">
+        <div class="alert alert-danger border-danger shadow-sm alert-permanent" role="alert" data-auto-dismiss="false" 
+             style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-left: 5px solid #dc2626;">
             <div class="d-flex align-items-center">
                 <i class="bi bi-exclamation-octagon-fill display-6 me-3" style="color: #dc2626;"></i>
                 <div class="flex-grow-1">
@@ -50,7 +55,8 @@
                     </p>
                 </div>
                 <div class="ms-5">
-                    <a href="/Ricariche" class="btn btn-warning" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border: none; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">
+                    <a href="/Ricariche" class="btn btn-warning" 
+                       style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border: none; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">
                         <i class="bi bi-wallet2"></i> Ricarica Ora
                     </a>
                 </div>
@@ -58,19 +64,22 @@
         </div>
     }
 
-    <!-- Cards Statistiche - SEMPRE VISIBILI -->
+    <!-- Cards Statistiche -->
     <div class="row mb-4">
+
         <!-- Credito -->
         <div class="col-md-4 mb-3">
-            <div class="card h-100 shadow-sm border-start border-4 @(Model.Credito > 0 ? "border-success" : "border-danger")">
+            <div class="card h-100 shadow-sm border-start border-4 @(Model.Credito > 0 ? "border-success" : "border-danger")" data-credito-basso="@(Model.Credito < 5)">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="text-muted mb-0">Credito Disponibile</h6>
                         <i class="bi bi-wallet2 text-muted fs-4"></i>
                     </div>
-                    <h2 class="mb-2 @(Model.Credito > 0 ? "text-success" : "text-danger") fw-bold credito-value" data-credito>
+
+                    <h2 class="mb-2 @(Model.Credito > 0 ? "text-success" : "text-danger") fw-bold">
                         @Model.Credito.ToString("C2")
                     </h2>
+
                     @if (Model.Credito <= 0)
                     {
                         <small class="text-danger d-block mb-2">
@@ -83,6 +92,15 @@
                             <i class="bi bi-exclamation-triangle"></i> Credito in esaurimento
                         </small>
                     }
+
+                    <!-- Progress bar credito -->
+                    <div class="progress mb-2" style="height: 6px;">
+                        <div class="progress-bar" 
+                             style="width:@(Math.Min((int)(Model.Credito * 2),100))%; 
+                                    background: linear-gradient(135deg, var(--success-color), var(--success-light));">
+                        </div>
+                    </div>
+
                     <a href="/Ricariche" class="btn btn-success btn-sm w-100 mt-2">
                         <i class="bi bi-plus-circle"></i> Ricarica
                     </a>
@@ -143,11 +161,11 @@
         </div>
     </div>
 
-    <!-- Corsa in corso (se esiste) -->
+    <!-- Corsa in corso -->
     @if (Model.HasCorsaInCorso)
     {
-        <div class="card mb-4 border-warning shadow">
-            <div class="card-header bg-warning text-dark">
+        <div class="card mb-4 shadow corsa-attiva-card border-warning">
+            <div class="card-header text-dark" style="background: linear-gradient(135deg, #ffe259 0%, #ffa751 100%);">
                 <h5 class="mb-0">
                     <i class="bi bi-bicycle"></i> Corsa in Corso
                     <span class="badge bg-dark float-end">ATTIVA</span>
@@ -181,7 +199,6 @@
     }
     else if (!Model.Sospeso)
     {
-        <!-- Azione principale: Noleggia mezzo -->
         <div class="card mb-4 border-success shadow">
             <div class="card-body text-center py-5">
                 <i class="bi bi-bicycle display-1 text-success mb-3"></i>
@@ -260,32 +277,20 @@
             </div>
         </div>
     </div>
+</div>
 
 @section Scripts {
     @if (Model.HasCorsaInCorso && Model.CorsaAttiva != null)
     {
         <script>
-            // Calcola durata corsa in tempo reale
             const startTime = new Date('@Model.CorsaAttiva.DataOraInizio.ToString("o")');
-            
             function aggiornaDurata() {
-                const now = new Date();
-                const diff = now - startTime;
-                
-                const hours = Math.floor(diff / 3600000);
-                const minutes = Math.floor((diff % 3600000) / 60000);
-                
-                const durataElement = document.getElementById('durataCorsa');
-                if (durataElement) {
-                    if (hours > 0) {
-                        durataElement.textContent = hours + (hours === 1 ? ' ora e ' : ' ore e ') + minutes + (minutes === 1 ? ' minuto' : ' minuti');
-                    } else {
-                        durataElement.textContent = minutes + (minutes === 1 ? ' minuto' : ' minuti');
-                    }
-                }
+                const diff = new Date() - startTime;
+                const h = Math.floor(diff / 3600000);
+                const m = Math.floor((diff % 3600000) / 60000);
+                const el = document.getElementById('durataCorsa');
+                if (el) el.textContent = h > 0 ? `${h}h ${m}m` : `${m} min`;
             }
-            
-            // Aggiorna subito e poi ogni minuto
             aggiornaDurata();
             setInterval(aggiornaDurata, 60000);
         </script>

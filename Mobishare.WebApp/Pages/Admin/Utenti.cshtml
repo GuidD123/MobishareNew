@@ -6,15 +6,23 @@
 }
 
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>
-            <i class="bi bi-people-fill text-warning"></i> Gestione Utenti
-        </h2>
-        <a asp-page="/Dashboard/Index" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Torna alla Dashboard
-        </a>
+    
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="bi bi-people-fill text-warning"></i> Gestione Utenti</h2>
+                    <p class="text-muted">Amministra gli account degli utenti della piattaforma</p>
+                </div>
+                <a asp-page="/DashboardAdmin/Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Torna alla Dashboard
+                </a>
+            </div>
+        </div>
     </div>
 
+    <!-- Alert messaggi -->
     @if (!string.IsNullOrEmpty(Model.SuccessMessage))
     {
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -31,18 +39,112 @@
         </div>
     }
 
+<!-- Barra di Ricerca e Filtri 
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label small text-muted mb-1">
+                    <i class="bi bi-search"></i> Cerca Utente
+                </label>
+                <div class="input-group">
+                    <input type="text" id="searchInput" class="form-control" placeholder="Nome, email o ID...">
+                    <button class="btn btn-primary" type="button" onclick="filterTable()">
+                        <i class="bi bi-search"></i> Cerca
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">
+                    <i class="bi bi-filter"></i> Filtra per Ruolo
+                </label>
+                <select id="filterRuolo" class="form-select">
+                    <option value="">Tutti i ruoli</option>
+                    <option value="Utente">Utente</option>
+                    <option value="Gestore">Gestore</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">
+                    <i class="bi bi-sort-down"></i> Ordina per
+                </label>
+                <select id="sortBy" class="form-select">
+                    <option value="nome">Nome (A-Z)</option>
+                    <option value="credito-desc">Credito ↓</option>
+                    <option value="credito-asc">Credito ↑</option>
+                    <option value="id">ID</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button id="btnResetFilters" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-arrow-clockwise"></i> Reset
+                </button>
+            </div>
+        </div>
+    </div>
+</div>-->
+
+    <!-- Cards Statistiche -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 shadow-sm border-start border-4 border-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-muted mb-0">Totale Utenti</h6>
+                        <i class="bi bi-people text-muted fs-4"></i>
+                    </div>
+                    <h2 class="mb-0 text-primary fw-bold">@Model.TuttiUtenti.Count</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 shadow-sm border-start border-4 @(Model.UtentiSospesi.Count > 0 ? "border-danger" : "border-success")">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-muted mb-0">Utenti Sospesi</h6>
+                        <i class="bi bi-person-x text-muted fs-4"></i>
+                    </div>
+                    <h2 class="mb-0 @(Model.UtentiSospesi.Count > 0 ? "text-danger" : "text-success") fw-bold">
+                        @Model.UtentiSospesi.Count
+                    </h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 shadow-sm border-start border-4 border-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-muted mb-0">Utenti Attivi</h6>
+                        <i class="bi bi-check-circle text-muted fs-4"></i>
+                    </div>
+                    <h2 class="mb-0 text-success fw-bold">
+                        @(Model.TuttiUtenti.Count - Model.UtentiSospesi.Count)
+                    </h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Tabs -->
-    <ul class="nav nav-tabs mb-4" role="tablist">
+    <div class="row">
+        <div class="col-12 mb-3">
+            <h4><i class="bi bi-list-ul"></i> Elenco Utenti</h4>
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs utenti-tabs mb-4" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link @(Model.MostraSoloSospesi ? "" : "active")" 
                     data-bs-toggle="tab" data-bs-target="#tutti" type="button">
-                <i class="bi bi-people"></i> Tutti gli Utenti (@Model.TuttiUtenti.Count)
+                <i class="bi bi-people"></i> Tutti <span class="badge bg-secondary ms-1">@Model.TuttiUtenti.Count</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link @(Model.MostraSoloSospesi ? "active" : "")" 
                     data-bs-toggle="tab" data-bs-target="#sospesi" type="button">
-                <i class="bi bi-person-x"></i> Utenti Sospesi (@Model.UtentiSospesi.Count)
+                <i class="bi bi-person-x"></i> Sospesi <span class="badge bg-danger ms-1">@Model.UtentiSospesi.Count</span>
             </button>
         </li>
     </ul>
@@ -65,24 +167,29 @@
                                         <th>Ruolo</th>
                                         <th>Credito</th>
                                         <th>Stato</th>
-                                        <th>Azioni</th>
+                                        <th class="text-center">Azioni</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="tableBody">
                                     @foreach (var utente in Model.TuttiUtenti.OrderBy(u => u.Sospeso).ThenBy(u => u.Nome))
                                     {
-                                        <tr class="@(utente.Sospeso ? "table-warning" : "")">
+                                        <tr class="@(utente.Sospeso ? "table-warning" : "")" 
+                                            data-nome="@utente.Nome.ToLower()" 
+                                            data-email="@utente.Email.ToLower()" 
+                                            data-id="@utente.Id"
+                                            data-ruolo="@utente.Ruolo"
+                                            data-credito="@utente.Credito">
                                             <td><strong>#@utente.Id</strong></td>
                                             <td>@utente.Nome</td>
-                                            <td><small>@utente.Email</small></td>
+                                            <td><small class="text-muted">@utente.Email</small></td>
                                             <td>
                                                 @if (utente.Ruolo == "Gestore")
                                                 {
-                                                    <span class="badge bg-primary">Gestore</span>
+                                                    <span class="badge bg-primary"><i class="bi bi-shield-check"></i> Gestore</span>
                                                 }
                                                 else
                                                 {
-                                                    <span class="badge bg-secondary">Utente</span>
+                                                    <span class="badge bg-secondary"><i class="bi bi-person"></i> Utente</span>
                                                 }
                                             </td>
                                             <td>
@@ -104,18 +211,19 @@
                                                     </span>
                                                 }
                                             </td>
-                                            <td>
+                                            <td class="text-center">
                                                 @if (utente.Sospeso && utente.Ruolo != "Gestore")
                                                 {
                                                     <button type="button" class="btn btn-sm btn-success" 
                                                             data-bs-toggle="modal" 
-                                                            data-bs-target="#modalRiattiva@(utente.Id)">
+                                                            data-bs-target="#modalRiattiva@(utente.Id)"
+                                                            title="Riattiva utente">
                                                         <i class="bi bi-check-circle"></i> Riattiva
                                                     </button>
                                                 }
-                                                else if (!utente.Sospeso)
+                                                else
                                                 {
-                                                    <span class="text-muted"><small>Nessuna azione</small></span>
+                                                    <span class="text-muted small">-</span>
                                                 }
                                             </td>
                                         </tr>
@@ -166,9 +274,12 @@
             }
             else
             {
-                <div class="text-center py-5">
-                    <i class="bi bi-inbox display-4 text-muted"></i>
-                    <p class="mt-3 text-muted">Nessun utente presente nel sistema</p>
+                <div class="card shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+                        <h5 class="mb-3">Nessun utente presente</h5>
+                        <p class="text-muted">Non ci sono ancora utenti registrati nel sistema</p>
+                    </div>
                 </div>
             }
         </div>
@@ -177,41 +288,56 @@
         <div class="tab-pane fade @(Model.MostraSoloSospesi ? "show active" : "")" id="sospesi">
             @if (Model.UtentiSospesi.Any())
             {
-                <div class="alert alert-warning">
-                    <i class="bi bi-exclamation-triangle"></i> 
-                    <strong>Attenzione:</strong> Questi utenti hanno il credito insufficiente e necessitano di approvazione per essere riattivati.
+                <div class="alert alert-danger border-danger shadow-sm mb-4" role="alert" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-left: 5px solid #dc2626;">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-exclamation-octagon-fill fs-4 me-3" style="color: #dc2626;"></i>
+                        <div>
+                            <h6 class="alert-heading mb-1" style="color: #991b1b;">
+                                <strong>⚠️ Attenzione</strong>
+                            </h6>
+                            <p class="mb-0">Questi utenti hanno il credito insufficiente e necessitano di approvazione per essere riattivati.</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="row">
                     @foreach (var utente in Model.UtentiSospesi.OrderBy(u => u.Credito))
                     {
                         <div class="col-lg-6 mb-3">
-                            <div class="card shadow-sm border-warning">
-                                <div class="card-header bg-warning">
+                            <div class="card h-100 shadow-sm border-start border-4 border-danger hover-card">
+                                <div class="card-header bg-warning text-dark">
                                     <h6 class="mb-0">
                                         <i class="bi bi-person-x"></i> @utente.Nome
+                                        <span class="badge bg-danger float-end">SOSPESO</span>
                                     </h6>
                                 </div>
                                 <div class="card-body">
-                                    <p class="mb-2">
-                                        <strong>Email:</strong> @utente.Email
-                                    </p>
-                                    <p class="mb-2">
-                                        <strong>ID Utente:</strong> #@utente.Id
-                                    </p>
-                                    <p class="mb-3">
-                                        <strong>Credito:</strong> 
-                                        <span class="badge @(utente.Credito >= 0 ? "bg-success" : "bg-danger")">
-                                            €@utente.Credito.ToString("0.00")
-                                        </span>
-                                    </p>
+                                    <div class="row mb-3">
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">ID Utente</small>
+                                            <strong>#@utente.Id</strong>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Email</small>
+                                            <strong><small>@utente.Email</small></strong>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-12">
+                                            <small class="text-muted d-block">Credito Disponibile</small>
+                                            <span class="badge bg-danger fs-6">
+                                                €@utente.Credito.ToString("0.00")
+                                            </span>
+                                        </div>
+                                    </div>
 
                                     @if (utente.Credito < 0)
                                     {
                                         <div class="alert alert-danger mb-3">
                                             <small>
                                                 <i class="bi bi-exclamation-triangle"></i> 
-                                                L'utente ha un debito di <strong>€@(Math.Abs(utente.Credito)).ToString("0.00")</strong>
+                                                L'utente ha un credito negativo di <strong>€@utente.Credito.ToString("0.00")</strong>
                                             </small>
                                         </div>
                                     }
@@ -258,13 +384,134 @@
             }
             else
             {
-                <div class="alert alert-success text-center">
-                    <i class="bi bi-check-circle display-4"></i>
-                    <p class="mt-3 mb-0">
-                        <strong>Ottimo!</strong> Non ci sono utenti sospesi al momento.
-                    </p>
+                <div class="card shadow-sm border-success">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-check-circle display-1 text-success mb-3"></i>
+                        <h5 class="mb-3">Ottimo!</h5>
+                        <p class="text-muted mb-0">Non ci sono utenti sospesi al momento.</p>
+                    </div>
                 </div>
             }
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .hover-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        
+        .hover-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        }
+
+        .table tbody tr {
+            transition: background-color 0.2s ease;
+        }
+
+        .table tbody tr:hover {
+            background-color: rgba(0, 123, 255, 0.05) !important;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        // Ricerca in tempo reale
+        document.getElementById('searchInput').addEventListener('input', filterTable);
+        document.getElementById('filterRuolo').addEventListener('change', filterTable);
+        document.getElementById('sortBy').addEventListener('change', function(e) {
+            sortTable(e.target.value);
+        });
+
+        document.getElementById('btnResetFilters').addEventListener('click', function() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterRuolo').value = '';
+            document.getElementById('sortBy').value = 'nome';
+            filterTable();
+        });
+
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const ruoloFilter = document.getElementById('filterRuolo').value;
+            const rows = document.querySelectorAll('#tableBody tr:not(#noResultsRow)');
+            
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                const nome = row.dataset.nome || '';
+                const email = row.dataset.email || '';
+                const id = row.dataset.id || '';
+                const ruolo = row.dataset.ruolo || '';
+                
+                const matchesSearch = nome.includes(searchTerm) || 
+                                     email.includes(searchTerm) || 
+                                     id.includes(searchTerm);
+                const matchesRuolo = !ruoloFilter || ruolo === ruoloFilter;
+                
+                if (matchesSearch && matchesRuolo) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Mostra messaggio se nessun risultato
+            const tbody = document.getElementById('tableBody');
+            let noResultsRow = document.getElementById('noResultsRow');
+            
+            if (visibleCount === 0 && !noResultsRow) {
+                noResultsRow = document.createElement('tr');
+                noResultsRow.id = 'noResultsRow';
+                noResultsRow.innerHTML = `
+                    <td colspan="7" class="text-center py-4">
+                        <i class="bi bi-search display-4 text-muted"></i>
+                        <p class="text-muted mt-2">Nessun utente trovato</p>
+                    </td>
+                `;
+                tbody.appendChild(noResultsRow);
+            } else if (visibleCount > 0 && noResultsRow) {
+                noResultsRow.remove();
+            }
+        }
+
+        function sortTable(sortBy) {
+            const tbody = document.getElementById('tableBody');
+            const rows = Array.from(tbody.querySelectorAll('tr:not(#noResultsRow)'));
+            
+            rows.sort((a, b) => {
+                let aVal, bVal;
+                
+                switch(sortBy) {
+                    case 'nome':
+                        aVal = a.dataset.nome;
+                        bVal = b.dataset.nome;
+                        return aVal.localeCompare(bVal);
+                    
+                    case 'credito-desc':
+                        aVal = parseFloat(a.dataset.credito);
+                        bVal = parseFloat(b.dataset.credito);
+                        return bVal - aVal;
+                    
+                    case 'credito-asc':
+                        aVal = parseFloat(a.dataset.credito);
+                        bVal = parseFloat(b.dataset.credito);
+                        return aVal - bVal;
+                    
+                    case 'id':
+                        aVal = parseInt(a.dataset.id);
+                        bVal = parseInt(b.dataset.id);
+                        return aVal - bVal;
+                    
+                    default:
+                        return 0;
+                }
+            });
+            
+            rows.forEach(row => tbody.appendChild(row));
+        }
+    </script>
+}

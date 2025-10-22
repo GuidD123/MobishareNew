@@ -373,8 +373,8 @@ namespace Mobishare.Infrastructure.Seed
                     MatricolaMezzo = "BM001",
                     IdParcheggioPrelievo = 1,
                     IdParcheggioRilascio = 2,
-                    DataOraInizio = DateTime.UtcNow.AddHours(-2),
-                    DataOraFine = DateTime.UtcNow.AddHours(-1),
+                    DataOraInizio = DateTime.Now.AddHours(-2),
+                    DataOraFine = DateTime.Now.AddHours(-1),
                     Stato = StatoCorsa.Completata,
                     CostoFinale = 3.50m,
                     SegnalazioneProblema = false
@@ -385,7 +385,7 @@ namespace Mobishare.Infrastructure.Seed
                     IdUtente = 3,
                     MatricolaMezzo = "BM004",  // BM004 (InUso) 
                     IdParcheggioPrelievo = 1,
-                    DataOraInizio = DateTime.UtcNow.AddMinutes(-30),
+                    DataOraInizio = DateTime.Now.AddMinutes(-30),
                     Stato = StatoCorsa.InCorso,
                     //CostoFinale = 0 // Sarà calcolato alla fine
                     SegnalazioneProblema = false
@@ -397,8 +397,8 @@ namespace Mobishare.Infrastructure.Seed
                     MatricolaMezzo ="BE002",  // BE002
                     IdParcheggioPrelievo = 1,
                     IdParcheggioRilascio = 3,
-                    DataOraInizio = DateTime.UtcNow.AddDays(-1).AddHours(-3),
-                    DataOraFine = DateTime.UtcNow.AddDays(-1).AddHours(-2),
+                    DataOraInizio = DateTime.Now.AddDays(-1).AddHours(-3),
+                    DataOraFine = DateTime.Now.AddDays(-1).AddHours(-2),
                     Stato = StatoCorsa.Completata,
                     CostoFinale  = 5.20m,
                     SegnalazioneProblema = false
@@ -409,7 +409,7 @@ namespace Mobishare.Infrastructure.Seed
                     IdUtente = 5,
                     MatricolaMezzo = "ME010",  // ME010 (InUso) 
                     IdParcheggioPrelievo = 1,
-                    DataOraInizio = DateTime.UtcNow.AddMinutes(-30),
+                    DataOraInizio = DateTime.Now.AddMinutes(-30),
                     Stato = StatoCorsa.InCorso,
                     //CostoFinale = 0 // Sarà calcolato alla fine
                     SegnalazioneProblema = false
@@ -420,8 +420,8 @@ namespace Mobishare.Infrastructure.Seed
                     MatricolaMezzo = "BE005",
                     IdParcheggioPrelievo = 2,
                     IdParcheggioRilascio = 3,
-                    DataOraInizio = DateTime.UtcNow.AddHours(-5),
-                    DataOraFine = DateTime.UtcNow.AddHours(-4),
+                    DataOraInizio = DateTime.Now.AddHours(-5),
+                    DataOraFine = DateTime.Now.AddHours(-4),
                     Stato = StatoCorsa.Completata,
                     CostoFinale = 4.00m,
                     SegnalazioneProblema = true // guasto segnalato
@@ -443,7 +443,7 @@ namespace Mobishare.Infrastructure.Seed
                 new() {
                     IdUtente = 3,
                     ImportoRicarica = 40.00m,
-                    DataRicarica = DateTime.UtcNow.AddHours(-4),
+                    DataRicarica = DateTime.Now.AddHours(-4),
                     Tipo = TipoRicarica.CartaDiCredito,
                     Stato = StatoPagamento.Completato,
                 },
@@ -451,7 +451,7 @@ namespace Mobishare.Infrastructure.Seed
                 new() {
                     IdUtente = 5,
                     ImportoRicarica = 20.00m,
-                    DataRicarica = DateTime.UtcNow.AddDays(-1).AddHours(-2),
+                    DataRicarica = DateTime.Now.AddDays(-1).AddHours(-2),
                     Tipo = TipoRicarica.CartaDiCredito,
                     Stato = StatoPagamento.Completato,
                 },
@@ -460,7 +460,7 @@ namespace Mobishare.Infrastructure.Seed
                 new() {
                     IdUtente = 4,
                     ImportoRicarica = 30.00m,
-                    DataRicarica = DateTime.UtcNow.AddDays(-3),
+                    DataRicarica = DateTime.Now.AddDays(-3),
                     Tipo = TipoRicarica.PayPal,
                     Stato = StatoPagamento.InSospeso,
                 }, 
@@ -469,7 +469,7 @@ namespace Mobishare.Infrastructure.Seed
                 new() {
                     IdUtente = 2,
                     ImportoRicarica = 15.00m,
-                    DataRicarica = DateTime.UtcNow.AddDays(-2),
+                    DataRicarica = DateTime.Now.AddDays(-2),
                     Tipo = TipoRicarica.CartaDiCredito,
                     Stato = StatoPagamento.Fallito
                 }
@@ -488,7 +488,7 @@ namespace Mobishare.Infrastructure.Seed
                     IdCorsa = 1,
                     Valutazione = ValutazioneFeedback.Buono,
                     Commento = "Bici in buone condizioni, percorso piacevole",
-                    DataFeedback = DateTime.UtcNow.AddHours(-1)
+                    DataFeedback = DateTime.Now.AddHours(-1)
                 },
 
                 new() {
@@ -496,7 +496,7 @@ namespace Mobishare.Infrastructure.Seed
                     IdCorsa = 3,
                     Valutazione = ValutazioneFeedback.Ottimo,
                     Commento = "Servizio eccellente, bici elettrica molto comoda",
-                    DataFeedback = DateTime.UtcNow.AddDays(-1).AddHours(-2)
+                    DataFeedback = DateTime.Now.AddDays(-1).AddHours(-2)
                 },
 
                 //SeedFeedback (aggiunta negativa)
@@ -505,7 +505,7 @@ namespace Mobishare.Infrastructure.Seed
                     IdCorsa = 2,
                     Valutazione = ValutazioneFeedback.Scarso,
                     Commento = "Monopattino con freni difettosi",
-                    DataFeedback = DateTime.UtcNow.AddMinutes(-50)
+                    DataFeedback = DateTime.Now.AddMinutes(-50)
                 }
             };
 

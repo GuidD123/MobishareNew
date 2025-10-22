@@ -36,7 +36,7 @@ namespace Mobishare.Core.Models
         /// <summary>
         /// Timestamp della risposta (UTC)
         /// </summary>
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public DateTime Timestamp { get; set; } = DateTime.Now;
 
         /// <summary>
         /// Dati aggiuntivi restituiti dal comando

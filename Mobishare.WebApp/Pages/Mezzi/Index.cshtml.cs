@@ -38,7 +38,7 @@ public class IndexModel : PageModel
         if (userId == null)
         {
             _logger.LogWarning("Tentativo di accesso a Mezzi senza autenticazione");
-            return RedirectToPage("/Auth/Login");
+            return RedirectToPage("/Account/Login");
         }
 
         try
@@ -116,7 +116,7 @@ public class IndexModel : PageModel
         if (userId == null)
         {
             _logger.LogWarning("Tentativo di noleggio senza autenticazione");
-            return RedirectToPage("/Auth/Login");
+            return RedirectToPage("/Account/Login");
         }
 
         if (string.IsNullOrEmpty(matricolaMezzo) || !idParcheggio.HasValue)

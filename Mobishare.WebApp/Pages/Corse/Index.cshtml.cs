@@ -29,7 +29,7 @@ public class IndexModel : PageModel
         var userId = HttpContext.Session.GetInt32("UserId");
         if (userId == null)
         {
-            return RedirectToPage("/Auth/Login");
+            return RedirectToPage("/Account/Login");
         }
 
         try
@@ -74,7 +74,7 @@ public class IndexModel : PageModel
         var userId = HttpContext.Session.GetInt32("UserId");
         if (userId == null)
         {
-            return RedirectToPage("/Auth/Login");
+            return RedirectToPage("/Account/Login");
         }
 
         // Validazione input
@@ -97,7 +97,7 @@ public class IndexModel : PageModel
             var dto = new FineCorsaDTO
             {
                 IdParcheggioRilascio = idParcheggioRilascio,
-                DataOraFineCorsa = DateTime.UtcNow,
+                DataOraFineCorsa = DateTime.Now,
                 SegnalazioneProblema = false
             };
 

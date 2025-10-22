@@ -192,7 +192,7 @@ namespace Mobishare.API.Controllers
                 nuovoStato = mezzo.Stato.ToString(),
                 parcheggio = mezzo.ParcheggioCorrente?.Nome,
                 livelloBatteria = mezzo.LivelloBatteria,
-                timestamp = DateTime.UtcNow
+                timestamp = DateTime.Now
             });
 
 
@@ -322,7 +322,7 @@ namespace Mobishare.API.Controllers
                         batteria = $"{vecchioLivello}% → {mezzo.LivelloBatteria}%",
                         stato = vecchioStato != mezzo.Stato ? $"{vecchioStato} → {mezzo.Stato}" : "invariato"
                     },
-                    timestamp = DateTime.UtcNow
+                    timestamp = DateTime.Now
                 });
             }
 

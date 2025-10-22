@@ -469,8 +469,10 @@ public class MobishareApiService : IMobishareApiService
                 return new();
 
             // Questo endpoint ritorna lista diretta, non wrapped
-            return await response.Content
-                .ReadFromJsonAsync<List<UtenteDTO>>(_jsonOptions) ?? new();
+            var wrapper = await response.Content
+                .ReadFromJsonAsync<ApiSuccessResponse<List<UtenteDTO>>>(_jsonOptions);
+
+            return wrapper?.Dati ?? new();
         }
         catch { return new(); }
     }
@@ -498,7 +500,8 @@ public class MobishareApiService : IMobishareApiService
         try
         {
             AddAuthorizationHeader();
-            var response = await _http.PostAsync($"api/utenti/{id}/riattiva", null);
+            var request = new HttpRequestMessage(HttpMethod.Put, $"api/utenti/{id}/riattiva");
+            var response = await _http.PutAsync($"api/utenti/{id}/riattiva", null);
             return response.IsSuccessStatusCode;
         }
         catch { return false; }
@@ -514,9 +517,10 @@ public class MobishareApiService : IMobishareApiService
             if (!response.IsSuccessStatusCode)
                 return null;
 
-            // Questo endpoint ritorna direttamente l'oggetto, non wrapped
-            return await response.Content
-                .ReadFromJsonAsync<DashboardDTO>(_jsonOptions);
+            var wrapper = await response.Content
+                .ReadFromJsonAsync<ApiSuccessResponse<DashboardDTO>>(_jsonOptions);
+
+            return wrapper?.Dati;
         }
         catch { return null; }
     }

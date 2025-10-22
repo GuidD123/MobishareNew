@@ -20,7 +20,7 @@ namespace Mobishare.API.DTO
         /// <summary>
         /// Timestamp dell'operazione
         /// </summary>
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public DateTime Timestamp { get; set; } = DateTime.Now;
 
         /// <summary>
         /// Dati aggiuntivi (opzionale)

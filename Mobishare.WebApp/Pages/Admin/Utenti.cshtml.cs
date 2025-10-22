@@ -26,7 +26,7 @@ public class UtentiModel : PageModel
         var userId = HttpContext.Session.GetInt32("UserId");
         if (userId == null)
         {
-            return RedirectToPage("/Auth/Login");
+            return RedirectToPage("/Account/Login");
         }
 
         // Verifica ruolo Gestore
@@ -34,7 +34,7 @@ public class UtentiModel : PageModel
         if (!userRole?.Equals("Gestore", StringComparison.OrdinalIgnoreCase) ?? true)
         {
             TempData["ErrorMessage"] = "Solo i gestori possono accedere a questa pagina.";
-            return RedirectToPage("/Dashboard/Index");
+            return RedirectToPage("/DashboardAdmin/Index");
         }
 
         MostraSoloSospesi = soloSospesi;
@@ -43,9 +43,11 @@ public class UtentiModel : PageModel
         {
             // Carica tutti gli utenti
             TuttiUtenti = await _apiService.GetTuttiUtentiAsync();
+            Console.WriteLine($"Utenti caricati: {TuttiUtenti.Count}");
 
             // Carica utenti sospesi
             UtentiSospesi = await _apiService.GetUtentiSospesiAsync();
+            Console.WriteLine($"UtentiSospesi caricati: {UtentiSospesi.Count}");
 
             // Messaggio da TempData
             if (TempData["SuccessMessage"] != null)
@@ -67,7 +69,7 @@ public class UtentiModel : PageModel
         var userId = HttpContext.Session.GetInt32("UserId");
         if (userId == null)
         {
-            return RedirectToPage("/Auth/Login");
+            return RedirectToPage("/Account/Login");
         }
 
         // Verifica ruolo Gestore
@@ -75,20 +77,21 @@ public class UtentiModel : PageModel
         if (!userRole?.Equals("Gestore", StringComparison.OrdinalIgnoreCase) ?? true)
         {
             TempData["ErrorMessage"] = "Solo i gestori possono riattivare utenti.";
-            return RedirectToPage("/Dashboard/Index");
+            return RedirectToPage("/DashboardAdmin/Index");
         }
 
         try
         {
             var success = await _apiService.RiattivaUtenteAsync(idUtente);
 
-            if (success)
+            if (TempData.ContainsKey("SuccessMessage"))
             {
-                TempData["SuccessMessage"] = $"Utente #{idUtente} riattivato con successo!";
+                SuccessMessage = TempData.Peek("SuccessMessage")?.ToString();
             }
-            else
+
+            if (TempData.ContainsKey("ErrorMessage"))
             {
-                TempData["ErrorMessage"] = $"Impossibile riattivare l'utente #{idUtente}.";
+                ErrorMessage = TempData.Peek("ErrorMessage")?.ToString();
             }
         }
         catch (Exception ex)
@@ -96,6 +99,6 @@ public class UtentiModel : PageModel
             TempData["ErrorMessage"] = $"Errore durante la riattivazione: {ex.Message}";
         }
 
-        return RedirectToPage(new { soloSospesi = MostraSoloSospesi });
+        return RedirectToPage("/Admin/Utenti", new { soloSospesi = UtentiSospesi.Count > 1 });
     }
 }

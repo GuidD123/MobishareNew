@@ -2,8 +2,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Mobishare.Core.Data;
-using Mobishare.Core.Models;
+using Mobishare.Core.DTOs;
 using Mobishare.Core.Enums;
+using Mobishare.Core.Models;
 
 namespace Mobishare.API.Controllers
 {
@@ -14,7 +15,7 @@ namespace Mobishare.API.Controllers
         private readonly MobishareDbContext _context = context;
 
         // GET: api/dashboard?idUtente=99
-        [Authorize(Roles ="gestore")]
+        [Authorize(Roles ="Gestore")]
         [HttpGet]
         public async Task<IActionResult> GetDashboard([FromQuery] int idUtente)
         {
@@ -30,22 +31,26 @@ namespace Mobishare.API.Controllers
             var mezziInUso = await _context.Mezzi.CountAsync(m => m.Stato == StatoMezzo.InUso);
             var mezziGuasti = await _context.Mezzi.CountAsync(m => m.Stato == StatoMezzo.NonPrelevabile);
             var utentiSospesi = await _context.Utenti.CountAsync(u => u.Sospeso);
-            var creditoTotaleSistema = await _context.Utenti.SumAsync(u => u.Credito);
+            var creditoTotaleSistema = _context.Utenti.AsEnumerable().Sum(u => u.Credito);
             var corseUltimaSettimana = await _context.Corse
                 .Where(c => c.DataOraInizio >= oggi.AddDays(-7))
                 .CountAsync();
 
-            return Ok(new
+            return Ok(new SuccessResponse<DashboardDTO>
             {
-                numeroCorseTotali,
-                corseOggi,
-                corseUltimaSettimana,
-                mezziDisponibili,
-                mezziInUso,
-                mezziGuasti,
-                utentiSospesi,
-                creditoTotaleSistema,
-                messaggio = corseUltimaSettimana == 0 ? "Nessuna corsa effettuata nell'ultima settimana." : null
+
+                Dati = new DashboardDTO
+                {
+                    NumeroCorseTotali = numeroCorseTotali,
+                    CorseOggi = corseOggi,
+                    CorseUltimaSettimana = corseUltimaSettimana,
+                    MezziDisponibili = mezziDisponibili,
+                    MezziInUso = mezziInUso,
+                    MezziGuasti = mezziGuasti,
+                    UtentiSospesi = utentiSospesi,
+                    CreditoTotaleSistema = creditoTotaleSistema,
+                    Messaggio = corseUltimaSettimana == 0 ? "Nessuna corsa effettuata nell'ultima settimana." : null,
+                }
             });
         }
     }

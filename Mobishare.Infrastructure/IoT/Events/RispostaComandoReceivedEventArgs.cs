@@ -31,6 +31,6 @@ namespace Mobishare.Infrastructure.IoT.Events
         /// <summary>
         /// Timestamp di ricezione della risposta da parte del backend (UTC)
         /// </summary>
-        public DateTime ReceivedAt { get; set; } = DateTime.UtcNow;
+        public DateTime ReceivedAt { get; set; } = DateTime.Now;
     }
 }

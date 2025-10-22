@@ -77,7 +77,7 @@ namespace Mobishare.API.Controllers
                 {
                     IdUtente = dto.IdUtente,
                     ImportoRicarica = dto.ImportoRicarica,
-                    DataRicarica = DateTime.UtcNow,
+                    DataRicarica = DateTime.Now,
                     Tipo = dto.TipoRicarica,
                     Stato = StatoPagamento.InSospeso
                 };
@@ -149,6 +149,36 @@ namespace Mobishare.API.Controllers
                         tipo: "Ricarica",
                         idRicarica: ricarica.Id
                     );
+
+                    //Se l'utente era sospeso ma ora ha credito positivo → riattivalo
+                    if (utente.Sospeso && utente.Credito >= 0)
+                    {
+                        utente.Sospeso = false;
+                        await _context.SaveChangesAsync();
+
+                        _logger.LogInformation("Utente {UserId} riattivato automaticamente dopo ricarica. Credito: {Credito}€",
+                            utente.Id, utente.Credito);
+
+                        try
+                        {
+                            await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                                .SendAsync("UtenteRiattivato", new
+                                {
+                                    id = utente.Id,
+                                    messaggio = "Il tuo account è stato riattivato automaticamente dopo la ricarica."
+                                });
+
+                            await _hubContext.Clients.Group("admin")
+                                .SendAsync("RiceviNotificaAdmin",
+                                    "Utente riattivato",
+                                    $"L’utente {utente.Nome} (ID {utente.Id}) è stato riattivato automaticamente dopo la ricarica.");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "SignalR: notifica riattivazione utente {Id} fallita", utente.Id);
+                        }
+                    }
+
 
                     var payload = new RicaricaResponseDTO
                     {

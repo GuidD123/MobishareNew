@@ -36,7 +36,7 @@ namespace Mobishare.Core.Data
                 Stato = stato,
                 IdCorsa = idCorsa,
                 IdRicarica = idRicarica,
-                DataTransazione = DateTime.UtcNow
+                DataTransazione = DateTime.Now
             };
 
             Transazioni.Add(transazione);

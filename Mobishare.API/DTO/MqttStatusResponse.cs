@@ -14,7 +14,7 @@ namespace Mobishare.API.DTO
         /// <summary>
         /// Timestamp della verifica
         /// </summary>
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public DateTime Timestamp { get; set; } = DateTime.Now;
 
         /// <summary>
         /// Informazioni aggiuntive sul broker

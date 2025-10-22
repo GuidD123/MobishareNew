@@ -93,6 +93,9 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("X-Frame-Options", "DENY");
     context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
     context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    context.Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
+    context.Response.Headers.Append("Pragma", "no-cache");
+    context.Response.Headers.Append("Expires", "0");
     await next();
 });
 
@@ -117,6 +120,20 @@ app.UseCors("AllowBackend");
 // Authorization (se usi [Authorize] - opzionale senza Identity)
 app.UseAuthorization();
 
+// Endpoint manuale per logout rapido
+app.MapGet("/Account/Logout", async context =>
+{
+    // Svuota sessione
+    context.Session.Clear();
+
+    context.Response.Cookies.Delete(".Mobishare.Session");
+    context.Response.Cookies.Delete(".AspNetCore.Mvc.CookieTempDataProvider");
+    context.Response.Cookies.Delete("RememberMe");
+
+    context.Response.Redirect("/Index");
+    await Task.CompletedTask;
+});
+ 
 // Map Razor Pages
 app.MapRazorPages();
 

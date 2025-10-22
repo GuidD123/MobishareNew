@@ -66,7 +66,7 @@ public class IndexModel : PageModel
         var userId = HttpContext.Session.GetInt32("UserId");
         if (userId == null)
         {
-            return RedirectToPage("/Auth/Login");
+            return RedirectToPage("/Account/Login");
         }
 
         // Carica dati utente
@@ -141,7 +141,7 @@ public class IndexModel : PageModel
         var userId = HttpContext.Session.GetInt32("UserId");
         if (userId == null)
         {
-            return RedirectToPage("/Auth/Login");
+            return RedirectToPage("/Account/Login");
         }
 
         Utente = await _apiService.GetUtenteAsync(userId.Value);

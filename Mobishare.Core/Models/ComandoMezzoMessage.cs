@@ -31,7 +31,7 @@ namespace Mobishare.Core.Models
         /// <summary>
         /// Timestamp di creazione del comando (UTC)
         /// </summary>
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public DateTime Timestamp { get; set; } = DateTime.Now;
 
         /// <summary>
         /// ID dell'utente o sistema che ha inviato il comando

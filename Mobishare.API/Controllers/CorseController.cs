@@ -421,7 +421,7 @@ namespace Mobishare.API.Controllers
                 {
                     Importo = -corsaEsistente.CostoFinale,
                     Tipo = "Corsa",
-                    Data = DateTime.UtcNow
+                    Data = DateTime.Now
                 });
 
 

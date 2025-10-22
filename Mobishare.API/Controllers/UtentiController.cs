@@ -30,29 +30,69 @@ namespace Mobishare.API.Controllers
         // GET: api/utenti
         [Authorize(Roles = "Gestore")]
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Utente>>> GetUtenti()
+        public async Task<ActionResult<SuccessResponse>> GetUtenti()
         {
-            // Solo gestori possono vedere lista utenti
-            return await _context.Utenti.ToListAsync();
-        }
-
-        // SOLO GESTORE PUO' VEDERE UTENTI SOSPESI 
-        // GET: api/utenti/sospesi?idUtente=99 ---> VISUALIZZA UTENTI SOSPESI
-        [Authorize(Roles = "Gestore")]
-        [HttpGet("sospesi")]
-        public async Task<IActionResult> GetUtentiSospesi()
-        {
-            var sospesi = await _context.Utenti
-                .Where(u => u.Sospeso)
-                .AsNoTracking()
+            var utenti = await _context.Utenti
+                .Select(u => new UtenteDTO
+                {
+                    Id = u.Id,
+                    Nome = u.Nome,
+                    Email = u.Email,
+                    Ruolo = u.Ruolo.ToString(),
+                    Credito = u.Credito,
+                    Sospeso = u.Sospeso
+                })
                 .ToListAsync();
 
             return Ok(new SuccessResponse
             {
-                Messaggio = "Lista utenti sospesi",
+                Messaggio = "Lista utenti",
+                Dati = utenti
+            });
+        }
+
+
+
+        // SOLO GESTORE PUO' VEDERE UTENTI SOSPESI 
+        // GET: api/utenti/sospesi
+        [Authorize(Roles = "Gestore")]
+        [HttpGet("sospesi")]
+        public async Task<IActionResult> GetUtentiSospesi()
+        {
+            // prima corregge eventuali incoerenze: se credito > 0 ⇒ non deve essere sospeso
+            var utenti = await _context.Utenti.ToListAsync();
+            bool modifiche = false;
+
+            foreach (var u in utenti)
+            {
+                if (u.Sospeso && u.Credito > 0)
+                {
+                    u.Sospeso = false;
+                    modifiche = true;
+                }
+            }
+
+            if (modifiche)
+                await _context.SaveChangesAsync();
+
+            // ora restituisce solo quelli effettivamente sospesi
+            var sospesi = utenti.Where(u => u.Sospeso).Select(u => new UtenteDTO
+            {
+                Id = u.Id,
+                Nome = u.Nome,
+                Email = u.Email,
+                Ruolo = u.Ruolo.ToString(),
+                Credito = u.Credito,
+                Sospeso = u.Sospeso
+            }).ToList();
+
+            return Ok(new SuccessResponse
+            {
+                Messaggio = "Lista utenti sospesi aggiornata",
                 Dati = sospesi
             });
         }
+
 
         /// <summary>
         /// Riattiva un utente sospeso, se il chiamante è un gestore autorizzato
@@ -60,35 +100,35 @@ namespace Mobishare.API.Controllers
         /// <param name="id">ID utente da riattivare</param>
         /// <param name="idGestore">ID del gestore che effettua richiesta</param>
         /// <returns>CConferma riattivazione o messaggio di errore</returns>
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        //POST: api/utenti/{id}/riattiva -> gestore può riattivare un utente sospeso
+        // PUT: api/utenti/{id}/riattiva
         [Authorize(Roles = "Gestore")]
-        [HttpPost("{id}/riattiva")]
+        [HttpPut("{id}/riattiva")]
         public async Task<IActionResult> RiattivaUtente(int id)
         {
             var utente = await _context.Utenti
-                .FirstOrDefaultAsync(u => u.Id == id && u.Sospeso)
-                ?? throw new ElementoNonTrovatoException("Utente sospeso", id);
+                .FirstOrDefaultAsync(u => u.Id == id)
+                ?? throw new ElementoNonTrovatoException("Utente", id);
+
+            if (!utente.Sospeso)
+                return BadRequest(new { messaggio = "Utente già attivo" });
+
+            if (utente.Credito <= 0)
+                throw new OperazioneNonConsentitaException("Impossibile riattivare: credito insufficiente");
 
             utente.Sospeso = false;
             await _context.SaveChangesAsync();
 
-            //notifica all'utente (se collegato)
             await _hubContext.Clients.Group($"utenti-{utente.Id}")
-            .SendAsync("AccountRiattivato", new
-            {
-                idUtente = utente.Id,
-                nome = utente.Nome,
-                messaggio = "Il tuo account è stato riattivato. Puoi nuovamente usare Mobishare!"
-            });
+                .SendAsync("AccountRiattivato", new
+                {
+                    idUtente = utente.Id,
+                    nome = utente.Nome,
+                    messaggio = "Il tuo account è stato riattivato. Puoi nuovamente usare Mobishare!"
+                });
 
-            //Notifica agli adminse collegato
             await _hubContext.Clients.Group("admin")
                 .SendAsync("RiceviNotificaAdmin", "Utente riattivato",
                     $"Il gestore ha riattivato l’utente {utente.Nome} (ID {utente.Id})");
-
 
             return Ok(new SuccessResponse
             {
@@ -96,6 +136,7 @@ namespace Mobishare.API.Controllers
                 Dati = new { utente.Id, utente.Nome }
             });
         }
+
 
 
 

@@ -44,11 +44,24 @@ namespace Mobishare.Infrastructure.Services
                 ?? throw new ElementoNonTrovatoException("Utente", idUtente);
 
             //Applica variazione di credito
-            utente.Credito += importo; // importo può essere + o -
-            if (utente.Credito < 0)
+            utente.Credito += importo;
+
+            // Aggiorna sospensione in base al nuovo credito
+            if (utente.Credito <= 0)
             {
-                utente.Sospeso = true;
-                _logger.LogWarning("Utente {Id} sospeso: credito negativo ({Credito})", utente.Id, utente.Credito);
+                if (!utente.Sospeso)
+                {
+                    utente.Sospeso = true;
+                    _logger.LogWarning("Utente {Id} sospeso per credito insufficiente ({Credito})", utente.Id, utente.Credito);
+                }
+            }
+            else
+            {
+                if (utente.Sospeso)
+                {
+                    utente.Sospeso = false;
+                    _logger.LogInformation("Utente {Id} riattivato automaticamente (credito positivo: {Credito})", utente.Id, utente.Credito);
+                }
             }
 
             //Crea record transazione
@@ -60,7 +73,7 @@ namespace Mobishare.Infrastructure.Services
                 Tipo = tipo,
                 IdCorsa = idCorsa,
                 IdRicarica = idRicarica,
-                DataTransazione = DateTime.UtcNow
+                DataTransazione = DateTime.Now
             };
 
             _context.Transazioni.Add(transazione);
@@ -76,7 +89,7 @@ namespace Mobishare.Infrastructure.Services
                     Tipo = tipo,
                     Importo = importo,
                     Stato = stato.ToString(),
-                    Data = DateTime.UtcNow
+                    Data = DateTime.Now
                 });
 
             //Notifica admin
@@ -88,6 +101,42 @@ namespace Mobishare.Infrastructure.Services
             _logger.LogInformation("Transazione registrata: Utente={Id}, Importo={Importo}, Tipo={Tipo}", idUtente, importo, tipo);
 
             return transazione;
+        }
+
+        /// <summary>
+        /// Aggiorna automaticamente lo stato di sospensione in base al credito.
+        /// </summary>
+        private async Task AggiornaStatoSospensioneAsync(Utente utente)
+        {
+            bool statoPrecedente = utente.Sospeso;
+            utente.Sospeso = utente.Credito <= 0;
+
+            if (statoPrecedente != utente.Sospeso)
+            {
+                await _context.SaveChangesAsync();
+
+                string stato = utente.Sospeso ? "sospeso" : "riattivato";
+                _logger.LogInformation("Utente {Id} {Stato} automaticamente (credito = {Credito})",
+                    utente.Id, stato, utente.Credito);
+
+                // Notifica in tempo reale all’utente
+                if (utente.Sospeso)
+                {
+                    await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                        .SendAsync("AccountSospeso", new
+                        {
+                            messaggio = "Il tuo account è stato sospeso per credito insufficiente."
+                        });
+                }
+                else
+                {
+                    await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                        .SendAsync("AccountRiattivato", new
+                        {
+                            messaggio = "Il tuo account è stato riattivato. Puoi nuovamente usare Mobishare."
+                        });
+                }
+            }
         }
     }
 }

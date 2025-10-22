@@ -30,7 +30,7 @@ public class IndexModel : PageModel
         int? userId = HttpContext.Session.GetInt32("UserId");
         if (userId == null)
         {
-            return RedirectToPage("/Auth/Login");
+            return RedirectToPage("/Account/Login");
         }
 
         try

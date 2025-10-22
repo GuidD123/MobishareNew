@@ -1,55 +1,22 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Mobishare.WebApp.Helpers;
 
-namespace Mobishare.WebApp.Pages.Account
+namespace Mobishare.WebApp.Pages.Account;
+
+public class LogoutModel : PageModel
 {
-    /// <summary>
-    /// PageModel per Logout - NO VISTA (.cshtml)
-    /// Viene chiamato tramite form/link e fa solo redirect
-    /// </summary>
-    public class LogoutModel : PageModel
+    public IActionResult OnGet()
     {
-        private readonly ILogger<LogoutModel> _logger;
+        // PULISCI SESSIONE
+        HttpContext.Session.Clear();
 
-        public LogoutModel(ILogger<LogoutModel> logger)
-        {
-            _logger = logger;
-        }
+        // PULISCI COOKIE
+        Response.Cookies.Delete(".Mobishare.Session");
+        Response.Cookies.Delete("RememberMe");
 
-        // Gestisce richieste GET: /Account/Logout
-        public IActionResult OnGet()
-        {
-            return ExecuteLogout();
-        }
+        TempData["SuccessMessage"] = "Logout effettuato!";
 
-        // Gestisce richieste POST: /Account/Logout (PIÙ SICURO)
-        public IActionResult OnPost()
-        {
-            return ExecuteLogout();
-        }
-
-        // Logica centralizzata
-        private IActionResult ExecuteLogout()
-        {
-            var userEmail = HttpContext.Session.GetUserEmail();
-            var userName = HttpContext.Session.GetUserName();
-
-            // Pulisce sessione
-            HttpContext.Session.ClearUserData();
-
-            // Pulisce cookie RememberMe
-            if (Request.Cookies["RememberMe"] != null)
-            {
-                Response.Cookies.Delete("RememberMe");
-            }
-
-            _logger.LogInformation("Logout - Utente: {Name} ({Email})",
-                userName ?? "Unknown", userEmail ?? "Unknown");
-
-            TempData["SuccessMessage"] = "Logout effettuato con successo!";
-
-            return RedirectToPage("./Login");
-        }
+        // VAI ALLA HOME
+        return Redirect("/");
     }
 }

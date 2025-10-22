@@ -145,7 +145,7 @@ namespace Mobishare.IoT.Gateway.Services
                 Stato = StatoMezzo.Disponibile,
                 LivelloBatteria = tipo == TipoMezzo.BiciMuscolare ? 100 : _random.Next(20, 100),
                 ColoreSpia = ColoreSpia.Verde,
-                UltimoAggiornamento = DateTime.UtcNow
+                UltimoAggiornamento = DateTime.Now
             };
 
             _mezziEmulati.TryAdd(idMezzo, mezzoEmulato);
@@ -172,7 +172,7 @@ namespace Mobishare.IoT.Gateway.Services
             if (_mezziEmulati.TryGetValue(idMezzo, out var mezzo))
             {
                 mezzo.Stato = nuovoStato;
-                mezzo.UltimoAggiornamento = DateTime.UtcNow;
+                mezzo.UltimoAggiornamento = DateTime.Now;
 
                 mezzo.ColoreSpia = nuovoStato switch
                 {
@@ -193,7 +193,7 @@ namespace Mobishare.IoT.Gateway.Services
             if (_mezziEmulati.TryGetValue(idMezzo, out var mezzo))
             {
                 mezzo.LivelloBatteria = Math.Clamp(nuovoLivello, 0, 100);
-                mezzo.UltimoAggiornamento = DateTime.UtcNow;
+                mezzo.UltimoAggiornamento = DateTime.Now;
 
                 if (mezzo.LivelloBatteria < 20 && mezzo.Tipo != TipoMezzo.BiciMuscolare)
                 {
@@ -234,7 +234,7 @@ namespace Mobishare.IoT.Gateway.Services
                     LivelloBatteria = mezzo.LivelloBatteria,
                     Stato = mezzo.Stato,
                     Tipo = mezzo.Tipo,
-                    Timestamp = DateTime.UtcNow,
+                    Timestamp = DateTime.Now,
                     Messaggio = $"Status da Gateway - Spia: {mezzo.ColoreSpia}"
                 };
 
@@ -352,7 +352,7 @@ namespace Mobishare.IoT.Gateway.Services
 
             mezzo.Stato = StatoMezzo.InUso;
             mezzo.ColoreSpia = ColoreSpia.Rosso;
-            mezzo.UltimoAggiornamento = DateTime.UtcNow;
+            mezzo.UltimoAggiornamento = DateTime.Now;
 
             await InviaStatusMezzoAsync(mezzo);
 
@@ -396,7 +396,7 @@ namespace Mobishare.IoT.Gateway.Services
 
             mezzo.Stato = StatoMezzo.Disponibile;
             mezzo.ColoreSpia = ColoreSpia.Verde;
-            mezzo.UltimoAggiornamento = DateTime.UtcNow;
+            mezzo.UltimoAggiornamento = DateTime.Now;
 
             await InviaStatusMezzoAsync(mezzo);
             return true;
@@ -409,7 +409,7 @@ namespace Mobishare.IoT.Gateway.Services
                 if (Enum.TryParse<ColoreSpia>(comando.Parametri["Colore"].ToString(), out var nuovoColore))
                 {
                     mezzo.ColoreSpia = nuovoColore;
-                    mezzo.UltimoAggiornamento = DateTime.UtcNow;
+                    mezzo.UltimoAggiornamento = DateTime.Now;
                     await InviaStatusMezzoAsync(mezzo);
                     return true;
                 }
@@ -428,7 +428,7 @@ namespace Mobishare.IoT.Gateway.Services
                     ComandoOriginale = comandoOriginale,
                     Successo = successo,
                     ErroreDescrizione = successo ? null : messaggio,
-                    Timestamp = DateTime.UtcNow,
+                    Timestamp = DateTime.Now,
                     DatiAggiuntivi = successo ? new Dictionary<string, object> { { "Messaggio", messaggio } } : null
                 };
 

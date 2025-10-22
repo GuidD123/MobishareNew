@@ -82,7 +82,7 @@ namespace Mobishare.API.Controllers
             var utente = await _context.Utenti.FindAsync(transazione.IdUtente)
                 ?? throw new ElementoNonTrovatoException("Utente", transazione.IdUtente);
 
-            transazione.DataTransazione = DateTime.UtcNow;
+            transazione.DataTransazione = DateTime.Now;
             _context.Transazioni.Add(transazione);
             await _context.SaveChangesAsync();
 
@@ -201,7 +201,7 @@ namespace Mobishare.API.Controllers
                 IdUtente = idUtente,
                 Importo = importo,
                 Stato = StatoPagamento.Completato,
-                DataTransazione = DateTime.UtcNow,
+                DataTransazione = DateTime.Now,
                 IdCorsa = idCorsa
             };
 

@@ -42,7 +42,7 @@ public class IndexModel : PageModel
         var userId = HttpContext.Session.GetInt32("UserId");
         if (userId == null)
         {
-            return RedirectToPage("/Auth/Login");
+            return RedirectToPage("/Account/Login");
         }
 
         await CaricaDatiAsync(userId.Value);
@@ -65,7 +65,7 @@ public class IndexModel : PageModel
         var userId = HttpContext.Session.GetInt32("UserId");
         if (userId == null)
         {
-            return RedirectToPage("/Auth/Login");
+            return RedirectToPage("/Account/Login");
         }
 
         // Ricarica dati per visualizzazione in caso di errore

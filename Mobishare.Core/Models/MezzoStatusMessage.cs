@@ -36,7 +36,7 @@ namespace Mobishare.Core.Models
         /// <summary>
         /// Timestamp del messaggio (UTC)
         /// </summary>
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public DateTime Timestamp { get; set; } = DateTime.Now;
 
         /// <summary>
         /// Messaggio opzionale (es. diagnostica, alert)

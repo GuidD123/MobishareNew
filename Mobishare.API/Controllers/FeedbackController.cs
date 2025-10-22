@@ -37,7 +37,7 @@ namespace Mobishare.API.Controllers
            
             //Mi assicuro che la data sia impostata
             if (feedback.DataFeedback == default)
-                feedback.DataFeedback = DateTime.UtcNow;
+                feedback.DataFeedback = DateTime.Now;
 
             _context.Feedbacks.Add(feedback);
             await _context.SaveChangesAsync();

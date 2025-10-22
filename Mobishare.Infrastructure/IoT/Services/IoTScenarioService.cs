@@ -68,7 +68,7 @@ namespace Mobishare.Infrastructure.IoT.Services
 
             _isRunning = true;
             _scenarioCorrente = nomeScenario;
-            _dettagliScenario = $"Avviato alle {DateTime.UtcNow:HH:mm:ss} per parcheggio {idParcheggio}";
+            _dettagliScenario = $"Avviato alle {DateTime.Now:HH:mm:ss} per parcheggio {idParcheggio}";
 
             _logger.LogInformation("Avvio scenario {Scenario} per parcheggio {IdParcheggio}", nomeScenario, idParcheggio);
 
@@ -119,7 +119,7 @@ namespace Mobishare.Infrastructure.IoT.Services
             _logger.LogInformation("Scenario {Scenario} terminato manualmente", _scenarioCorrente);
 
             _isRunning = false;
-            _dettagliScenario += $" - Terminato alle {DateTime.UtcNow:HH:mm:ss}";
+            _dettagliScenario += $" - Terminato alle {DateTime.Now:HH:mm:ss}";
             _scenarioCorrente = null;
 
             return Task.CompletedTask;

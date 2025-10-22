@@ -243,7 +243,7 @@ namespace Mobishare.Infrastructure.IoT.Services
                 Parametri = new Dictionary<string, object>
                 {
                     { "UtenteId", utenteId },
-                    { "Timestamp", DateTime.UtcNow }
+                    { "Timestamp", DateTime.Now }
                 }
             };
             await InviaComandoMezzoAsync(idParcheggio, idMezzo, comando);
@@ -424,7 +424,7 @@ namespace Mobishare.Infrastructure.IoT.Services
                         IdParcheggio = idParcheggio,
                         StatusMessage = statusMessage,
                         Topic = topic,
-                        ReceivedAt = DateTime.UtcNow
+                        ReceivedAt = DateTime.Now
                     };
 
                     try
@@ -465,7 +465,7 @@ namespace Mobishare.Infrastructure.IoT.Services
                         IdMezzo = idMezzo,
                         RispostaMessage = rispostaMessage,
                         Topic = topic,
-                        ReceivedAt = DateTime.UtcNow
+                        ReceivedAt = DateTime.Now
                     };
 
                     try
