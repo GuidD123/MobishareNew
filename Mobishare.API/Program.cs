@@ -126,6 +126,7 @@ builder.Services.AddScoped<IRideMonitoringService, RideMonitoringService>();
 
 // Background Service per monitoraggio automatico corse
 builder.Services.AddHostedService<RideMonitoringBackgroundService>();
+builder.Services.AddHostedService<MqttTelemetryListenerService>();
 #endregion
 
 

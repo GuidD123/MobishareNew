@@ -466,8 +466,44 @@ connection.on("AccountRiattivato", data => {
     }, 2000);
 });
 
+// Contatore notifiche admin
+let contatoreNotifiche = 0;
+
+// Ricevi notifica admin e aggiorna badge
 connection.on("RiceviNotificaAdmin", (titolo, testo) => {
-    showInfoMessage(`[ADMIN] ${titolo}: ${testo}`);
+    console.log(`[ADMIN NOTIFICA] ${titolo}: ${testo}`);
+
+    // Incrementa contatore
+    contatoreNotifiche++;
+    aggiornaBadgeNotifiche(contatoreNotifiche);
+
+    // Mostra toast
+    showWarningMessage(`🔔 ${titolo}: ${testo}`);
+});
+
+// Funzione per aggiornare il badge notifiche
+function aggiornaBadgeNotifiche(numero) {
+    const badge = document.getElementById('notifiche-badge');
+    if (badge) {
+        if (numero > 0) {
+            badge.textContent = numero > 99 ? '99+' : numero;
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+// Reset contatore quando clicchi sul link notifiche
+document.addEventListener('DOMContentLoaded', function () {
+    const notificheLink = document.getElementById('notifiche-link');
+    if (notificheLink) {
+        notificheLink.addEventListener('click', function (e) {
+            // Reset contatore
+            contatoreNotifiche = 0;
+            aggiornaBadgeNotifiche(0);
+        });
+    }
 });
 
 // Aggiornamento telemetria (mezzi, batterie, ecc.)

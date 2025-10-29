@@ -26,6 +26,8 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.9" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.7" />
 	<ProjectReference Include="..\Mobishare.Core\Mobishare.Core.csproj" />
+	<ProjectReference Include="..\Mobishare.Infrastructure\Mobishare.Infrastructure.csproj" />
+	  <ProjectReference Include="..\Mobishare.IoT.Gateway\Mobishare.IoT.Gateway.csproj" />
   </ItemGroup>
 
   <ItemGroup>

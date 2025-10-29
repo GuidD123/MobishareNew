@@ -43,6 +43,14 @@ public interface IMobishareApiService
     Task<CorsaResponseDTO?> TerminaCorsaAsync(int id, FineCorsaDTO dto);
     #endregion
 
+    #region FEEDBACK
+    Task<bool> InviaFeedbackAsync(FeedbackCreateDTO dto);
+    Task<List<FeedbackResponseDTO>> GetFeedbackRecentiAsync();
+    Task<FeedbackNegativiResponseDTO?> GetFeedbackNegativiAsync();
+    Task<FeedbackStatisticheDTO?> GetStatisticheFeedbackAsync();
+    Task<List<FeedbackResponseDTO>> GetFeedbackPerUtenteAsync(int idUtente);
+    #endregion
+
 
     #region MEZZI
     Task<List<MezzoResponseDTO>> GetMezziAsync();

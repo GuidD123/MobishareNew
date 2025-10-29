@@ -113,7 +113,7 @@ public class CorsaCorrenteModel : PageModel
             if (corsaTerminata != null)
             {
                 TempData["SuccessMessage"] = $"Corsa terminata! Costo finale: €{corsaTerminata.CostoFinale:0.00}";
-                return RedirectToPage("/Corse/Index");
+                return RedirectToPage("/Corse/LasciaFeedback", new { idCorsa = corsaTerminata.Id }); 
             }
             else
             {

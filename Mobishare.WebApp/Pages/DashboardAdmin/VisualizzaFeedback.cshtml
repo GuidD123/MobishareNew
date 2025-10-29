@@ -1,0 +1,271 @@
+﻿@page
+@model Mobishare.WebApp.Pages.DashboardAdmin.VisualizzaFeedbackModel
+@{
+    ViewData["Title"] = "Feedback Utenti";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="bi bi-star-fill text-warning"></i> Feedback Utenti
+        </h2>
+        <a asp-page="/DashboardAdmin/Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Torna alla Dashboard
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Statistiche Generali -->
+    @if (Model.Statistiche != null)
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <h4 class="mb-3"><i class="bi bi-bar-chart"></i> Statistiche Generali</h4>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card shadow-sm text-center">
+                    <div class="card-body">
+                        <i class="bi bi-chat-square-text display-4 text-primary"></i>
+                        <h3 class="mt-3">@Model.Statistiche.TotaleFeedback</h3>
+                        <p class="text-muted mb-0">Feedback Totali</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card shadow-sm text-center">
+                    <div class="card-body">
+                        <i class="bi bi-star-fill display-4 text-warning"></i>
+                        <h3 class="mt-3">@Model.Statistiche.MediaGenerale.ToString("0.0")</h3>
+                        <p class="text-muted mb-0">Media Generale</p>
+                        <small class="text-muted">su 5.0</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card shadow-sm text-center border-danger">
+                    <div class="card-body">
+                        <i class="bi bi-exclamation-triangle display-4 text-danger"></i>
+                        <h3 class="mt-3 text-danger">@Model.FeedbackNegativi?.TotaleFeedbackNegativi</h3>
+                        <p class="text-muted mb-0">Feedback Negativi</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card shadow-sm text-center border-success">
+                    <div class="card-body">
+                        <i class="bi bi-emoji-smile display-4 text-success"></i>
+                        <h3 class="mt-3 text-success">@(Model.Statistiche.Distribuzione.Ottimo + Model.Statistiche.Distribuzione.Buono)</h3>
+                        <p class="text-muted mb-0">Feedback Positivi</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Distribuzione Valutazioni -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuzione Valutazioni</h5>
+                    </div>
+                    <div class="card-body">
+                        @{
+                            var totale = Model.Statistiche.TotaleFeedback;
+                            var percOttimo = totale > 0 ? (double)Model.Statistiche.Distribuzione.Ottimo / totale * 100 : 0;
+                            var percBuono = totale > 0 ? (double)Model.Statistiche.Distribuzione.Buono / totale * 100 : 0;
+                            var percSufficiente = totale > 0 ? (double)Model.Statistiche.Distribuzione.Sufficiente / totale * 100 : 0;
+                            var percScarso = totale > 0 ? (double)Model.Statistiche.Distribuzione.Scarso / totale * 100 : 0;
+                            var percPessimo = totale > 0 ? (double)Model.Statistiche.Distribuzione.Pessimo / totale * 100 : 0;
+                        }
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>⭐⭐⭐⭐⭐ Ottimo</span>
+                                <strong class="text-success">@percOttimo.ToString("0.0")% (@Model.Statistiche.Distribuzione.Ottimo)</strong>
+                            </div>
+                            <div class="progress" style="height: 25px;">
+                                <div class="progress-bar bg-success" style="width: @percOttimo%"></div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>⭐⭐⭐⭐ Buono</span>
+                                <strong class="text-info">@percBuono.ToString("0.0")% (@Model.Statistiche.Distribuzione.Buono)</strong>
+                            </div>
+                            <div class="progress" style="height: 25px;">
+                                <div class="progress-bar bg-info" style="width: @percBuono%"></div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>⭐⭐⭐ Sufficiente</span>
+                                <strong class="text-warning">@percSufficiente.ToString("0.0")% (@Model.Statistiche.Distribuzione.Sufficiente)</strong>
+                            </div>
+                            <div class="progress" style="height: 25px;">
+                                <div class="progress-bar bg-warning" style="width: @percSufficiente%"></div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>⭐⭐ Scarso</span>
+                                <strong class="text-orange">@percScarso.ToString("0.0")% (@Model.Statistiche.Distribuzione.Scarso)</strong>
+                            </div>
+                            <div class="progress" style="height: 25px;">
+                                <div class="progress-bar" style="width: @percScarso%; background-color: #ff8c00;"></div>
+                            </div>
+                        </div>
+
+                        <div class="mb-0">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>⭐ Pessimo</span>
+                                <strong class="text-danger">@percPessimo.ToString("0.0")% (@Model.Statistiche.Distribuzione.Pessimo)</strong>
+                            </div>
+                            <div class="progress" style="height: 25px;">
+                                <div class="progress-bar bg-danger" style="width: @percPessimo%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Feedback Negativi (Alert) -->
+    @if (Model.FeedbackNegativi != null && Model.FeedbackNegativi.TotaleFeedbackNegativi > 0)
+    {
+        <div class="alert alert-danger">
+            <h5><i class="bi bi-exclamation-triangle-fill"></i> Attenzione!</h5>
+            <p class="mb-0">Ci sono <strong>@Model.FeedbackNegativi.TotaleFeedbackNegativi</strong> feedback negativi che richiedono la tua attenzione.</p>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="bi bi-x-circle"></i> Feedback Negativi Recenti</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Utente</th>
+                                <th>Mezzo</th>
+                                <th>Valutazione</th>
+                                <th>Commento</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var feedback in Model.FeedbackNegativi.Feedbacks.Take(5))
+                            {
+                                <tr>
+                                    <td>
+                                        <small>@feedback.DataFeedback.ToString("dd/MM/yyyy HH:mm")</small>
+                                    </td>
+                                    <td>@feedback.NomeUtente</td>
+                                    <td><span class="badge bg-secondary">@feedback.MatricolaMezzo</span></td>
+                                    <td>
+                                        @for (int i = 0; i < feedback.ValutazioneNumero; i++)
+                                        {
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        }
+                                        @for (int i = feedback.ValutazioneNumero; i < 5; i++)
+                                        {
+                                            <i class="bi bi-star text-muted"></i>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(feedback.Commento))
+                                        {
+                                            <small>@feedback.Commento</small>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Nessun commento</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Ultimi Feedback -->
+    @if (Model.FeedbackRecenti.Any())
+    {
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Ultimi 10 Feedback</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Data</th>
+                                <th>Utente</th>
+                                <th>Mezzo</th>
+                                <th>Valutazione</th>
+                                <th>Commento</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var feedback in Model.FeedbackRecenti)
+                            {
+                                var rowClass = feedback.ValutazioneNumero <= 2 ? "table-danger" : "";
+                                <tr class="@rowClass">
+                                    <td>
+                                        <small>@feedback.DataFeedback.ToString("dd/MM/yyyy HH:mm")</small>
+                                    </td>
+                                    <td>@feedback.NomeUtente</td>
+                                    <td><span class="badge bg-secondary">@feedback.MatricolaMezzo</span></td>
+                                    <td>
+                                        @for (int i = 0; i < feedback.ValutazioneNumero; i++)
+                                        {
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        }
+                                        @for (int i = feedback.ValutazioneNumero; i < 5; i++)
+                                        {
+                                            <i class="bi bi-star text-muted"></i>
+                                        }
+                                        <small class="text-muted">(@feedback.ValutazioneNumero/5)</small>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(feedback.Commento))
+                                        {
+                                            <small>@feedback.Commento</small>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <p class="mt-3 text-muted">Nessun feedback presente</p>
+        </div>
+    }
+</div>

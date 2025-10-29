@@ -1,0 +1,240 @@
+﻿@page
+@model Mobishare.WebApp.Pages.Admin.Corse.CorseTotModel
+@{
+    ViewData["Title"] = "Gestione Corse - Admin";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="bi bi-list-check text-primary"></i> Gestione Corse
+        </h2>
+        <span class="badge bg-secondary">Admin</span>
+    </div>
+
+    <!-- Messaggio di Errore -->
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Statistiche Generali -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <i class="bi bi-list-ul text-primary display-6"></i>
+                    <h3 class="mt-2">@Model.TotaleCorse</h3>
+                    <p class="mb-0 text-muted">Corse Totali</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <i class="bi bi-hourglass-split text-warning display-6"></i>
+                    <h3 class="mt-2">@Model.CorseInCorso</h3>
+                    <p class="mb-0 text-muted">In Corso</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <i class="bi bi-check-circle text-success display-6"></i>
+                    <h3 class="mt-2">@Model.CorseCompletate</h3>
+                    <p class="mb-0 text-muted">Completate</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <i class="bi bi-cash-stack text-success display-6"></i>
+                    <h3 class="mt-2">€@Model.TotaleIncassato.ToString("0.00")</h3>
+                    <p class="mb-0 text-muted">Totale Incassato</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtri -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="bi bi-funnel"></i> Filtri di Ricerca
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="filtroIdUtente" class="form-label">ID Utente</label>
+                    <input type="number" 
+                           class="form-control" 
+                           id="filtroIdUtente" 
+                           name="FiltroIdUtente" 
+                           value="@Model.FiltroIdUtente" 
+                           placeholder="Es: 5">
+                </div>
+                <div class="col-md-4">
+                    <label for="filtroMatricola" class="form-label">Matricola Mezzo</label>
+                    <input type="text" 
+                           class="form-control" 
+                           id="filtroMatricola" 
+                           name="FiltroMatricola" 
+                           value="@Model.FiltroMatricola" 
+                           placeholder="Es: BK001">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search"></i> Cerca
+                    </button>
+                    <a asp-page="/Admin/Corse/CorseTot" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabella Corse -->
+    @if (!Model.Corse.Any())
+    {
+        <div class="alert alert-info text-center py-5">
+            <i class="bi bi-info-circle display-4"></i>
+            <h4 class="mt-3">Nessuna corsa trovata</h4>
+            <p class="text-muted">Non ci sono corse corrispondenti ai filtri selezionati.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="bi bi-table"></i> Elenco Completo Corse
+                    <span class="badge bg-primary float-end">@Model.Corse.Count risultati</span>
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>ID Utente</th>
+                                <th>Mezzo</th>
+                                <th>Tipo</th>
+                                <th>Data Inizio</th>
+                                <th>Data Fine</th>
+                                <th>Durata</th>
+                                <th>Parcheggi</th>
+                                <th>Costo</th>
+                                <th>Stato</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var corsa in Model.Corse)
+                            {
+                                <tr class="@(corsa.DataOraFine == null ? "table-warning" : "")">
+                                    <!-- ID Corsa -->
+                                    <td><strong>#@corsa.Id</strong></td>
+
+                                    <!-- ID Utente -->
+                                    <td>
+                                        <span class="badge bg-info">User @corsa.IdUtente</span>
+                                    </td>
+
+                                    <!-- Mezzo -->
+                                    <td>
+                                        <span class="badge bg-primary">@corsa.MatricolaMezzo</span>
+                                    </td>
+
+                                    <!-- Tipo Mezzo -->
+                                    <td>
+                                        <small class="text-muted">@corsa.TipoMezzo</small>
+                                    </td>
+
+                                    <!-- Data Inizio -->
+                                    <td>
+                                        <small>@corsa.DataOraInizio.ToString("dd/MM/yyyy HH:mm")</small>
+                                    </td>
+
+                                    <!-- Data Fine -->
+                                    <td>
+                                        @if (corsa.DataOraFine.HasValue)
+                                        {
+                                            <small>@corsa.DataOraFine.Value.ToString("dd/MM/yyyy HH:mm")</small>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark">In corso</span>
+                                        }
+                                    </td>
+
+                                    <!-- Durata -->
+                                    <td>
+                                        @if (corsa.DataOraFine.HasValue)
+                                        {
+                                            var durata = (int)(corsa.DataOraFine.Value - corsa.DataOraInizio).TotalMinutes;
+                                            <span class="badge bg-secondary">@durata min</span>
+                                        }
+                                        else
+                                        {
+                                            var durataAttuale = (int)(DateTime.Now - corsa.DataOraInizio).TotalMinutes;
+                                            <span class="badge bg-warning text-dark">@durataAttuale min</span>
+                                        }
+                                    </td>
+
+                                    <!-- Parcheggi -->
+                                    <td>
+                                        <small>
+                                            <i class="bi bi-arrow-right text-success"></i> #@corsa.IdParcheggioPrelievo
+                                            @if (corsa.IdParcheggioRilascio.HasValue)
+                                            {
+                                                <br />
+                                                <i class="bi bi-arrow-left text-danger"></i> @corsa.IdParcheggioRilascio
+                                            }
+                                        </small>
+                                    </td>
+
+                                    <!-- Costo -->
+                                    <td>
+                                        @if (corsa.CostoFinale.HasValue)
+                                        {
+                                            <strong class="text-success">€@corsa.CostoFinale.Value.ToString("0.00")</strong>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+
+                                    <!-- Stato -->
+                                    <td>
+                                        @if (corsa.DataOraFine.HasValue)
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-circle"></i> Terminata
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="bi bi-hourglass-split"></i> In Corso
+                                            </span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>

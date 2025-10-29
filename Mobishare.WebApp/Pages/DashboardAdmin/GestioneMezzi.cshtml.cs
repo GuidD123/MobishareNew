@@ -126,8 +126,8 @@ public class GestioneMezziModel : PageModel
             TipoMezzo tipoEnum = Tipo switch
             {
                 "Bicicletta" => TipoMezzo.BiciMuscolare,
-                "BiciclettaElettrica" => TipoMezzo.BiciElettrica,
-                "MonopattinoElettrico" => TipoMezzo.MonopattinoElettrico,
+                "Bicicletta Elettrica" => TipoMezzo.BiciElettrica,
+                "Monopattino Elettrico" => TipoMezzo.MonopattinoElettrico,
                 _ => TipoMezzo.BiciMuscolare
             };
 

@@ -42,6 +42,13 @@ builder.Services.AddSession(options =>
 // HttpContextAccessor (necessario per _LoginPartial.cshtml)
 builder.Services.AddHttpContextAccessor();
 
+// ========================================
+// SERVIZI INFRASTRUCTURE (IoT, Background Services)
+// ========================================
+builder.Services.AddSingleton<Mobishare.IoT.Gateway.Interfaces.IMqttGatewayEmulatorService, Mobishare.IoT.Gateway.Services.MqttGatewayEmulatorService>();
+
+builder.Services.AddHostedService<Mobishare.WebApp.Services.MqttGatewayHostedService>();
+
 // Cookie Policy
 builder.Services.Configure<CookiePolicyOptions>(options =>
 {

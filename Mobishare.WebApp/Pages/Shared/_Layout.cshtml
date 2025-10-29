@@ -23,45 +23,68 @@
             <a class="navbar-brand" href="/">
                 <i class="bi bi-bicycle"></i> Mobishare
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
                 @if (Context.Session.GetString("JwtToken") != null)
                 {
-                    
                     var userRole = Context.Session.GetString("UserRole");
                     var isGestore = userRole == "Gestore";
                     
-                    
                     <!-- MENU LOGGATO -->
                     <ul class="navbar-nav me-auto">
-                        <li class="nav-item"><a class="nav-link" href="/Mezzi"><i class="bi bi-bicycle"></i> Mezzi</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/Corse"><i class="bi bi-clock-history"></i> Corse</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/Ricariche"><i class="bi bi-wallet2"></i> Ricariche</a></li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/Mezzi">
+                                <i class="bi bi-bicycle"></i> Mezzi
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/Parcheggi">
+                                <i class="bi bi-p-square"></i> Parcheggi
+                            </a>
+                        </li>
                         
-                        <!-- ✅ MENU TRANSAZIONI - CONDIZIONALE PER RUOLO -->
                         @if (isGestore)
                         {
+                            <!-- ADMIN: Tutte le corse del sistema -->
                             <li class="nav-item">
-                                <a class="nav-link" href="/Admin/TransazioniAdmin/TransazioniAdminIndex">
-                                    <i class="bi bi-cash-stack"></i> Gestione Transazioni
+                                <a class="nav-link" href="/Admin/Corse/CorseTot">
+                                    <i class="bi bi-list-check"></i> Gestione Corse
                                 </a>
                             </li>
                         }
                         else
                         {
+                            <!-- UTENTE: Solo le proprie corse -->
                             <li class="nav-item">
-                                <a class="nav-link" href="/Transazioni/TransazioniUtente">
-                                    <i class="bi bi-receipt"></i> Transazioni
+                                <a class="nav-link" href="/Corse">
+                                    <i class="bi bi-clock-history"></i> Le Mie Corse
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/Ricariche">
+                                    <i class="bi bi-wallet2"></i> Ricariche
                                 </a>
                             </li>
                         }
                     </ul>
 
                     <ul class="navbar-nav">
+                        @if (isGestore)
+                        {
+                            <!-- BADGE NOTIFICHE ADMIN -->
+                            <li class="nav-item">
+                                <a class="nav-link position-relative" href="/Admin/Notifiche" id="notifiche-link">
+                                    <i class="bi bi-bell fs-5"></i>
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifiche-badge" style="display: none;">
+                                        0
+                                    </span>
+                                </a>
+                            </li>
+                        }
+                        
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                                 <i class="bi bi-person-circle"></i> @Context.Session.GetString("UserName")
@@ -112,9 +135,7 @@
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"
-        integrity="sha384-f1MzM6v4w7r3dM2AtFhBvBvq5z2gyqNnAW+u6rA9hAl1gCHwGjUqkCQg+XfB4cmN"
-        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js" integrity="sha384-f1MzM6v4w7r3dM2AtFhBvBvq5z2gyqNnAW+u6rA9hAl1gCHwGjUqkCQg+XfB4cmN" crossorigin="anonymous"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)

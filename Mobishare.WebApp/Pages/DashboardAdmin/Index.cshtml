@@ -35,7 +35,6 @@
     }
     else
     {
-        <!-- Alert Messaggio se presente -->
         @if (!string.IsNullOrEmpty(Model.Dashboard.Messaggio))
         {
             <div class="alert alert-info alert-dismissible fade show" role="alert">
@@ -180,7 +179,6 @@
                 </div>
             </div>
 
-            <!-- Statistiche Utenti (solo per Gestore) -->
             @if (Model.IsGestore)
             {
                 <div class="col-lg-6 mb-3">
@@ -210,7 +208,7 @@
                                     <i class="bi bi-exclamation-triangle"></i> 
                                     <strong>Attenzione:</strong> Ci sono @Model.Dashboard.UtentiSospesi utenti sospesi che potrebbero richiedere riattivazione.
                                 </div>
-                                <a asp-page="/Admin/Utenti" class="btn btn-warning w-100">
+                                <a asp-page="/Admin/GestioneUtenti" class="btn btn-warning w-100">
                                     <i class="bi bi-person-check"></i> Gestisci Utenti Sospesi
                                 </a>
                             }
@@ -227,7 +225,6 @@
             }
             else
             {
-                <!-- Info Credito per Utente Normale -->
                 <div class="col-lg-6 mb-3">
                     <div class="card shadow-sm">
                         <div class="card-header bg-success text-white">
@@ -282,7 +279,7 @@
                         <i class="bi bi-gear-fill"></i> Gestione Sistema
                     </h4>
                 </div>
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                     <div class="card shadow-sm h-100">
                         <div class="card-body text-center p-4">
                             <i class="bi bi-building display-3 text-primary mb-3"></i>
@@ -294,7 +291,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                     <div class="card shadow-sm h-100">
                         <div class="card-body text-center p-4">
                             <i class="bi bi-bicycle display-3 text-success mb-3"></i>
@@ -306,60 +303,25 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        }
-
-        <!-- Link Rapidi -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-light">
-                        <h5 class="mb-0"><i class="bi bi-link-45deg"></i> Azioni Rapide</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3 mb-2">
-                                <a asp-page="/Mezzi/Index" class="btn btn-outline-primary w-100">
-                                    <i class="bi bi-bicycle"></i> Vedi Mezzi
-                                </a>
-                            </div>
-                            <div class="col-md-3 mb-2">
-                                <a asp-page="/Parcheggi/Index" class="btn btn-outline-success w-100">
-                                    <i class="bi bi-geo-alt"></i> Parcheggi
-                                </a>
-                            </div>
-                            <div class="col-md-3 mb-2">
-                                <a asp-page="/Corse/Index" class="btn btn-outline-info w-100">
-                                    <i class="bi bi-list-check"></i> Storico Corse
-                                </a>
-                            </div>
-                            @if (Model.IsGestore)
-                            {
-                                <div class="col-md-3 mb-2">
-                                    <a asp-page="/Admin/Utenti" class="btn btn-outline-warning w-100">
-                                        <i class="bi bi-people"></i> Gestisci Utenti
-                                    </a>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="col-md-3 mb-2">
-                                    <a asp-page="/Profilo/Index" class="btn btn-outline-secondary w-100">
-                                        <i class="bi bi-person"></i> Profilo
-                                    </a>
-                                </div>
-                            }
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body text-center p-4">
+                            <i class="bi bi-star-fill display-3 text-warning mb-3"></i>
+                            <h5 class="card-title">Visualizza Feedback</h5>
+                            <p class="text-muted">Monitora le recensioni e valutazioni degli utenti</p>
+                            <a asp-page="/DashboardAdmin/VisualizzaFeedback" class="btn btn-warning">
+                                <i class="bi bi-eye"></i> Vai ai Feedback
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        }
     }
 </div>
 
 @section Scripts {
     <script>
-        // Auto-refresh ogni 60 secondi
         setTimeout(function() {
             location.reload();
         }, 60000);

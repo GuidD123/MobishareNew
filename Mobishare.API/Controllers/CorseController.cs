@@ -384,6 +384,42 @@ namespace Mobishare.API.Controllers
                     ? StatoMezzo.NonPrelevabile
                     : StatoMezzo.Disponibile;
 
+                //NOTIFICA ADMIN: Mezzo guasto segnalato
+                if (problemaSegnalato)
+                {
+                    try
+                    {
+                        await _hubContext.Clients.Group("admin")
+                            .SendAsync("RiceviNotificaAdmin",
+                                "Mezzo Guasto Segnalato",
+                                $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) è stato segnalato guasto dall'utente {utente.Nome} {utente.Cognome} (ID: {utente.Id})");
+
+                        _logger.LogWarning("Mezzo {Matricola} segnalato guasto da utente {UtenteId}", mezzo.Matricola, utente.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Impossibile inviare notifica guasto mezzo {Matricola}", mezzo.Matricola);
+                    }
+                }
+
+                //NOTIFICA ADMIN: Batteria bassa
+                if (batteriaScarica)
+                {
+                    try
+                    {
+                        await _hubContext.Clients.Group("admin")
+                            .SendAsync("RiceviNotificaAdmin",
+                                "Batteria Critica",
+                                $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) ha batteria al {mezzo.LivelloBatteria}%. Richiede ricarica urgente.");
+
+                        _logger.LogWarning("Mezzo {Matricola} con batteria bassa: {Livello}%", mezzo.Matricola, mezzo.LivelloBatteria);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Impossibile inviare notifica batteria bassa {Matricola}", mezzo.Matricola);
+                    }
+                }
+
                 //salva modifiche corsa +  mezzo
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();

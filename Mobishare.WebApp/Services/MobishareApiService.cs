@@ -518,6 +518,102 @@ public class MobishareApiService : IMobishareApiService
     }
     #endregion
 
+    #region FEEDBACK
+    public async Task<bool> InviaFeedbackAsync(FeedbackCreateDTO dto)
+    {
+        try
+        {
+            LastError = null;
+            AddAuthorizationHeader();
+            var response = await _http.PostAsJsonAsync("api/feedback", dto);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                await SetLastErrorFromResponse(response);
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LastError = ex.Message;
+            return false;
+        }
+    }
+
+    public async Task<List<FeedbackResponseDTO>> GetFeedbackRecentiAsync()
+    {
+        try
+        {
+            AddAuthorizationHeader();
+            var response = await _http.GetAsync("api/feedback/recenti");
+
+            if (!response.IsSuccessStatusCode)
+                return new();
+
+            var wrapper = await response.Content
+                .ReadFromJsonAsync<ApiSuccessResponse<List<FeedbackResponseDTO>>>(_jsonOptions);
+
+            return wrapper?.Dati ?? new();
+        }
+        catch { return new(); }
+    }
+
+    public async Task<FeedbackNegativiResponseDTO?> GetFeedbackNegativiAsync()
+    {
+        try
+        {
+            AddAuthorizationHeader();
+            var response = await _http.GetAsync("api/feedback/negativi");
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var wrapper = await response.Content
+                .ReadFromJsonAsync<ApiSuccessResponse<FeedbackNegativiResponseDTO>>(_jsonOptions);
+
+            return wrapper?.Dati;
+        }
+        catch { return null; }
+    }
+
+    public async Task<FeedbackStatisticheDTO?> GetStatisticheFeedbackAsync()
+    {
+        try
+        {
+            AddAuthorizationHeader();
+            var response = await _http.GetAsync("api/feedback/statistiche");
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var wrapper = await response.Content
+                .ReadFromJsonAsync<ApiSuccessResponse<FeedbackStatisticheDTO>>(_jsonOptions);
+
+            return wrapper?.Dati;
+        }
+        catch { return null; }
+    }
+
+    public async Task<List<FeedbackResponseDTO>> GetFeedbackPerUtenteAsync(int idUtente)
+    {
+        try
+        {
+            AddAuthorizationHeader();
+            var response = await _http.GetAsync($"api/feedback/utente/{idUtente}");
+
+            if (!response.IsSuccessStatusCode)
+                return new();
+
+            var wrapper = await response.Content
+                .ReadFromJsonAsync<ApiSuccessResponse<List<FeedbackResponseDTO>>>(_jsonOptions);
+
+            return wrapper?.Dati ?? new();
+        }
+        catch { return new(); }
+    }
+    #endregion
 
     #region PARCHEGGI
     public async Task<List<ParcheggioResponseDTO>> GetParcheggiAsync()

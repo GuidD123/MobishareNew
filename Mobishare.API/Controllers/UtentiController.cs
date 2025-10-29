@@ -169,6 +169,12 @@ namespace Mobishare.API.Controllers
             _context.Utenti.Add(nuovoUtente);
             await _context.SaveChangesAsync();
 
+            await _hubContext.Clients.Group("admin")
+                .SendAsync("RiceviNotificaAdmin",
+                "Nuovo Utente Registrato",
+                $"L'utente {nuovoUtente.Nome} {nuovoUtente.Cognome} ({nuovoUtente.Email}) si è appena registrato");
+
+
             return CreatedAtAction(nameof(GetUtente), new { id = nuovoUtente.Id }, new SuccessResponse
             {
                 Messaggio = "Registrazione completata",

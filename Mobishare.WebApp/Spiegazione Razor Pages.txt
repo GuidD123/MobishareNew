@@ -170,12 +170,3 @@ PARTIAL, LAYOUT E RIUSO
 
 
 
-
-
-
-
-TRANSAZIONI USATE IN: 
-/Pages/Transazioni/Index.cshtml - Per utenti: mostra GetMieTransazioniAsync()
-/Pages/Admin/Transazioni/Index.cshtml - Per gestori: cerca per utente con GetTransazioniByUtenteAsync(id)
-/Pages/Admin/Transazioni/Crea.cshtml - Form per CreaTransazioneManualeAsync() (rimborsi, penali)
-/Pages/Admin/Transazioni/Gestisci.cshtml - Per modificare stati con AggiornaStatoTransazioneAsync()
