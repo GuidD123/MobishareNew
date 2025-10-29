@@ -157,3 +157,25 @@ PARTIAL, LAYOUT E RIUSO
 
         _Layout.cshmtl è il template principale con navbar e footer
         _ValidationScriptsPartial.cshtml = script per validazione form
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+TRANSAZIONI USATE IN: 
+/Pages/Transazioni/Index.cshtml - Per utenti: mostra GetMieTransazioniAsync()
+/Pages/Admin/Transazioni/Index.cshtml - Per gestori: cerca per utente con GetTransazioniByUtenteAsync(id)
+/Pages/Admin/Transazioni/Crea.cshtml - Form per CreaTransazioneManualeAsync() (rimborsi, penali)
+/Pages/Admin/Transazioni/Gestisci.cshtml - Per modificare stati con AggiornaStatoTransazioneAsync()

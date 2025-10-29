@@ -110,10 +110,8 @@ namespace Mobishare.API.Controllers
             if (await _context.Mezzi.AnyAsync(m => m.Matricola == dto.Matricola))
                 throw new ElementoDuplicatoException("Mezzo", dto.Matricola);
 
-
             //Verifica esistenza parcheggio 
             var parcheggio = await _context.Parcheggi.FindAsync(dto.IdParcheggioCorrente) ?? throw new ElementoNonTrovatoException("Parcheggio", dto.IdParcheggioCorrente);
-
 
             //Business rule - mezzi elettrici con batteria bassa non possono essere disponibili
             if ((dto.Tipo == TipoMezzo.BiciElettrica || dto.Tipo == TipoMezzo.MonopattinoElettrico)
@@ -165,7 +163,6 @@ namespace Mobishare.API.Controllers
         [HttpPut("{id}/stato")]
         public async Task<IActionResult> CambiaStatoMezzo(int id, [FromBody] MezzoUpdateDTO dto)
         {
-
             // Trova il mezzo
             var mezzo = await _context.Mezzi.FindAsync(id) ?? throw new ElementoNonTrovatoException("Mezzo", id);
 
@@ -347,7 +344,7 @@ namespace Mobishare.API.Controllers
             });
         }
 
-        // GET: api/mezzi/parcheggio/5
+        // GET: api/mezzi/parcheggio/{idParcheggio}
         [HttpGet("parcheggio/{idParcheggio}")]
         public async Task<IActionResult> GetMezziPerParcheggio(int idParcheggio)
         {

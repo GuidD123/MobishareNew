@@ -1,0 +1,197 @@
+﻿@page
+@model Mobishare.WebApp.Pages.Transazioni.TransazioniUtenteModel
+@{
+    ViewData["Title"] = "Le Mie Transazioni";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-receipt"></i> Le Mie Transazioni</h2>
+        <a asp-page="/Ricariche/Index" class="btn btn-primary">
+            <i class="bi bi-credit-card"></i> Ricarica Credito
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!Model.Transazioni.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Non hai ancora effettuato transazioni.
+        </div>
+    }
+    else
+    {
+        <!-- Filtri -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Tipo Transazione</label>
+                        <select name="tipoFiltro" class="form-select" onchange="this.form.submit()">
+                            <option value="">Tutte</option>
+                            <option value="Ricarica" selected="@(Model.TipoFiltro == "Ricarica")">Ricariche</option>
+                            <option value="Pagamento" selected="@(Model.TipoFiltro == "Pagamento")">Pagamenti Corse</option>
+                            <option value="Rimborso" selected="@(Model.TipoFiltro == "Rimborso")">Rimborsi</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Stato</label>
+                        <select name="statoFiltro" class="form-select" onchange="this.form.submit()">
+                            <option value="">Tutti</option>
+                            <option value="Completato" selected="@(Model.StatoFiltro == "Completato")">Completato</option>
+                            <option value="InSospeso" selected="@(Model.StatoFiltro == "InSospeso")">In Sospeso</option>
+                            <option value="Fallito" selected="@(Model.StatoFiltro == "Fallito")">Fallito</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <a asp-page="/Transazioni/Index" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Resetta Filtri
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Statistiche -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <h6 class="card-title">Totale Ricariche</h6>
+                        <h3>€ @Model.TotaleRicariche.ToString("F2")</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-danger">
+                    <div class="card-body">
+                        <h6 class="card-title">Totale Spese</h6>
+                        <h3>€ @Model.TotaleSpese.ToString("F2")</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <h6 class="card-title">Bilancio</h6>
+                        <h3>€ @((Model.TotaleRicariche - Model.TotaleSpese).ToString("F2"))</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabella Transazioni -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Storico Completo (@Model.TransazioniFiltrate.Count() transazioni)</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Importo</th>
+                                <th>Stato</th>
+                                <th>Dettagli</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var trans in Model.TransazioniFiltrate)
+                            {
+                                <tr>
+                                    <td>
+                                        <small class="text-muted">
+                                            @trans.DataTransazione.ToString("dd/MM/yyyy HH:mm")
+                                        </small>
+                                    </td>
+                                    <td>
+                                        @if (trans.Tipo == "Ricarica")
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-arrow-up-circle"></i> Ricarica
+                                            </span>
+                                        }
+                                        else if (trans.Tipo == "Pagamento")
+                                        {
+                                            <span class="badge bg-primary">
+                                                <i class="bi bi-arrow-down-circle"></i> Pagamento
+                                            </span>
+                                        }
+                                        else if (trans.Tipo == "Rimborso")
+                                        {
+                                            <span class="badge bg-info">
+                                                <i class="bi bi-arrow-counterclockwise"></i> Rimborso
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">@trans.Tipo</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <strong class="@(trans.Importo >= 0 ? "text-success" : "text-danger")">
+                                            @(trans.Importo >= 0 ? "+" : "")€ @trans.Importo.ToString("F2")
+                                        </strong>
+                                    </td>
+                                    <td>
+                                        @if (trans.Stato == "Completato")
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-circle"></i> Completato
+                                            </span>
+                                        }
+                                        else if (trans.Stato == "InSospeso")
+                                        {
+                                            <span class="badge bg-warning">
+                                                <i class="bi bi-clock"></i> In Sospeso
+                                            </span>
+                                        }
+                                        else if (trans.Stato == "Fallito")
+                                        {
+                                            <span class="badge bg-danger">
+                                                <i class="bi bi-x-circle"></i> Fallito
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (trans.IdCorsa.HasValue)
+                                        {
+                                            <a asp-page="/Corse/Dettaglio" asp-route-id="@trans.IdCorsa" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i> Corsa
+                                            </a>
+                                        }
+                                        @if (trans.IdRicarica.HasValue)
+                                        {
+                                            <span class="text-muted">
+                                                <i class="bi bi-info-circle"></i> Ricarica #@trans.IdRicarica
+                                            </span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-dismiss alerts
+        setTimeout(function() {
+            $('.alert').fadeOut('slow');
+        }, 5000);
+    </script>
+}

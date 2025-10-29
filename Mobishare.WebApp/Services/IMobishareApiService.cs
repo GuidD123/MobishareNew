@@ -1,64 +1,76 @@
-﻿using Mobishare.Core.DTOs; 
+﻿using Mobishare.Core.DTOs;
+using Mobishare.Core.Enums;
 
 namespace Mobishare.WebApp.Services;
 public interface IMobishareApiService
 {
-    // ====================================
-    // AUTENTICAZIONE
-    // ====================================
+    string? LastError { get; }
+
+    #region AUTENTICAZIONE
     Task<LoginResponseDTO?> LoginAsync(string email, string password);
     Task<bool> RegisterAsync(RegisterDTO request);
+    #endregion
 
-    // ====================================
-    // UTENTE
-    // ====================================
+
+    #region UTENTE
     Task<UtenteDTO?> GetUtenteAsync(int id);
     Task<bool> CambiaPasswordAsync(CambiaPswDTO dto);
     //Task<bool> AggiornaProfiloAsync(int id, AggiornaProfiloDTO dto);
+    #endregion
 
-    // ====================================
-    // RICARICHE
-    // ====================================
+
+    #region RICARICHE
     Task<List<RicaricaResponseDTO>> GetRicaricheUtenteAsync(int utenteId);
     Task<bool> NuovaRicaricaAsync(NuovaRicaricaDTO dto);
     Task<SaldoResponseDTO?> GetSaldoUtenteAsync(int utenteId);
+    #endregion
 
-    // ====================================
-    // CORSE
-    // ====================================
+
+    #region PAGAMENTI
+    Task<List<TransazioneResponseDTO>> GetTransazioniByUtenteAsync(int idUtente); // Admin: vede transazioni utente
+    Task<List<TransazioneResponseDTO>> GetMieTransazioniAsync();
+    Task<TransazioneResponseDTO?> CreaTransazioneManualeAsync(TransazioneCreateDTO dto); // Admin: rimborsi/penali
+    Task<bool> AggiornaStatoTransazioneAsync(int idTransazione, StatoPagamento nuovoStato);
+    #endregion
+
+
+    #region CORSE
     Task<List<CorsaResponseDTO>> GetCorseAsync(int? idUtente = null, string? matricolaMezzo = null);
     Task<List<CorsaResponseDTO>> GetStoricoCorseUtenteAsync(int idUtente);
     Task<CorsaResponseDTO?> GetCorsaAsync(int id);
     Task<CorsaResponseDTO?> GetCorsaAttivaAsync();
     Task<CorsaResponseDTO?> IniziaCorsaAsync(AvviaCorsaDTO dto);
     Task<CorsaResponseDTO?> TerminaCorsaAsync(int id, FineCorsaDTO dto);
+    #endregion
 
-    // ====================================
-    // MEZZI
-    // ====================================
+
+    #region MEZZI
     Task<List<MezzoResponseDTO>> GetMezziAsync();
     Task<MezzoResponseDTO?> GetMezzoAsync(int id);
     Task<MezzoResponseDTO?> GetMezzoByMatricolaAsync(string matricola);
     Task<List<MezzoResponseDTO>> GetMezziDisponibiliAsync();
     Task<List<MezzoResponseDTO>> GetMezziPerParcheggioAsync(int idParcheggio);
+    Task<MezzoResponseDTO?> CreaMezzoAsync(MezzoCreateDTO dto);
+    #endregion
 
-    // ====================================
-    // PARCHEGGI
-    // ====================================
+
+    #region PARCHEGGI
     Task<List<ParcheggioResponseDTO>> GetParcheggiAsync();
     Task<ParcheggioResponseDTO?> GetParcheggioAsync(int id);
+    Task<ParcheggioResponseDTO?> CreaParcheggioAsync(ParcheggioCreateDTO dto);
+    #endregion
 
-    // ====================================
-    // ADMIN (Gestore)
-    // ====================================
+
+    #region GESTORE
     Task<List<UtenteDTO>> GetTuttiUtentiAsync();
     Task<List<UtenteDTO>> GetUtentiSospesiAsync();
     Task<bool> RiattivaUtenteAsync(int id);
+    #endregion
 
-    // ====================================
-    // DASHBOARD (Gestore)
-    // ====================================
+
+    #region DASHBOARD GESTORE
     Task<DashboardDTO?> GetDashboardAsync(int idUtente);
+    #endregion
 }
 
 public record ApiSuccessResponse<T>(

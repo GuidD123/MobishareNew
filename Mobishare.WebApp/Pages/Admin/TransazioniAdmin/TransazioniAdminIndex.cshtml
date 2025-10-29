@@ -1,0 +1,358 @@
+﻿@page
+@model Mobishare.WebApp.Pages.Admin.TransazioniAdmin.TransazioniAdminIndexModel
+@{
+    ViewData["Title"] = "Registro Transazioni";
+}
+
+<div class="container-fluid mt-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-journal-text"></i> Registro Transazioni</h2>
+        <div>
+            <button class="btn btn-outline-success" onclick="window.print()">
+                <i class="bi bi-printer"></i> Stampa Report
+            </button>
+            <a asp-page="/DashboardAdmin" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill"></i> @Model.SuccessMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Form Ricerca -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filtra Transazioni</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">ID Utente</label>
+                    <input type="number" 
+                           name="idUtente" 
+                           class="form-control" 
+                           value="@Model.IdUtente" 
+                           placeholder="Inserisci ID..."
+                           min="1">
+                    <small class="text-muted">Obbligatorio per visualizzare transazioni</small>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Tipo Transazione</label>
+                    <select name="tipoFiltro" class="form-select">
+                        <option value="">🔍 Tutte le transazioni</option>
+                        <option value="Ricarica" selected="@(Model.TipoFiltro == "Ricarica")">💰 Ricariche</option>
+                        <option value="Pagamento" selected="@(Model.TipoFiltro == "Pagamento")">🚴 Pagamenti Corse</option>
+                        <option value="Rimborso" selected="@(Model.TipoFiltro == "Rimborso")">↩️ Rimborsi</option>
+                        <option value="Penale" selected="@(Model.TipoFiltro == "Penale")">⚠️ Penali</option>
+                        <option value="Bonus" selected="@(Model.TipoFiltro == "Bonus")">🎁 Bonus</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Data Inizio</label>
+                    <input type="date" 
+                           name="dataInizio" 
+                           class="form-control" 
+                           value="@Model.DataInizio?.ToString("yyyy-MM-dd")">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Data Fine</label>
+                    <input type="date" 
+                           name="dataFine" 
+                           class="form-control" 
+                           value="@Model.DataFine?.ToString("yyyy-MM-dd")">
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Cerca
+                    </button>
+                </div>
+                @if (Model.IdUtente.HasValue || !string.IsNullOrEmpty(Model.TipoFiltro) || Model.DataInizio.HasValue || Model.DataFine.HasValue)
+                {
+                    <div class="col-12">
+                        <a asp-page="/Admin/TransazioniAdmin/TransazioniAdminIndex" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-arrow-counterclockwise"></i> Resetta Filtri
+                        </a>
+                    </div>
+                }
+            </form>
+        </div>
+    </div>
+
+    @if (Model.Transazioni.Any())
+    {
+        <!-- Info Utente -->
+        @if (Model.UtenteSelezionato != null)
+        {
+            <div class="card mb-4 border-primary shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-person-circle"></i> Dettagli Utente</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-3">
+                            <p class="mb-1"><strong>Nome Completo</strong></p>
+                            <h5 class="mb-0">@Model.UtenteSelezionato.Nome</h5>
+                        </div>
+                        <div class="col-md-3">
+                            <p class="mb-1"><strong>Email</strong></p>
+                            <h6 class="mb-0 text-muted">@Model.UtenteSelezionato.Email</h6>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <p class="mb-1"><strong>Credito Disponibile</strong></p>
+                            <h3 class="mb-0">
+                                <span class="badge bg-@(Model.UtenteSelezionato.Credito >= 0 ? "success" : "danger")">
+                                    € @Model.UtenteSelezionato.Credito.ToString("F2")
+                                </span>
+                            </h3>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <p class="mb-1"><strong>Stato Account</strong></p>
+                            <h4 class="mb-0">
+                                @if (Model.UtenteSelezionato.Sospeso)
+                                {
+                                    <span class="badge bg-danger fs-5">
+                                        <i class="bi bi-ban"></i> Sospeso
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success fs-5">
+                                        <i class="bi bi-check-circle"></i> Attivo
+                                    </span>
+                                }
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Statistiche -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-white bg-primary shadow">
+                    <div class="card-body text-center">
+                        <i class="bi bi-list-check fs-1"></i>
+                        <h6 class="mt-2 mb-2">Totale Transazioni</h6>
+                        <h2 class="mb-0 fw-bold">@Model.TransazioniFiltrate.Count()</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-success shadow">
+                    <div class="card-body text-center">
+                        <i class="bi bi-arrow-up-circle fs-1"></i>
+                        <h6 class="mt-2 mb-2">Entrate Totali</h6>
+                        <h2 class="mb-0 fw-bold">€ @Model.TotaleEntrate.ToString("F2")</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-danger shadow">
+                    <div class="card-body text-center">
+                        <i class="bi bi-arrow-down-circle fs-1"></i>
+                        <h6 class="mt-2 mb-2">Uscite Totali</h6>
+                        <h2 class="mb-0 fw-bold">€ @Model.TotaleUscite.ToString("F2")</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-info shadow">
+                    <div class="card-body text-center">
+                        <i class="bi bi-calculator fs-1"></i>
+                        <h6 class="mt-2 mb-2">Saldo Netto</h6>
+                        <h2 class="mb-0 fw-bold">€ @((Model.TotaleEntrate - Model.TotaleUscite).ToString("F2"))</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabella Transazioni -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul"></i> Cronologia Transazioni
+                        <span class="badge bg-light text-dark ms-2">@Model.TransazioniFiltrate.Count() risultati</span>
+                    </h5>
+                    <small class="text-white-50">
+                        <i class="bi bi-info-circle"></i> Visualizzazione in sola lettura
+                    </small>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0 align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="text-center" style="width: 8%;">ID</th>
+                                <th style="width: 15%;">Data/Ora</th>
+                                <th style="width: 22%;">Utente</th>
+                                <th class="text-center" style="width: 13%;">Tipo</th>
+                                <th class="text-end" style="width: 12%;">Importo</th>
+                                <th class="text-center" style="width: 12%;">Stato</th>
+                                <th style="width: 18%;">Riferimenti</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var trans in Model.TransazioniFiltrate.OrderByDescending(t => t.DataTransazione))
+                            {
+                                <tr class="@(trans.Stato == "Fallito" ? "table-danger" : trans.Stato == "InSospeso" ? "table-warning" : "")">
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary">#@trans.Id</span>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <strong>@trans.DataTransazione.ToString("dd/MM/yyyy")</strong>
+                                        </div>
+                                        <small class="text-muted">
+                                            <i class="bi bi-clock"></i> @trans.DataTransazione.ToString("HH:mm:ss")
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <strong class="text-dark">@trans.NomeUtente</strong>
+                                        </div>
+                                        <small class="text-muted">
+                                            <i class="bi bi-envelope"></i> @trans.EmailUtente
+                                        </small>
+                                    </td>
+                                    <td class="text-center">
+                                        @switch (trans.Tipo)
+                                        {
+                                            case "Ricarica":
+                                                <span class="badge bg-success fs-6">
+                                                    <i class="bi bi-wallet2"></i> Ricarica
+                                                </span>
+                                                break;
+                                            case "Pagamento":
+                                                <span class="badge bg-primary fs-6">
+                                                    <i class="bi bi-credit-card"></i> Pagamento
+                                                </span>
+                                                break;
+                                            case "Rimborso":
+                                                <span class="badge bg-info fs-6">
+                                                    <i class="bi bi-arrow-return-left"></i> Rimborso
+                                                </span>
+                                                break;
+                                            case "Penale":
+                                                <span class="badge bg-warning text-dark fs-6">
+                                                    <i class="bi bi-exclamation-triangle"></i> Penale
+                                                </span>
+                                                break;
+                                            case "Bonus":
+                                                <span class="badge bg-success fs-6">
+                                                    <i class="bi bi-gift"></i> Bonus
+                                                </span>
+                                                break;
+                                            default:
+                                                <span class="badge bg-secondary fs-6">@trans.Tipo</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <h5 class="mb-0">
+                                            <strong class="@(trans.Importo >= 0 ? "text-success" : "text-danger")">
+                                                @(trans.Importo >= 0 ? "+" : "")€ @Math.Abs(trans.Importo).ToString("F2")
+                                            </strong>
+                                        </h5>
+                                    </td>
+                                    <td class="text-center">
+                                        @switch (trans.Stato)
+                                        {
+                                            case "Completato":
+                                                <span class="badge bg-success fs-6">
+                                                    <i class="bi bi-check-circle-fill"></i> Completato
+                                                </span>
+                                                break;
+                                            case "InSospeso":
+                                                <span class="badge bg-warning text-dark fs-6">
+                                                    <i class="bi bi-clock-fill"></i> In Sospeso
+                                                </span>
+                                                break;
+                                            case "Fallito":
+                                                <span class="badge bg-danger fs-6">
+                                                    <i class="bi bi-x-circle-fill"></i> Fallito
+                                                </span>
+                                                break;
+                                            default:
+                                                <span class="badge bg-secondary fs-6">@trans.Stato</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (trans.IdCorsa.HasValue)
+                                        {
+                                            <a href="/Admin/Corse/Dettaglio/@trans.IdCorsa" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-bicycle"></i> Corsa #@trans.IdCorsa
+                                            </a>
+                                        }
+                                        else if (trans.IdRicarica.HasValue)
+                                        {
+                                            <span class="badge bg-light text-dark border">
+                                                <i class="bi bi-credit-card"></i> Ricarica #@trans.IdRicarica
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">
+                                                <i class="bi bi-gear"></i> Sistema
+                                            </span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-light text-center">
+                <small class="text-muted">
+                    <i class="bi bi-shield-check"></i> 
+                    Tutte le transazioni sono tracciate e immutabili per garantire la sicurezza
+                </small>
+            </div>
+        </div>
+    }
+    else if (Model.IdUtente.HasValue || !string.IsNullOrEmpty(Model.TipoFiltro) || Model.DataInizio.HasValue || Model.DataFine.HasValue)
+    {
+        <div class="alert alert-info shadow-sm">
+            <i class="bi bi-info-circle fs-4"></i>
+            <strong>Nessun risultato trovato</strong>
+            <p class="mb-0">Nessuna transazione corrisponde ai filtri selezionati. Prova a modificare i criteri di ricerca.</p>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-primary shadow-sm">
+            <i class="bi bi-search fs-4"></i>
+            <strong>Benvenuto nel Registro Transazioni</strong>
+            <p class="mb-0">Inserisci l'ID di un utente per visualizzare le sue transazioni e monitorare i movimenti finanziari.</p>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-dismiss alerts dopo 5 secondi
+        setTimeout(() => {
+            $('.alert-success, .alert-danger').fadeOut('slow');
+        }, 5000);
+    </script>
+}

@@ -219,8 +219,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const logoutLinks = document.querySelectorAll('a[href*="/Account/Logout"]');
     logoutLinks.forEach(link => {
         link.addEventListener('click', function (e) {
-            if (!confirm('Sei sicuro di voler uscire?')) {
-                e.preventDefault();
+            if (!this.hasAttribute('data-no-confirm')) {
+                if (!confirm('Sei sicuro di voler uscire?')) {
+                    e.preventDefault();
+                }
             }
         });
     });
@@ -364,7 +366,7 @@ console.log('Mobishare JavaScript caricato correttamente');
 // ==================================================
 
 // Recupero eventuale token JWT
-const token = sessionStorage.getItem("JwtToken") || localStorage.getItem("JwtToken");
+const token = window.MOBISHARE_CONFIG?.jwtToken || "";
 
 const connection = new signalR.HubConnectionBuilder()
     .withUrl("https://localhost:7001/hub/notifiche", {
@@ -449,6 +451,10 @@ connection.on("PagamentoAggiornato", data => {
 
 connection.on("NuovaTransazione", data => {
     showInfoMessage(`Nuova transazione: ${data.tipo} ${data.importo}€`);
+
+    if (window.location.pathname.includes('/Transazioni')) {
+        setTimeout(() => window.location.reload(), 2000);
+    }
 });
 
 connection.on("AccountRiattivato", data => {

@@ -274,6 +274,41 @@
             }
         </div>
 
+        @if (Model.IsGestore)
+        {
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h4 class="mb-3">
+                        <i class="bi bi-gear-fill"></i> Gestione Sistema
+                    </h4>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body text-center p-4">
+                            <i class="bi bi-building display-3 text-primary mb-3"></i>
+                            <h5 class="card-title">Gestisci Parcheggi</h5>
+                            <p class="text-muted">Aggiungi, modifica o elimina parcheggi del sistema</p>
+                            <a asp-page="/DashboardAdmin/GestioneParcheggi" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> Vai alla Gestione
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body text-center p-4">
+                            <i class="bi bi-bicycle display-3 text-success mb-3"></i>
+                            <h5 class="card-title">Gestisci Mezzi</h5>
+                            <p class="text-muted">Aggiungi, modifica o rimuovi mezzi dalla flotta</p>
+                            <a asp-page="/DashboardAdmin/GestioneMezzi" class="btn btn-success">
+                                <i class="bi bi-plus-circle"></i> Vai alla Gestione
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
         <!-- Link Rapidi -->
         <div class="row">
             <div class="col-12">

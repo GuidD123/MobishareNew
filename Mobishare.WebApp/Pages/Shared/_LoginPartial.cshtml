@@ -106,6 +106,12 @@
                             <i class="bi bi-graph-up me-2 text-danger"></i>Statistiche
                         </a>
                     </li>
+                    <li>
+                        <a class="dropdown-item" asp-page="/Admin/Transazioni/Index">
+                            <i class="bi bi-cash-stack me-2 text-success"></i>Gestione Transazioni
+                        </a>
+                    </li>
+   
                     <li><hr class="dropdown-divider"></li>
                 }
                 else
@@ -148,8 +154,9 @@
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item" asp-page="/Utente/Transazioni">
-                            <i class="bi bi-receipt me-2 text-secondary"></i>Storico Pagamenti
+                        <a class="dropdown-item" asp-page="/Transazioni/TransazioniUtente">
+                            <i class="bi bi-receipt me-2 text-secondary"></i>Storico Transazioni
+                            <span class="badge bg-info float-end">Nuovo</span>
                         </a>
                     </li>
                     <li><hr class="dropdown-divider"></li>

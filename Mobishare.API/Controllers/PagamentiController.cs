@@ -21,16 +21,17 @@ namespace Mobishare.API.Controllers
         private readonly IHubContext<NotificheHub> _hubContext = hubContext;
         private readonly ILogger<PagamentiController> _logger = logger;
 
-        //per consultare storico transazioni
+
+        //CONSULTA STORICO TRANSAZIONI
         // GET: api/pagamenti/utente/{idUtente}
-        [Authorize(Roles = "gestore,utente")]
+        [Authorize(Roles = "Gestore,Utente")]
         [HttpGet("utente/{idUtente}")]
         public async Task<ActionResult<SuccessResponse>> GetTransazioniByUtente(int idUtente)
         {
             var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var currentUserRole = User.FindFirstValue(ClaimTypes.Role);
 
-            if (currentUserRole != "gestore" && currentUserId != idUtente)
+            if (currentUserRole != "Gestore" && currentUserId != idUtente)
                 throw new OperazioneNonConsentitaException("Non puoi accedere ai pagamenti di altri utenti");
 
             var utenteEsistente = await _context.Utenti.AnyAsync(u => u.Id == idUtente);
@@ -38,8 +39,22 @@ namespace Mobishare.API.Controllers
                 throw new ElementoNonTrovatoException("Utente", idUtente);
 
             var transazioni = await _context.Transazioni
+                .Include(t => t.Utente)
                 .Where(t => t.IdUtente == idUtente)
                 .OrderByDescending(t => t.DataTransazione)
+                .Select(t => new TransazioneResponseDTO
+                {
+                   Id = t.Id,
+                   IdUtente = t.IdUtente,
+                   IdCorsa = t.IdCorsa,
+                   IdRicarica = t.IdRicarica,
+                   Importo = t.Importo,
+                   Stato = t.Stato.ToString(),
+                   DataTransazione = t.DataTransazione,
+                   Tipo = t.Tipo,
+                   NomeUtente = t.Utente != null ? t.Utente.Nome : "Utente sconosciuto",
+                   EmailUtente = t.Utente != null ? t.Utente.Email : null
+                })
                 .ToListAsync();
 
             return Ok(new SuccessResponse
@@ -51,41 +66,85 @@ namespace Mobishare.API.Controllers
 
         //per consultare storico transazioni
         // GET: api/pagamenti/miei
-        [Authorize(Roles = "utente")]
+        [Authorize(Roles = "Utente")]
         [HttpGet("miei")]
         public async Task<ActionResult<SuccessResponse>> GetMieTransazioni()
         {
             var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            var pagamenti = await _context.Transazioni
+            var transazioni = await _context.Transazioni
+                .Include(t => t.Utente)
                 .Where(t => t.IdUtente == currentUserId)
                 .OrderByDescending(t => t.DataTransazione)
+                .Select(t => new TransazioneResponseDTO
+                {
+                    Id = t.Id,
+                    IdUtente = t.IdUtente,
+                    IdCorsa = t.IdCorsa,
+                    IdRicarica = t.IdRicarica,
+                    Importo = t.Importo,
+                    Stato = t.Stato.ToString(),
+                    DataTransazione = t.DataTransazione,
+                    Tipo = t.Tipo,
+                    NomeUtente = t.Utente != null ? t.Utente.Nome : "Utente sconosciuto",
+                    EmailUtente = t.Utente != null ? t.Utente.Email : null
+                })
                 .ToListAsync();
 
             return Ok(new SuccessResponse
             {
-                Messaggio = "Lista dei miei pagamenti",
-                Dati = pagamenti
+                Messaggio = "Lista delle mie transazioni",
+                Dati = transazioni
             });
         }
 
         
-        //crea una nuova transazione e notifica in tempo reale l’utente e i gestori
+        //crea una nuova transazione il gestore -> rimborsi ecc 
         // POST: api/pagamenti
-        [Authorize(Roles = "Utente,Gestore")]
+        /*[Authorize(Roles = "Gestore")]
         [HttpPost]
-        public async Task<ActionResult<SuccessResponse>> PostTransazione([FromBody] Transazione transazione)
+        public async Task<ActionResult<SuccessResponse>> PostTransazione([FromBody] TransazioneCreateDTO dto)
         {
-            if (transazione.Importo == 0)
-                throw new ValoreNonValidoException(nameof(transazione.Importo), "non può essere zero");
+            if (dto.Importo == 0)
+                throw new ValoreNonValidoException(nameof(dto.Importo), "non può essere zero");
 
-            var utente = await _context.Utenti.FindAsync(transazione.IdUtente)
-                ?? throw new ElementoNonTrovatoException("Utente", transazione.IdUtente);
+            var utente = await _context.Utenti.FindAsync(dto.IdUtente)
+                ?? throw new ElementoNonTrovatoException("Utente", dto.IdUtente);
 
-            transazione.DataTransazione = DateTime.Now;
+            // Crea transazione
+            var transazione = new Transazione
+            {
+                IdUtente = dto.IdUtente,
+                Importo = dto.Importo,
+                Stato = StatoPagamento.Completato, 
+                DataTransazione = DateTime.UtcNow,
+                Tipo = dto.Tipo,
+                IdCorsa = dto.IdCorsa,
+                IdRicarica = dto.IdRicarica
+            };
+
             _context.Transazioni.Add(transazione);
+
+            //Aggiorna il credito dell'utente
+            utente.Credito += dto.Importo; // Positivo = aggiunge, Negativo = sottrae
+
+            //Gestisci sospensione/riattivazione
+            if (utente.Sospeso && utente.Credito >= 0)
+            {
+                utente.Sospeso = false;
+                _logger.LogInformation("Utente {UserId} riattivato tramite transazione manuale", utente.Id);
+            }
+            else if (!utente.Sospeso && utente.Credito < 0)
+            {
+                utente.Sospeso = true;
+                _logger.LogWarning("Utente {UserId} sospeso tramite transazione manuale", utente.Id);
+            }
+
+
             await _context.SaveChangesAsync();
 
+
+            //NOTIFICA SIGNALR
             try
             {
                 // Notifica utente
@@ -99,6 +158,7 @@ namespace Mobishare.API.Controllers
                 await _hubContext.Clients.Group($"utenti:{transazione.IdUtente}")
                     .SendAsync(evento, new
                     {
+                        TransazioneId = transazione.Id,
                         Importo = transazione.Importo,
                         Stato = transazione.Stato.ToString(),
                         Data = transazione.DataTransazione
@@ -118,13 +178,28 @@ namespace Mobishare.API.Controllers
                 _logger.LogWarning(ex, "Errore durante invio notifica SignalR per transazione {Id}", transazione.Id);
             }
 
+
+            var responseDto = new TransazioneResponseDTO
+            {
+                Id = transazione.Id,
+                IdUtente = transazione.IdUtente,
+                IdCorsa = transazione.IdCorsa,
+                IdRicarica = transazione.IdRicarica,
+                Importo = transazione.Importo,
+                Stato = transazione.Stato.ToString(),
+                DataTransazione = transazione.DataTransazione,
+                Tipo = transazione.Tipo,
+                NomeUtente = utente.Nome,
+                EmailUtente = utente.Email
+            };
+
             return CreatedAtAction(nameof(GetTransazioniByUtente), new { idUtente = transazione.IdUtente },
                 new SuccessResponse
                 {
                     Messaggio = "Transazione registrata con successo",
-                    Dati = transazione
+                    Dati = responseDto
                 });
-        }
+        }*/
 
 
         //aggiorna stato transazione -> Completato, Fallito ecc..
@@ -142,14 +217,26 @@ namespace Mobishare.API.Controllers
                 ?? throw new ElementoNonTrovatoException("Transazione", id);
 
             var statoVecchio = transazione.Stato;
+            // Aggiorna solo se lo stato è effettivamente cambiato
+            if (statoVecchio == nuovoStato)
+            {
+                return Ok(new SuccessResponse
+                {
+                    Messaggio = "Transazione già nello stato richiesto",
+                    Dati = new
+                    {
+                        transazione.Id,
+                        transazione.IdUtente,
+                        transazione.Importo,
+                        Stato = transazione.Stato.ToString()
+                    }
+                });
+            }
             transazione.Stato = nuovoStato;
             await _context.SaveChangesAsync();
 
             try
             {
-                // Notifica all’utente (solo se è cambiato qualcosa)
-                if (statoVecchio != nuovoStato)
-                {
                     string evento = nuovoStato switch
                     {
                         StatoPagamento.Completato => "PagamentoCompletato",
@@ -171,7 +258,7 @@ namespace Mobishare.API.Controllers
                         .SendAsync("RiceviNotificaAdmin",
                             "Aggiornamento pagamento",
                             $"Transazione {transazione.Id} ({transazione.Importo:F2}€) aggiornata a stato: {nuovoStato}");
-                }
+                
 
                 _logger.LogInformation("Transazione {Id} aggiornata da {Old} a {New}", id, statoVecchio, nuovoStato);
             }
@@ -192,34 +279,5 @@ namespace Mobishare.API.Controllers
                 }
             });
         }
-
-        /*//collegamento al controller CorseController per gestire il pagamento della corsa al suo termine 
-        public async Task<Transazione> RegistraPagamentoCorsaAsync(int idUtente, decimal importo, int idCorsa)
-        {
-            var transazione = new Transazione
-            {
-                IdUtente = idUtente,
-                Importo = importo,
-                Stato = StatoPagamento.Completato,
-                DataTransazione = DateTime.Now,
-                IdCorsa = idCorsa
-            };
-
-            _context.Transazioni.Add(transazione);
-            await _context.SaveChangesAsync();
-
-            await _hubContext.Clients.Group($"utenti:{idUtente}")
-                .SendAsync("PagamentoCompletato", new
-                {
-                    Importo = importo,
-                    Stato = "Completato",
-                    Data = transazione.DataTransazione
-                });
-
-            return transazione;
-        }*/
-
-
     }
-
 }

@@ -1,0 +1,267 @@
+﻿@page
+@model Mobishare.WebApp.Pages.DashboardAdmin.GestioneMezziModel
+@{
+    ViewData["Title"] = "Gestione Mezzi";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="bi bi-bicycle text-success"></i> Gestione Mezzi
+        </h2>
+        <a asp-page="/DashboardAdmin/Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Torna alla Dashboard
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill"></i> @Model.SuccessMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Form Aggiungi Mezzo -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-plus-circle"></i> Aggiungi Nuovo Mezzo
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="Matricola" class="form-label">
+                            <i class="bi bi-tag"></i> Matricola *
+                        </label>
+                        <input type="text" class="form-control" id="Matricola" name="Matricola" 
+                               placeholder="es. BK001, EB042" required>
+                        <div class="form-text">Codice identificativo univoco del mezzo</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="Tipo" class="form-label">
+                            <i class="bi bi-bicycle"></i> Tipo Mezzo *
+                        </label>
+                        <select class="form-select" id="Tipo" name="Tipo" required>
+                            <option value="">Seleziona tipo...</option>
+                            <option value="Bicicletta">🚴 Bicicletta</option>
+                            <option value="BiciclettaElettrica">🚲 Bicicletta Elettrica</option>
+                            <option value="MonopattinoElettrico">⚡ Monopattino Elettrico</option>
+                        </select>
+                        <div class="form-text">Tipologia del mezzo</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="IdParcheggioCorrente" class="form-label">
+                            <i class="bi bi-geo-alt"></i> Parcheggio Iniziale *
+                        </label>
+                        <select class="form-select" id="IdParcheggioCorrente" name="IdParcheggioCorrente" required>
+                            <option value="">Seleziona parcheggio...</option>
+                            @foreach (var parcheggio in Model.Parcheggi)
+                            {
+                                <option value="@parcheggio.Id">
+                                    @parcheggio.Nome (@parcheggio.Zona)
+                                </option>
+                            }
+                        </select>
+                        <div class="form-text">Parcheggio dove posizionare il mezzo</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="LivelloBatteria" class="form-label">
+                            <i class="bi bi-battery-charging"></i> Livello Batteria (%)
+                        </label>
+                        <input type="number" class="form-control" id="LivelloBatteria" name="LivelloBatteria" 
+                               min="0" max="100" placeholder="es. 100">
+                        <div class="form-text">Lascia vuoto per mezzi non elettrici</div>
+                    </div>
+
+                    <div class="col-md-12 mb-3">
+                        <label for="Stato" class="form-label">
+                            <i class="bi bi-check-circle"></i> Stato Iniziale *
+                        </label>
+                        <select class="form-select" id="Stato" name="Stato" required>
+                            <option value="Disponibile">✅ Disponibile</option>
+                            <option value="Manutenzione">🔧 In Manutenzione</option>
+                            <option value="NonPrelevabile">❌ Non Prelevabile</option>
+                        </select>
+                        <div class="form-text">Stato iniziale del mezzo</div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="bi bi-plus-circle"></i> Aggiungi Mezzo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista Mezzi Esistenti -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-list-ul"></i> Mezzi Esistenti
+                    <span class="badge bg-success">@Model.Mezzi.Count</span>
+                </h5>
+                <div>
+                    <span class="badge bg-success">@Model.Mezzi.Count(m => m.Stato == "Disponibile") Disponibili</span>
+                    <span class="badge bg-primary">@Model.Mezzi.Count(m => m.Stato == "InUso") In Uso</span>
+                    <span class="badge bg-warning">@Model.Mezzi.Count(m => m.Stato == "Manutenzione") Manutenzione</span>
+                    <span class="badge bg-danger">@Model.Mezzi.Count(m => m.Stato == "NonPrelevabile") Guasti</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            @if (Model.Mezzi.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Matricola</th>
+                                <th>Tipo</th>
+                                <th>Parcheggio</th>
+                                <th>Batteria</th>
+                                <th>Stato</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var mezzo in Model.Mezzi.OrderBy(m => m.Id))
+                            {
+                                <tr>
+                                    <td><strong>#@mezzo.Id</strong></td>
+                                    <td>
+                                        <span class="badge bg-primary">@mezzo.Matricola</span>
+                                    </td>
+                                    <td>
+                                        @switch(mezzo.Tipo.ToLower())
+                                        {
+                                            case "bicicletta":
+                                            case "bici":
+                                                <text>🚴 Bicicletta</text>
+                                                break;
+                                            case "biciclettaelettrica":
+                                            case "ebike":
+                                                <text>🚲 Bici Elettrica</text>
+                                                break;
+                                            case "monopattinoelettrico":
+                                            case "escooter":
+                                                <text>⚡ Monopattino</text>
+                                                break;
+                                            default:
+                                                @mezzo.Tipo
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(mezzo.NomeParcheggio))
+                                        {
+                                            <small class="text-muted">
+                                                <i class="bi bi-geo-alt"></i> @mezzo.NomeParcheggio
+                                            </small>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (mezzo.LivelloBatteria.HasValue)
+                                        {
+                                            var livello = mezzo.LivelloBatteria.Value;
+                                            var coloreBatteria = livello > 60 ? "success" 
+                                                               : livello > 30 ? "warning" 
+                                                               : "danger";
+                                            <span class="badge bg-@coloreBatteria">
+                                                <i class="bi bi-battery-charging"></i> @livello%
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">N/A</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @switch(mezzo.Stato.ToLower())
+                                        {
+                                            case "disponibile":
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-check-circle"></i> Disponibile
+                                                </span>
+                                                break;
+                                            case "inuso":
+                                                <span class="badge bg-primary">
+                                                    <i class="bi bi-arrow-right-circle"></i> In Uso
+                                                </span>
+                                                break;
+                                            case "manutenzione":
+                                            case "inmanutenzione":
+                                                <span class="badge bg-warning">
+                                                    <i class="bi bi-wrench"></i> Manutenzione
+                                                </span>
+                                                break;
+                                            case "nonprelevabile":
+                                            case "guasto":
+                                                <span class="badge bg-danger">
+                                                    <i class="bi bi-x-circle"></i> Non Prelevabile
+                                                </span>
+                                                break;
+                                            default:
+                                                <span class="badge bg-secondary">@mezzo.Stato</span>
+                                                break;
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox display-4"></i>
+                    <p class="mt-3">Nessun mezzo presente nel sistema</p>
+                    <p class="text-muted">Utilizza il form sopra per aggiungerne uno</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        setTimeout(function() {
+            $('.alert:not(.alert-permanent)').fadeOut('slow');
+        }, 5000);
+
+        document.getElementById('Tipo').addEventListener('change', function() {
+            var tipo = this.value.toLowerCase();
+            var batteriaCampo = document.getElementById('LivelloBatteria').parentElement;
+            
+            if (tipo.includes('elettric')) {
+                batteriaCampo.style.display = 'block';
+                document.getElementById('LivelloBatteria').value = '100';
+            } else {
+                batteriaCampo.style.display = 'none';
+                document.getElementById('LivelloBatteria').value = '';
+            }
+        });
+    </script>
+}
