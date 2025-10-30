@@ -250,9 +250,6 @@ namespace Mobishare.API.Controllers
             if (!_passwordService.Verify(dto.VecchiaPassword, utente.Password))
                 throw new OperazioneNonConsentitaException("La password attuale non è corretta");
 
-            if (dto.NuovaPassword.Length < 6)
-                throw new ValoreNonValidoException("Password", "minimo 6 caratteri richiesti");
-
             // 3. Aggiorna -> la nuova password viene hashata 
             utente.Password = _passwordService.Hash(dto.NuovaPassword);
             await _context.SaveChangesAsync();
@@ -299,15 +296,6 @@ namespace Mobishare.API.Controllers
         }
 
 
-        /// <summary>
-        /// Aggiorna le informazioni di un utente esistente: modifica nome e password.
-        /// </summary>
-        /// <param name="id">ID dell'utente da aggiornare</param>
-        /// <param name="aggiornato">Oggetto Utente coi nuovi dati</param>
-        /// <returns>Utente aggiornato o errore</returns>
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         //PUT: api/utenti/{id} -> EndPoint per aggiornare profilo: modifica nome e psw
         [HttpPut("{id}")]
         public async Task<ActionResult<SuccessResponse>> UpdateInfoUtente(int id, [FromBody] Utente aggiornato)

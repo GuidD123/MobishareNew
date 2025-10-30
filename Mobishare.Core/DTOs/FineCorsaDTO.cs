@@ -4,10 +4,11 @@ namespace Mobishare.Core.DTOs
 {
     public class FineCorsaDTO
     {
-        [Required]
+        [Required(ErrorMessage = "Data e ora di fine corsa obbligatoria")]
         public DateTime DataOraFineCorsa { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Il parcheggio di rilascio è obbligatorio")]
+        [Range(1, int.MaxValue, ErrorMessage = "ID parcheggio deve essere maggiore di 0")]
         public int IdParcheggioRilascio { get; set; }
 
         public bool SegnalazioneProblema { get; set; } = false;

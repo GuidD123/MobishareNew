@@ -207,114 +207,178 @@ namespace Mobishare.API.Controllers
         [Authorize(Roles = "Utente")]
         [HttpPost("inizia")]
         public async Task<ActionResult<SuccessResponse>> PostCorsa([FromBody] AvviaCorsaDTO dto)
-        {   
-            //Validazione input
-            if (dto == null) throw new ValoreNonValidoException("body", "mancante");
-            if (string.IsNullOrWhiteSpace(dto.MatricolaMezzo))
-                throw new ValoreNonValidoException(nameof(dto.MatricolaMezzo), "obbligatoria");
+        {
+
             var matricola = dto.MatricolaMezzo.Trim();
-            if (matricola.Length > 64)
-                throw new ValoreNonValidoException(nameof(dto.MatricolaMezzo), "lunghezza massima 64");
-            if (dto.IdParcheggioPrelievo <= 0)
-                throw new ValoreNonValidoException(nameof(dto.IdParcheggioPrelievo), "deve essere > 0");
 
+            // ============================================
+            // gestione race condition
+            // Fino a 3 tentativi con delay esponenziale
+            // ============================================
+            const int MAX_RETRY = 3;
+            int attempt = 0;
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-
-            try
+            while (attempt < MAX_RETRY)
             {
-                // Recupero utente dal token JWT
-                var idUtente = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                     ?? throw new OperazioneNonConsentitaException("Utente non autenticato"));
+                attempt++;
 
-                var utente = await _context.Utenti.FindAsync(idUtente)
-                     ?? throw new ElementoNonTrovatoException("Utente", idUtente);
-
-                // Verifica che l'utente non abbia già una corsa in corso
-                bool corsaInCorso = await _context.Corse.AnyAsync(c => c.IdUtente == utente.Id && c.DataOraFine == null);
-                if (corsaInCorso)
-                    throw new OperazioneNonConsentitaException("Hai già una corsa in corso. Termina quella prima di avviarne un'altra.");
-
-
-                // Verifiche risorse
-                var parcheggio = await _context.Parcheggi.FindAsync(dto.IdParcheggioPrelievo)
-                    ?? throw new ElementoNonTrovatoException("Parcheggio", dto.IdParcheggioPrelievo);
-
-                var mezzo = await _context.Mezzi.FirstOrDefaultAsync(m => m.Matricola == dto.MatricolaMezzo) 
-                    ?? throw new ElementoNonTrovatoException("Mezzo", dto.MatricolaMezzo);
-
-
-                if (utente.Credito < Tariffe.COSTO_BASE)
-                    throw new CreditoInsufficienteException(utente.Credito, Tariffe.COSTO_BASE);
-
-                if (mezzo.Stato != StatoMezzo.Disponibile)
-                    throw new MezzoNonDisponibileException(mezzo.Matricola);
-
-                // Reload per sicurezza concorrenza
-                await _context.Entry(mezzo).ReloadAsync();
-                if (mezzo.Stato != StatoMezzo.Disponibile)
-                    throw new MezzoNonDisponibileException(mezzo.Matricola);
-
-                // Tutto ok → avvio corsa
-                mezzo.Stato = StatoMezzo.InUso;
-
-                var corsa = new Corsa
-                {
-                    IdUtente = utente.Id,  // ⚡ NON più dto.IdUtente
-                    MatricolaMezzo = dto.MatricolaMezzo,
-                    IdParcheggioPrelievo = dto.IdParcheggioPrelievo,
-                    DataOraInizio = DateTime.Now
-                };
-
-                _context.Corse.Add(corsa);
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await using var transaction = await _context.Database.BeginTransactionAsync();
 
                 try
                 {
-                    // Avvia il mezzo tramite MQTT dopo commit 
-                    await _mqttIoTService.SbloccaMezzoAsync(dto.IdParcheggioPrelievo, dto.MatricolaMezzo, utente.Id.ToString());
+                    // Recupero utente dal token JWT
+                    var idUtente = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                         ?? throw new OperazioneNonConsentitaException("Utente non autenticato"));
+
+                    var utente = await _context.Utenti.FindAsync(idUtente)
+                         ?? throw new ElementoNonTrovatoException("Utente", idUtente);
+
+                    // Verifica che l'utente non abbia già una corsa in corso
+                    bool corsaInCorso = await _context.Corse.AnyAsync(c => c.IdUtente == utente.Id && c.DataOraFine == null);
+
+                    if (corsaInCorso)
+                        throw new OperazioneNonConsentitaException("Hai già una corsa in corso. Termina quella prima di avviarne un'altra.");
+
+
+                    // Verifiche risorse
+                    var parcheggio = await _context.Parcheggi.FindAsync(dto.IdParcheggioPrelievo)
+                        ?? throw new ElementoNonTrovatoException("Parcheggio", dto.IdParcheggioPrelievo);
+
+                    var mezzo = await _context.Mezzi.FirstOrDefaultAsync(m => m.Matricola == dto.MatricolaMezzo)
+                        ?? throw new ElementoNonTrovatoException("Mezzo", dto.MatricolaMezzo);
+
+                    // Verifiche Business Logic 
+                    if (utente.Credito < Tariffe.COSTO_BASE)
+                        throw new CreditoInsufficienteException(utente.Credito, Tariffe.COSTO_BASE);
+
+                    if (mezzo.Stato != StatoMezzo.Disponibile)
+                        throw new MezzoNonDisponibileException(mezzo.Matricola);
+
+                    // Tutto ok → avvio corsa
+                    mezzo.Stato = StatoMezzo.InUso;
+
+                    var corsa = new Corsa
+                    {
+                        IdUtente = utente.Id,  
+                        MatricolaMezzo = dto.MatricolaMezzo,
+                        IdParcheggioPrelievo = dto.IdParcheggioPrelievo,
+                        DataOraInizio = DateTime.Now
+                    };
+
+                    _context.Corse.Add(corsa);
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    bool mqttSuccesso = false;
+                    string? mqttErrore = null;
+
+                    try
+                    {
+                        _logger.LogInformation("Tentativo invio comando MQTT sblocco mezzo {Matricola}...",matricola);
+
+                        var mqttTask = _mqttIoTService.SbloccaMezzoAsync(
+                            dto.IdParcheggioPrelievo,
+                            matricola,
+                            utente.Id.ToString());
+
+                        var completedTask = await Task.WhenAny(
+                            mqttTask,
+                            Task.Delay(TimeSpan.FromSeconds(5))
+                        );
+
+                        if (completedTask == mqttTask)
+                        {
+                            await mqttTask; // Rilancia eccezioni se presenti
+                            mqttSuccesso = true;
+                            _logger.LogInformation("Comando MQTT inviato con successo");
+                        }
+                        else
+                        {
+                            mqttErrore = "Timeout: il sistema IoT non risponde";
+                            _logger.LogWarning("Timeout comando MQTT per mezzo {Matricola}", matricola);
+                        }
+                    }
+                    catch (Exception mqttEx)
+                    {
+                        mqttErrore = $"Errore comunicazione IoT: {mqttEx.Message}";
+                        _logger.LogError(mqttEx,"Errore MQTT durante sblocco mezzo {Matricola}",matricola);
+                    }
+
+                    if (mqttSuccesso)
+                    {
+                        // Tutto OK: committa transazione
+                        await transaction.CommitAsync();
+
+                        _logger.LogInformation(
+                            "Corsa avviata con successo. CorsaId={CorsaId} Mezzo={Matricola}",
+                            corsa.Id, matricola);
+
+                        var response = new CorsaResponseDTO
+                        {
+                            Id = corsa.Id,
+                            IdUtente = corsa.IdUtente,
+                            MatricolaMezzo = corsa.MatricolaMezzo,
+                            TipoMezzo = mezzo.Tipo.ToString(),
+                            IdParcheggioPrelievo = corsa.IdParcheggioPrelievo,
+                            DataOraInizio = corsa.DataOraInizio
+                        };
+
+                        return CreatedAtAction(nameof(GetCorsaById), new { id = corsa.Id },
+                            new SuccessResponse
+                            {
+                                Messaggio = "Corsa avviata correttamente",
+                                Dati = response
+                            });
+                    }
+                    else
+                    {
+                        //MQTT fallito: ROLLBACK completo
+                        await transaction.RollbackAsync();
+
+                        _logger.LogWarning(
+                            "Rollback corsa per fallimento MQTT. Mezzo={Matricola} Errore={Errore}",
+                            matricola, mqttErrore);
+
+                        // Solleva eccezione che verrà catturata dal middleware
+                        throw new OperazioneNonConsentitaException(
+                            $"Impossibile sbloccare il mezzo: {mqttErrore}. " +
+                            "Riprova tra qualche secondo o scegli un altro mezzo.");
+                    }
+
                 }
-                catch (Exception e)
+                catch (DbUpdateConcurrencyException ex)
                 {
-                    _logger.LogWarning(e,
-                        "MQTT SbloccaMezzo fallito. CorsaId={CorsaId} Matricola={Matricola} ParcheggioId={ParcheggioId}",
-                        corsa.Id, matricola, dto.IdParcheggioPrelievo);
+                    await transaction.RollbackAsync();
+                    if (attempt < MAX_RETRY)
+                    {
+                        // Ritenta dopo delay esponenziale (50ms, 100ms, 200ms)
+                        _logger.LogWarning(
+                            "Race condition su mezzo {Matricola}. Tentativo {Attempt}/{MaxRetry}",
+                            matricola, attempt, MAX_RETRY);
+
+                        await Task.Delay(50 * (int)Math.Pow(2, attempt - 1));
+                        continue; // Torna all'inizio del while
+                    }
+                    else
+                    {
+                        // Tentativi esauriti
+                        _logger.LogError(ex,
+                            "Mezzo {Matricola} non prenotabile dopo {MaxRetry} tentativi",
+                            matricola, MAX_RETRY);
+
+                        throw new OperazioneNonConsentitaException(
+                            "Il mezzo è stato appena prenotato da un altro utente. Riprova tra qualche secondo.");
+                    }
                 }
-
-
-
-                var response = new CorsaResponseDTO
+                catch (Exception)
                 {
-                    Id = corsa.Id,
-                    IdUtente = corsa.IdUtente,
-                    MatricolaMezzo = corsa.MatricolaMezzo,
-                    TipoMezzo = mezzo.Tipo.ToString(),
-                    IdParcheggioPrelievo = corsa.IdParcheggioPrelievo,
-                    DataOraInizio = corsa.DataOraInizio
-                };
-
-                return CreatedAtAction(nameof(GetCorsaById), new { id = corsa.Id }, 
-                    new SuccessResponse
-                {
-                    Messaggio = "Corsa avviata correttamente",
-                    Dati = response
-                });
-
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
-            catch (DbUpdateConcurrencyException)
-            {
-                await transaction.RollbackAsync();
-                throw new OperazioneNonConsentitaException("Il mezzo è stato prenotato da un altro utente");
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            throw new OperazioneNonConsentitaException("Errore imprevisto durante la prenotazione. Riprova.");
         }
-
 
 
         // PUT: api/corse/{id} -> fine corsa + logica credito consistente

@@ -133,12 +133,6 @@ namespace Mobishare.API.Controllers
         [HttpPost]
         public async Task<ActionResult<SuccessResponse>> PostParcheggio([FromBody] ParcheggioCreateDTO dto)
         {
-            if (string.IsNullOrWhiteSpace(dto.Nome))
-                throw new ValoreNonValidoException("Nome", "Il nome del parcheggio non può essere vuoto");
-
-            if (dto.Capienza <= 0)
-                throw new ValoreNonValidoException("Capienza", "La capienza deve essere maggiore di zero");
-
             if (await _context.Parcheggi.AnyAsync(p => p.Nome == dto.Nome))
                 throw new ElementoDuplicatoException("Parcheggio", dto.Nome);
 
@@ -162,7 +156,7 @@ namespace Mobishare.API.Controllers
                 Indirizzo = parcheggio.Indirizzo,
                 Capienza = parcheggio.Capienza,
                 Attivo = parcheggio.Attivo,
-                Mezzi = [] // nuovo parcheggio parte vuoto
+                Mezzi = [] 
             };
 
             return CreatedAtAction(nameof(GetParcheggio), new { id = parcheggio.Id }, new SuccessResponse
