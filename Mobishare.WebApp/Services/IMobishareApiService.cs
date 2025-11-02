@@ -59,6 +59,9 @@ public interface IMobishareApiService
     Task<List<MezzoResponseDTO>> GetMezziDisponibiliAsync();
     Task<List<MezzoResponseDTO>> GetMezziPerParcheggioAsync(int idParcheggio);
     Task<MezzoResponseDTO?> CreaMezzoAsync(MezzoCreateDTO dto);
+    Task<bool> SpostaMezzoAsync(int idMezzo, MezzoUpdateDTO dto);
+    Task<bool> AggiornaMezzoAsync(int id, MezzoUpdateDTO dto);
+    Task<bool> SegnalaGuastoAsync(string matricola);
     #endregion
 
 

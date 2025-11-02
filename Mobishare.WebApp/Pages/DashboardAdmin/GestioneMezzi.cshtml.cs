@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Mobishare.WebApp.Services;
+using Microsoft.EntityFrameworkCore;
 using Mobishare.Core.DTOs;
 using Mobishare.Core.Enums;
+using Mobishare.Core.Models;
+using Mobishare.WebApp.Services;
 
 namespace Mobishare.WebApp.Pages.DashboardAdmin;
 
@@ -36,6 +38,12 @@ public class GestioneMezziModel : PageModel
 
     [BindProperty]
     public string Stato { get; set; } = "Disponibile";
+
+    [BindProperty]
+    public int IdMezzoSposta { get; set; }
+
+    [BindProperty]
+    public int NuovoParcheggioId { get; set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -170,6 +178,133 @@ public class GestioneMezziModel : PageModel
         await CaricaDatiAsync();
         return Page();
     }
+
+    public async Task<IActionResult> OnPostSpostaAsync()
+    {
+        var userId = HttpContext.Session.GetInt32("UserId");
+        var userRole = HttpContext.Session.GetString("UserRole");
+
+        if (userId == null)
+        {
+            return RedirectToPage("/Account/Login");
+        }
+
+        if (!userRole?.Equals("Gestore", StringComparison.OrdinalIgnoreCase) ?? true)
+        {
+            TempData["ErrorMessage"] = "Non hai i permessi per eseguire questa operazione.";
+            return RedirectToPage("/DashboardAdmin/Index");
+        }
+
+        if (IdMezzoSposta <= 0)
+        {
+            TempData["ErrorMessage"] = "Mezzo non valido.";
+            return RedirectToPage();
+        }
+
+        if (NuovoParcheggioId <= 0)
+        {
+            TempData["ErrorMessage"] = "Seleziona un parcheggio valido.";
+            return RedirectToPage();
+        }
+
+        try
+        {
+            // Recupera il mezzo corrente per mantenere stato e batteria
+            var mezzoCorrente = await _apiService.GetMezzoAsync(IdMezzoSposta);
+
+            if (mezzoCorrente == null)
+            {
+                TempData["ErrorMessage"] = "Mezzo non trovato.";
+                return RedirectToPage();
+            }
+
+            // Prepara DTO con lo spostamento
+            var dto = new MezzoUpdateDTO
+            {
+                LivelloBatteria = mezzoCorrente.LivelloBatteria ?? 0,
+                Stato = Enum.Parse<StatoMezzo>(mezzoCorrente.Stato),
+                IdParcheggioCorrente = NuovoParcheggioId
+            };
+
+            var success = await _apiService.SpostaMezzoAsync(IdMezzoSposta, dto);
+
+            if (success)
+            {
+                var parcheggioDestinazione = (await _apiService.GetParcheggiAsync())
+                    .FirstOrDefault(p => p.Id == NuovoParcheggioId);
+
+                TempData["SuccessMessage"] = $"Mezzo '{mezzoCorrente.Matricola}' spostato con successo in '{parcheggioDestinazione?.Nome}'!";
+            }
+            else
+            {
+                TempData["ErrorMessage"] = _apiService.LastError ?? "Errore durante lo spostamento del mezzo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Errore durante lo spostamento del mezzo {Id}", IdMezzoSposta);
+            TempData["ErrorMessage"] = $"Errore imprevisto: {ex.Message}";
+        }
+
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostRipristinaAsync(int id)
+    {
+        var userId = HttpContext.Session.GetInt32("UserId");
+        var userRole = HttpContext.Session.GetString("UserRole");
+
+        if (userId == null)
+            return RedirectToPage("/Account/Login");
+
+        if (!userRole?.Equals("Gestore", StringComparison.OrdinalIgnoreCase) ?? true)
+        {
+            TempData["ErrorMessage"] = "Non hai i permessi per eseguire questa operazione.";
+            return RedirectToPage("/DashboardAdmin/Index");
+        }
+
+        try
+        {
+            // Recupera il mezzo esistente
+            var mezzo = await _apiService.GetMezzoAsync(id);
+            if (mezzo == null)
+            {
+                TempData["ErrorMessage"] = "Mezzo non trovato.";
+                return RedirectToPage();
+            }
+
+            // Aggiorna lo stato a Disponibile
+            var dto = new MezzoUpdateDTO
+            {
+                IdParcheggioCorrente = mezzo.IdParcheggioCorrente ?? 0,
+                LivelloBatteria = mezzo.LivelloBatteria ?? 0,
+                Stato = StatoMezzo.Disponibile
+            };
+
+            var success = await _apiService.AggiornaMezzoAsync(id, dto);
+
+            if (success)
+            {
+                TempData["SuccessMessage"] = $"Il mezzo '{mezzo.Matricola}' è tornato disponibile.";
+                _logger.LogInformation("Mezzo {Matricola} ripristinato a stato Disponibile dal gestore", mezzo.Matricola);
+            }
+            else
+            {
+                TempData["ErrorMessage"] = _apiService.LastError ?? "Errore durante l'aggiornamento del mezzo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Errore durante il ripristino del mezzo {Id}", id);
+            TempData["ErrorMessage"] = $"Errore imprevisto: {ex.Message}";
+        }
+
+        return RedirectToPage();
+    }
+
+
+
+
 
     private async Task CaricaDatiAsync()
     {

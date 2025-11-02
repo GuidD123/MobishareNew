@@ -225,6 +225,15 @@
                                         <i class="bi bi-play-circle"></i> Noleggia Ora
                                     </button>
                                 </form>
+
+                                <!-- pulsante segnala guasto -->
+                                <form method="post" asp-page-handler="SegnalaGuasto" class="mt-2">
+                                    <input type="hidden" name="id" value="@mezzo.Id" />
+                                        <button type="submit" class="btn btn-outline-danger w-100" 
+                                            onclick="return confirm('Vuoi segnalare questo mezzo come guasto?');">
+                                            <i class="bi bi-tools"></i> Segnala Guasto
+                                        </button>
+                                </form>
                             }
                             else if (Model.UtenteCorrente?.Sospeso ?? false)
                             {

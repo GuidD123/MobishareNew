@@ -70,7 +70,7 @@ public class IndexModel : PageModel
 
             // Ordina per zona e nome
             Parcheggi = Parcheggi
-                .OrderBy(p => p.Zona)
+                .OrderBy(p => p.Id)
                 .ThenBy(p => p.Nome)
                 .ToList();
         }

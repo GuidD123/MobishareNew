@@ -1,10 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.ComponentModel.DataAnnotations;
-using System.Text;
-using System.Text.Json;
 using Mobishare.Core.DTOs;
 using Mobishare.WebApp.Services;
+using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 
 /*namespace Mobishare.WebApp.Pages.Account
 {
@@ -233,6 +237,7 @@ using Mobishare.WebApp.Services;
 
 namespace Mobishare.WebApp.Pages.Account
 {
+    [AllowAnonymous]
     public class LoginModel : PageModel
     {
         private readonly IMobishareApiService _apiService;
@@ -342,6 +347,17 @@ namespace Mobishare.WebApp.Pages.Account
                         SameSite = SameSiteMode.Lax
                     });
                 }
+
+                // Autenticazione cookie (necessaria per [Authorize])
+                var claims = new List<Claim>
+{
+                new Claim(ClaimTypes.Name, loginResult.Nome),
+                new Claim(ClaimTypes.Email, Input.Email),
+                new Claim(ClaimTypes.Role, loginResult.Ruolo)
+};
+                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
+                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal);
 
                 _logger.LogInformation("Redirect a dashboard per ruolo: {Ruolo}", loginResult.Ruolo);
 

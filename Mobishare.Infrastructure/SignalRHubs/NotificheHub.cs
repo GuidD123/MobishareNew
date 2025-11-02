@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace Mobishare.Infrastructure.SignalRHubs
@@ -10,6 +11,13 @@ namespace Mobishare.Infrastructure.SignalRHubs
     [Authorize]
     public class NotificheHub : Hub
     {
+        private readonly ILogger<NotificheHub> _logger;
+
+        public NotificheHub(ILogger<NotificheHub> logger)
+        {
+            _logger = logger;
+        }
+
         public override async Task OnConnectedAsync()
         {
             var user = Context.User;
@@ -30,7 +38,9 @@ namespace Mobishare.Infrastructure.SignalRHubs
                 await Clients.Caller.SendAsync("ConnessoAlGruppo", "admin");
             }
 
-            Console.WriteLine($"Connessione SignalR: utente {userId}, ruolo {ruolo}, connId={Context.ConnectionId}");
+            _logger.LogInformation("Connessione SignalR: utente {UserId}, ruolo {Ruolo}, connId={ConnId}",
+                userId, ruolo, Context.ConnectionId);
+
             await base.OnConnectedAsync();
         }
 
@@ -43,16 +53,19 @@ namespace Mobishare.Infrastructure.SignalRHubs
 
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, "admin");
 
-            Console.WriteLine($"Disconnessione SignalR: utente {userId}, connId={Context.ConnectionId}");
+            _logger.LogInformation("Disconnessione SignalR: utente {UserId}, connId={ConnId}",
+                userId, Context.ConnectionId);
+
             await base.OnDisconnectedAsync(exception);
         }
+
 
         // === METODI DI INVIO ===
 
         // Invio messaggio generico (test)
         public async Task InviaMessaggio(string user, string message)
         {
-            await Clients.All.SendAsync("RiceviMessaggio", user, message);
+            await Clients.Group("admin").SendAsync("RiceviMessaggio", user, message);
         }
 
         // Aggiornamento credito utente
@@ -62,10 +75,10 @@ namespace Mobishare.Infrastructure.SignalRHubs
                          .SendAsync("CreditoAggiornato", nuovoCredito);
         }
 
-        // Aggiornamento telemetria di un mezzo
+        // Aggiornamento telemetria di un mezzo (solo admin)
         public async Task InviaTelemetriaMezzo(object telemetria)
         {
-            await Clients.All.SendAsync("AggiornamentoTelemetria", telemetria);
+            await Clients.Group("admin").SendAsync("AggiornamentoTelemetria", telemetria);
         }
 
         // Notifica per i gestori
@@ -75,7 +88,7 @@ namespace Mobishare.Infrastructure.SignalRHubs
                          .SendAsync("RiceviNotificaAdmin", titolo, testo);
         }
 
-        //notificare quando cambia lo stato di un utente
+        // Notifica cambio stato utente
         public async Task NotificaAggiornamentoUtente(int userId, bool sospeso)
         {
             await Clients.Group("admin").SendAsync("AggiornamentoUtente", new
@@ -85,5 +98,22 @@ namespace Mobishare.Infrastructure.SignalRHubs
             });
         }
 
+        public class DashboardData
+        {
+            public int NumeroCorseTotali { get; set; }
+            public int CorseOggi { get; set; }
+            public int CorseUltimaSettimana { get; set; }
+            public int MezziDisponibili { get; set; }
+            public int MezziInUso { get; set; }
+            public int MezziGuasti { get; set; }
+            public int UtentiTotali { get; set; }
+            public int UtentiSospesi { get; set; }
+        }
+
+        // Aggiorna la dashboard admin
+        public async Task AggiornaDashboard(DashboardData data)
+        {
+            await Clients.Group("admin").SendAsync("AggiornaDashboard", data);
+        }
     }
 }

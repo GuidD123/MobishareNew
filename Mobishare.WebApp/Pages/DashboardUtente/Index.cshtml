@@ -279,6 +279,18 @@
     </div>
 </div>
 
+
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@{
+    var jwt = HttpContextAccessor.HttpContext?.Session.GetString("JwtToken");
+}
+<script>
+    if ('@jwt') {
+        sessionStorage.setItem("jwtToken", '@jwt');
+    }
+</script>
+
+
 @section Scripts {
     @if (Model.HasCorsaInCorso && Model.CorsaAttiva != null)
     {

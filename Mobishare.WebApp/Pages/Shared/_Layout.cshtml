@@ -1,152 +1,136 @@
-﻿<!DOCTYPE html>
+﻿@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+<!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Mobishare</title>
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
-
-    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
     <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg sticky-top shadow-sm">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/">
-                <i class="bi bi-bicycle"></i> Mobishare
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <a class="navbar-brand" href="/"><i class="bi bi-bicycle"></i> Mobishare</a>
 
             <div class="collapse navbar-collapse" id="navbarNav">
-                @if (Context.Session.GetString("JwtToken") != null)
+                @if (HttpContextAccessor.HttpContext?.Session.GetString("JwtToken") != null)
                 {
-                    var userRole = Context.Session.GetString("UserRole");
+                    var userRole = HttpContextAccessor.HttpContext?.Session.GetString("UserRole");
                     var isGestore = userRole == "Gestore";
-                    
-                    <!-- MENU LOGGATO -->
+                    var userName = HttpContextAccessor.HttpContext?.Session.GetString("UserName");
+
+                    <!-- menu utente loggato -->
                     <ul class="navbar-nav me-auto">
-                        <li class="nav-item">
-                            <a class="nav-link" href="/Mezzi">
-                                <i class="bi bi-bicycle"></i> Mezzi
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/Parcheggi">
-                                <i class="bi bi-p-square"></i> Parcheggi
-                            </a>
-                        </li>
-                        
+                        <li class="nav-item"><a class="nav-link" href="/Mezzi"><i class="bi bi-bicycle"></i> Mezzi</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/Parcheggi"><i class="bi bi-p-square"></i> Parcheggi</a></li>
+
                         @if (isGestore)
                         {
-                            <!-- ADMIN: Tutte le corse del sistema -->
-                            <li class="nav-item">
-                                <a class="nav-link" href="/Admin/Corse/CorseTot">
-                                    <i class="bi bi-list-check"></i> Gestione Corse
-                                </a>
-                            </li>
+                            <li class="nav-item"><a class="nav-link" href="/Admin/Corse/CorseTot"><i class="bi bi-list-check"></i> Gestione Corse</a></li>
                         }
                         else
                         {
-                            <!-- UTENTE: Solo le proprie corse -->
-                            <li class="nav-item">
-                                <a class="nav-link" href="/Corse">
-                                    <i class="bi bi-clock-history"></i> Le Mie Corse
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="/Ricariche">
-                                    <i class="bi bi-wallet2"></i> Ricariche
-                                </a>
-                            </li>
+                            <li class="nav-item"><a class="nav-link" href="/Corse"><i class="bi bi-clock-history"></i> Le Mie Corse</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/Ricariche"><i class="bi bi-wallet2"></i> Ricariche</a></li>
                         }
                     </ul>
 
                     <ul class="navbar-nav">
                         @if (isGestore)
                         {
-                            <!-- BADGE NOTIFICHE ADMIN -->
-                            <li class="nav-item">
-                                <a class="nav-link position-relative" href="/Admin/Notifiche" id="notifiche-link">
+                            <!-- DROPDOWN NOTIFICHE ADMIN -->
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle position-relative" href="#" id="notificheDropdown" 
+                                   role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-bell fs-5"></i>
-                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifiche-badge" style="display: none;">
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                                          id="notifiche-badge" style="display: none;">
                                         0
                                     </span>
                                 </a>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificheDropdown" 
+                                    style="min-width: 350px; max-height: 400px; overflow-y: auto;">
+                                    <li>
+                                        <h6 class="dropdown-header d-flex justify-content-between align-items-center">
+                                            <span>Notifiche</span>
+                                            <button class="btn btn-sm btn-link text-decoration-none p-0" 
+                                                    id="cancella-tutte-notifiche" title="Segna tutte come lette">
+                                                <i class="bi bi-check-all"></i>
+                                            </button>
+                                        </h6>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    
+                                    <!-- Lista notifiche (popolata dinamicamente) -->
+                                    <div id="notifiche-lista">
+                                        <li class="text-center text-muted py-3">
+                                            <i class="bi bi-bell-slash"></i>
+                                            <p class="mb-0 small">Nessuna notifica</p>
+                                        </li>
+                                    </div>
+                                    
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-center small" href="/DashboardAdmin">
+                                            Vai alla Dashboard
+                                        </a>
+                                    </li>
+                                </ul>
                             </li>
                         }
-                        
+
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-person-circle"></i> @Context.Session.GetString("UserName")
+                            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle"></i> @userName
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="/Profilo"><i class="bi bi-person"></i> Il mio profilo</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <a class="dropdown-item" href="/Account/Logout">
-                                        <i class="bi bi-box-arrow-right"></i> Logout
-                                    </a>
-                                </li>
+                                <li><hr class="dropdown-divider" /></li>
+                                <li><a class="dropdown-item" href="/Account/Logout"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                             </ul>
                         </li>
                     </ul>
                 }
                 else
                 {
-                    <!-- MENU NON LOGGATO -->
+                    <!-- menu pubblico -->
                     <ul class="navbar-nav ms-auto">
-                        <li class="nav-item">
-                            <a class="btn btn-light btn-sm me-2" href="/Account/Login">
-                                <i class="bi bi-box-arrow-in-right"></i> Accedi
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="btn btn-success btn-sm" href="/Account/Register">
-                                <i class="bi bi-person-plus"></i> Registrati
-                            </a>
-                        </li>
+                        <li class="nav-item"><a class="btn btn-light btn-sm me-2" href="/Account/Login"><i class="bi bi-box-arrow-in-right"></i> Accedi</a></li>
+                        <li class="nav-item"><a class="btn btn-success btn-sm" href="/Account/Register"><i class="bi bi-person-plus"></i> Registrati</a></li>
                     </ul>
                 }
             </div>
         </div>
     </nav>
 
-    <!-- MAIN -->
-    <main class="container my-4">
-        @RenderBody()
-    </main>
+    <main class="container my-4">@RenderBody()</main>
 
-    <!-- FOOTER -->
     <footer class="bg-primary text-center text-white py-3 mt-5">
-        <div class="container">
-            <small>&copy; @DateTime.Now.Year Mobishare - Mobility Sharing System</small>
-        </div>
+        <small>&copy; @DateTime.Now.Year Mobishare - Mobility Sharing System</small>
     </footer>
 
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js" integrity="sha384-f1MzM6v4w7r3dM2AtFhBvBvq5z2gyqNnAW+u6rA9hAl1gCHwGjUqkCQg+XfB4cmN" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
-    
+
+    <!-- Passaggio sicuro dei dati di sessione -->
     <script>
         window.MOBISHARE_CONFIG = {
-            jwtToken: '@Context.Session.GetString("JwtToken")',
-            userId: @(Context.Session.GetInt32("UserId") ?? 0),
-            userRole: '@Context.Session.GetString("UserRole")'
+            jwtToken: '@(HttpContextAccessor.HttpContext?.Session.GetString("JwtToken") ?? "")',
+            userId: @(HttpContextAccessor.HttpContext?.Session.GetInt32("UserId") ?? 0),
+            userRole: '@(HttpContextAccessor.HttpContext?.Session.GetString("UserRole") ?? "")'
         };
+        if (window.MOBISHARE_CONFIG.jwtToken) {
+            sessionStorage.setItem("jwtToken", window.MOBISHARE_CONFIG.jwtToken);
+        }
     </script>
-
 </body>
 </html>

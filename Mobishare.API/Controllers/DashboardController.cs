@@ -5,14 +5,23 @@ using Mobishare.Core.Data;
 using Mobishare.Core.DTOs;
 using Mobishare.Core.Enums;
 using Mobishare.Core.Models;
+using Microsoft.AspNetCore.SignalR;
+using Mobishare.Infrastructure.SignalRHubs;
 
 namespace Mobishare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class DashboardController(MobishareDbContext context) : ControllerBase
+    public class DashboardController : ControllerBase
     {
-        private readonly MobishareDbContext _context = context;
+        private readonly MobishareDbContext _context;
+        private readonly IHubContext<NotificheHub> _hubContext;
+
+        public DashboardController(MobishareDbContext context, IHubContext<NotificheHub> hubContext)
+        {
+            _context = context;
+            _hubContext = hubContext;
+        }
 
         // GET: api/dashboard?idUtente=99
         [Authorize(Roles ="Gestore")]
@@ -31,11 +40,27 @@ namespace Mobishare.API.Controllers
             var mezziInUso = await _context.Mezzi.CountAsync(m => m.Stato == StatoMezzo.InUso);
             var mezziGuasti = await _context.Mezzi.CountAsync(m => m.Stato == StatoMezzo.NonPrelevabile);
             var utentiSospesi = await _context.Utenti.CountAsync(u => u.Sospeso);
+            var utentiTotali = await _context.Utenti.CountAsync();
             var creditoTotaleSistema = _context.Utenti.AsEnumerable().Sum(u => u.Credito);
             var corseUltimaSettimana = await _context.Corse
                 .Where(c => c.DataOraInizio >= oggi.AddDays(-7))
                 .CountAsync();
 
+            // === Invio real-time ai gestori ===
+            await _hubContext.Clients.Group("admin").SendAsync("AggiornaDashboard", new
+            {
+                NumeroCorseTotali = numeroCorseTotali,
+                CorseOggi = corseOggi,
+                CorseUltimaSettimana = corseUltimaSettimana,
+                MezziDisponibili = mezziDisponibili,
+                MezziInUso = mezziInUso,
+                MezziGuasti = mezziGuasti,
+                UtentiSospesi = utentiSospesi,
+                UtentiTotali = utentiTotali,
+                CreditoTotaleSistema = creditoTotaleSistema
+            });
+
+            //risposta API 
             return Ok(new SuccessResponse<DashboardDTO>
             {
 
@@ -48,10 +73,12 @@ namespace Mobishare.API.Controllers
                     MezziInUso = mezziInUso,
                     MezziGuasti = mezziGuasti,
                     UtentiSospesi = utentiSospesi,
+                    UtentiTotali = utentiTotali,
                     CreditoTotaleSistema = creditoTotaleSistema,
                     Messaggio = corseUltimaSettimana == 0 ? "Nessuna corsa effettuata nell'ultima settimana." : null,
                 }
             });
+
         }
     }
 }

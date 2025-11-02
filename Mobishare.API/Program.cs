@@ -7,7 +7,7 @@ using Mobishare.API.Middleware;
 using Mobishare.Core.Data;
 using Mobishare.Infrastructure.IoT.HostedServices;
 using Mobishare.Infrastructure.IoT.Interfaces;
-using Mobishare.Infrastructure.IoT.Services;    
+using Mobishare.Infrastructure.IoT.Services;
 using Mobishare.Infrastructure.Services;
 using Mobishare.Infrastructure.SignalRHubs;
 using Mobishare.Infrastructure.SignalRHubs.HostedServices;
@@ -17,7 +17,7 @@ using System.Text.Json;
 
 /// <summary>
 /// Punto di ingresso principale dell'applicazione ASP.NET Core per Mobishare.
-/// Configura tutti i servizi necessari: database, autenticazione JWT, MQTT, CORS e Swagger.
+/// Configura tutti i servizi necessari: database, autenticazione JWT, MQTT, CORS, SignalR e Swagger.
 /// </summary>
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,7 +26,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        //options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     });
 #endregion
@@ -38,24 +37,12 @@ builder.Services.AddDbContext<MobishareDbContext>(options =>
 #endregion
 
 
-/*
- Configurazione autenticazione JWT:
- - La chiave segreta (Jwt:Key) è definita in appsettings.json.
- - In fase di validazione il token viene controllato su:
-    • Issuer (chi ha emesso il token)
-    • Audience (chi può consumarlo)
-    • Lifetime (scadenza)
-    • Signature (firma con chiave simmetrica)
- - Per il progetto didattico la chiave è salvata nel file di configurazione.
-   In un ambiente reale andrebbe spostata in variabili d'ambiente o secret manager.
-*/
-
 #region Configurazione Autenticazione JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         var jwtKey = builder.Configuration["Jwt:Key"]
-                    ?? throw new InvalidOperationException("JWT Key non configurata");
+            ?? throw new InvalidOperationException("JWT Key non configurata");
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -86,7 +73,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 #endregion
 
 
-//Auth Gestore
 #region Configurazione Autorizzazione (Policy)
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("CanViewOwnData", policy =>
@@ -106,32 +92,21 @@ builder.Services.AddAuthorizationBuilder()
 
 
 #region Configurazione MQTT e IoT
-// Registra i servizi MQTT
 builder.Services.AddSingleton<IMqttIoTService, MqttIoTService>();
 builder.Services.AddHostedService(sp => (MqttIoTService)sp.GetRequiredService<IMqttIoTService>());
-
-// Registra il BackgroundService che integra IoT e DB e avvia automaticamente
 builder.Services.AddHostedService<MqttIoTBackgroundService>();
-
-//scenari IoT
-//builder.Services.AddScoped<IIoTScenarioService, IoTScenarioService>();
 #endregion
 
 
 #region Configurazione Servizi Personalizzati
 builder.Services.AddSingleton<PasswordService>();
-
-// Servizio di monitoraggio corse (Scoped perché usa DbContext)
 builder.Services.AddScoped<IRideMonitoringService, RideMonitoringService>();
-
-// Background Service per monitoraggio automatico corse
 builder.Services.AddHostedService<RideMonitoringBackgroundService>();
 builder.Services.AddHostedService<MqttTelemetryListenerService>();
 #endregion
 
 
 #region PagamentoService
-// Service per il pagamento 
 builder.Services.AddScoped<PagamentoService>();
 #endregion
 
@@ -170,13 +145,12 @@ builder.Services.AddSwaggerGen(c =>
 #endregion
 
 
-//SignalR richiede AllowCredentials()per permettere la connessione WebSocket tra domini diversi 
 #region Configurazione CORS
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    options.AddPolicy("AllowWebApp", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "https://localhost:3001")
+        policy.WithOrigins("https://localhost:7268") // dominio della WebApp
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -191,38 +165,36 @@ builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 #endregion
 
+
 #region Configurazione SignalR
 builder.Services.AddSignalR();
 #endregion
 
 
 builder.Services.AddSingleton<NotificationOutboxService>();
-
 builder.Services.AddHostedService<NotificationRetryService>();
 
 
-// Costruisce l'applicazione
+// Costruzione app
 var app = builder.Build();
 
-// Seeder all'avvio (solo se vuoto)
+
+// Seeder iniziale
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<MobishareDbContext>();
     var passwordService = services.GetRequiredService<PasswordService>();
-
-    // Applica migrazioni se ci sono
     context.Database.Migrate();
-
-    // Popola dati di base se il DB è vuoto
     Mobishare.Infrastructure.Seed.DbSeeder.SeedDatabase(context, passwordService);
 }
 
-// Middleware custom -> ErrorHandling
+
+// Middleware custom
 app.UseExceptionHandling();
 
 
-#region Configurazione Pipeline HTTP (Middleware)
+#region Pipeline HTTP
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -235,7 +207,7 @@ else
     app.UseHsts();
 }
 
-// Middleware di sicurezza
+// Sicurezza header
 app.Use(async (context, next) =>
 {
     context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
@@ -246,10 +218,14 @@ app.Use(async (context, next) =>
 });
 
 app.UseHttpsRedirection();
-app.UseCors();
+
+// CORS deve venire PRIMA di Authentication e SignalR
+app.UseCors("AllowWebApp");
+
 app.UseAuthentication();
 app.UseAuthorization();
 #endregion
+
 
 #region Endpoint Health Check
 app.MapGet("/health", async (MobishareDbContext context) =>
@@ -257,7 +233,6 @@ app.MapGet("/health", async (MobishareDbContext context) =>
     try
     {
         await context.Database.CanConnectAsync();
-
         return Results.Ok(new
         {
             status = "Healthy",
@@ -268,35 +243,29 @@ app.MapGet("/health", async (MobishareDbContext context) =>
     }
     catch (Exception ex)
     {
-        return Results.Problem(
-            title: "Health Check Failed",
-            detail: ex.Message,
-            statusCode: 503
-        );
+        return Results.Problem(title: "Health Check Failed", detail: ex.Message, statusCode: 503);
     }
 });
 #endregion
 
 
-//Registra tutti i controllers
+// Controllers + Hub
 app.MapControllers();
-
-//Endpoint SignalR per notifiche in tempo reale -> hub raggiungibile a localhost
 app.MapHub<NotificheHub>("/hub/notifiche");
 
 
 #region Gestione Arresto Pulito
-var cancellationTokenSource = new CancellationTokenSource();
+var cts = new CancellationTokenSource();
 
 Console.CancelKeyPress += (sender, e) =>
 {
     e.Cancel = true;
-    cancellationTokenSource.Cancel();
+    cts.Cancel();
 };
 
 try
 {
-    await app.RunAsync(cancellationTokenSource.Token);
+    await app.RunAsync(cts.Token);
 }
 catch (OperationCanceledException)
 {
@@ -304,7 +273,7 @@ catch (OperationCanceledException)
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"Errore durante l'avvio dell'applicazione: {ex.Message}");
+    Console.WriteLine($"Errore durante l'avvio: {ex.Message}");
     throw;
 }
 #endregion

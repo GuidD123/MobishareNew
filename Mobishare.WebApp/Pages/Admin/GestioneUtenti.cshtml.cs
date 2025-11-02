@@ -99,6 +99,6 @@ public class UtentiModel : PageModel
             TempData["ErrorMessage"] = $"Errore durante la riattivazione: {ex.Message}";
         }
 
-        return RedirectToPage("/Admin/Utenti", new { soloSospesi = UtentiSospesi.Count > 1 });
+        return RedirectToPage("/Admin/GestioneUtenti", new { soloSospesi = UtentiSospesi.Count > 1 });
     }
 }

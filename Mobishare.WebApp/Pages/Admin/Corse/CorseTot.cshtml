@@ -72,25 +72,33 @@
         </div>
         <div class="card-body">
             <form method="get" class="row g-3">
-                <div class="col-md-4">
-                    <label for="filtroIdUtente" class="form-label">ID Utente</label>
-                    <input type="number" 
-                           class="form-control" 
-                           id="filtroIdUtente" 
-                           name="FiltroIdUtente" 
-                           value="@Model.FiltroIdUtente" 
-                           placeholder="Es: 5">
+                <div class="col-md-6">
+                    <label for="filtroMatricola" class="form-label">Mezzo</label>
+                    <select id="filtroMatricola" name="FiltroMatricola" class="form-select">
+                        <option value="">Tutti i mezzi</option>
+                        @foreach (var mezzo in Model.MezziDisponibili)
+                        {
+                            <option value="@mezzo.Matricola" selected="@(mezzo.Matricola == Model.FiltroMatricola)">
+                                @mezzo.Matricola - @mezzo.Tipo
+                            </option>
+                        }
+                    </select>
                 </div>
-                <div class="col-md-4">
-                    <label for="filtroMatricola" class="form-label">Matricola Mezzo</label>
-                    <input type="text" 
-                           class="form-control" 
-                           id="filtroMatricola" 
-                           name="FiltroMatricola" 
-                           value="@Model.FiltroMatricola" 
-                           placeholder="Es: BK001">
+
+                <div class="col-md-6">
+                    <label for="filtroIdUtente" class="form-label">Utente</label>
+                    <select id="filtroIdUtente" name="FiltroIdUtente" class="form-select">
+                        <option value="">Tutti gli utenti</option>
+                        @foreach (var utente in Model.UtentiDisponibili)
+                        {
+                            <option value="@utente.Id" selected="@(utente.Id == Model.FiltroIdUtente)">
+                               @utente.Nome - @utente.Email (ID @utente.Id)
+                            </option>
+                        }
+                    </select>
                 </div>
-                <div class="col-md-4 d-flex align-items-end">
+
+                <div class="col-md-12 d-flex justify-content-end align-items-end">
                     <button type="submit" class="btn btn-primary me-2">
                         <i class="bi bi-search"></i> Cerca
                     </button>
@@ -141,30 +149,11 @@
                             @foreach (var corsa in Model.Corse)
                             {
                                 <tr class="@(corsa.DataOraFine == null ? "table-warning" : "")">
-                                    <!-- ID Corsa -->
                                     <td><strong>#@corsa.Id</strong></td>
-
-                                    <!-- ID Utente -->
-                                    <td>
-                                        <span class="badge bg-info">User @corsa.IdUtente</span>
-                                    </td>
-
-                                    <!-- Mezzo -->
-                                    <td>
-                                        <span class="badge bg-primary">@corsa.MatricolaMezzo</span>
-                                    </td>
-
-                                    <!-- Tipo Mezzo -->
-                                    <td>
-                                        <small class="text-muted">@corsa.TipoMezzo</small>
-                                    </td>
-
-                                    <!-- Data Inizio -->
-                                    <td>
-                                        <small>@corsa.DataOraInizio.ToString("dd/MM/yyyy HH:mm")</small>
-                                    </td>
-
-                                    <!-- Data Fine -->
+                                    <td><span class="badge bg-info">User @corsa.IdUtente</span></td>
+                                    <td><span class="badge bg-primary">@corsa.MatricolaMezzo</span></td>
+                                    <td><small class="text-muted">@corsa.TipoMezzo</small></td>
+                                    <td><small>@corsa.DataOraInizio.ToString("dd/MM/yyyy HH:mm")</small></td>
                                     <td>
                                         @if (corsa.DataOraFine.HasValue)
                                         {
@@ -175,22 +164,16 @@
                                             <span class="badge bg-warning text-dark">In corso</span>
                                         }
                                     </td>
-
-                                    <!-- Durata -->
                                     <td>
-                                        @if (corsa.DataOraFine.HasValue)
-                                        {
-                                            var durata = (int)(corsa.DataOraFine.Value - corsa.DataOraInizio).TotalMinutes;
-                                            <span class="badge bg-secondary">@durata min</span>
+                                        @{
+                                            var durata = corsa.DataOraFine.HasValue
+                                                ? (int)(corsa.DataOraFine.Value - corsa.DataOraInizio).TotalMinutes
+                                                : (int)(DateTime.Now - corsa.DataOraInizio).TotalMinutes;
                                         }
-                                        else
-                                        {
-                                            var durataAttuale = (int)(DateTime.Now - corsa.DataOraInizio).TotalMinutes;
-                                            <span class="badge bg-warning text-dark">@durataAttuale min</span>
-                                        }
+                                        <span class="badge @(corsa.DataOraFine.HasValue ? "bg-secondary" : "bg-warning text-dark")">
+                                            @durata min
+                                        </span>
                                     </td>
-
-                                    <!-- Parcheggi -->
                                     <td>
                                         <small>
                                             <i class="bi bi-arrow-right text-success"></i> #@corsa.IdParcheggioPrelievo
@@ -201,8 +184,6 @@
                                             }
                                         </small>
                                     </td>
-
-                                    <!-- Costo -->
                                     <td>
                                         @if (corsa.CostoFinale.HasValue)
                                         {
@@ -213,8 +194,6 @@
                                             <span class="text-muted">-</span>
                                         }
                                     </td>
-
-                                    <!-- Stato -->
                                     <td>
                                         @if (corsa.DataOraFine.HasValue)
                                         {

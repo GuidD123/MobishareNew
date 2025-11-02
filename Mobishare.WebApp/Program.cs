@@ -1,4 +1,6 @@
 using Mobishare.WebApp.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +10,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Razor Pages
 builder.Services.AddRazorPages();
+
+// SignalR
+builder.Services.AddSignalR();
 
 builder.Services.AddDistributedMemoryCache(); 
 
@@ -41,6 +46,29 @@ builder.Services.AddSession(options =>
 
 // HttpContextAccessor (necessario per _LoginPartial.cshtml)
 builder.Services.AddHttpContextAccessor();
+
+// ========================================
+// AUTENTICAZIONE E AUTORIZZAZIONE
+// ========================================
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+})
+.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+{
+    options.LoginPath = "/Account/Login";
+    options.AccessDeniedPath = "/Account/AccessDenied";
+    options.ExpireTimeSpan = TimeSpan.FromHours(2);
+    options.SlidingExpiration = true;
+});
+
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = options.DefaultPolicy;
+});
 
 // ========================================
 // SERVIZI INFRASTRUCTURE (IoT, Background Services)
@@ -124,7 +152,8 @@ app.UseSession();
 // CORS (se configurato)
 app.UseCors("AllowBackend");
 
-// Authorization (se usi [Authorize] - opzionale senza Identity)
+app.UseAuthentication();
+
 app.UseAuthorization();
 
 // Endpoint manuale per logout rapido
@@ -143,6 +172,9 @@ app.MapGet("/Account/Logout", async context =>
  
 // Map Razor Pages
 app.MapRazorPages();
+
+// Hub SignalR
+app.MapHub<Mobishare.Infrastructure.SignalRHubs.NotificheHub>("/notificheHub");
 
 // ========================================
 // RUN APP

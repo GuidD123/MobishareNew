@@ -466,27 +466,50 @@ connection.on("AccountRiattivato", data => {
     }, 2000);
 });
 
-// Contatore notifiche admin
-let contatoreNotifiche = 0;
+// ==================================================
+// GESTIONE NOTIFICHE ADMIN CON DROPDOWN
+// ==================================================
 
-// Ricevi notifica admin e aggiorna badge
+// Array notifiche lato client (massimo 20)
+let notificheAdmin = [];
+const MAX_NOTIFICHE = 20;
+
+// Ricevi notifica admin tramite SignalR
 connection.on("RiceviNotificaAdmin", (titolo, testo) => {
     console.log(`[ADMIN NOTIFICA] ${titolo}: ${testo}`);
 
-    // Incrementa contatore
-    contatoreNotifiche++;
-    aggiornaBadgeNotifiche(contatoreNotifiche);
+    // Aggiungi notifica all'array
+    const nuovaNotifica = {
+        id: Date.now(),
+        titolo: titolo,
+        testo: testo,
+        timestamp: new Date(),
+        letta: false
+    };
 
-    // Mostra toast
+    notificheAdmin.unshift(nuovaNotifica); // Aggiungi all'inizio
+
+    // Mantieni solo le ultime MAX_NOTIFICHE
+    if (notificheAdmin.length > MAX_NOTIFICHE) {
+        notificheAdmin = notificheAdmin.slice(0, MAX_NOTIFICHE);
+    }
+
+    // Aggiorna UI
+    aggiornaDropdownNotifiche();
+    aggiornaBadgeNotifiche();
+
+    // Mostra anche toast
     showWarningMessage(`🔔 ${titolo}: ${testo}`);
 });
 
-// Funzione per aggiornare il badge notifiche
-function aggiornaBadgeNotifiche(numero) {
+// Funzione per aggiornare il badge contatore
+function aggiornaBadgeNotifiche() {
     const badge = document.getElementById('notifiche-badge');
+    const nonLette = notificheAdmin.filter(n => !n.letta).length;
+
     if (badge) {
-        if (numero > 0) {
-            badge.textContent = numero > 99 ? '99+' : numero;
+        if (nonLette > 0) {
+            badge.textContent = nonLette > 99 ? '99+' : nonLette;
             badge.style.display = 'inline-block';
         } else {
             badge.style.display = 'none';
@@ -494,14 +517,108 @@ function aggiornaBadgeNotifiche(numero) {
     }
 }
 
-// Reset contatore quando clicchi sul link notifiche
+// Funzione per aggiornare il dropdown notifiche
+function aggiornaDropdownNotifiche() {
+    const lista = document.getElementById('notifiche-lista');
+    if (!lista) return;
+
+    if (notificheAdmin.length === 0) {
+        lista.innerHTML = `
+            <li class="text-center text-muted py-3">
+                <i class="bi bi-bell-slash"></i>
+                <p class="mb-0 small">Nessuna notifica</p>
+            </li>
+        `;
+        return;
+    }
+
+    // Crea HTML per ogni notifica
+    let html = '';
+    notificheAdmin.forEach(notifica => {
+        const dataRelativa = getTempoRelativo(notifica.timestamp);
+        const classeNonLetta = notifica.letta ? '' : 'bg-light';
+
+        html += `
+            <li>
+                <a class="dropdown-item ${classeNonLetta} py-2" href="#" 
+                   data-notifica-id="${notifica.id}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div style="flex: 1;">
+                            <strong class="d-block text-truncate">${escapeHtml(notifica.titolo)}</strong>
+                            <small class="text-muted d-block">${escapeHtml(notifica.testo)}</small>
+                            <small class="text-muted fst-italic">${dataRelativa}</small>
+                        </div>
+                        ${!notifica.letta ? '<span class="badge bg-primary ms-2">Nuovo</span>' : ''}
+                    </div>
+                </a>
+            </li>
+        `;
+    });
+
+    lista.innerHTML = html;
+
+    // Aggiungi event listener per segnare come letta al click
+    lista.querySelectorAll('a[data-notifica-id]').forEach(link => {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            const id = parseInt(this.dataset.notificaId);
+            segnaNotificaComeLettura(id);
+        });
+    });
+}
+
+// Segna una notifica come letta
+function segnaNotificaComeLettura(id) {
+    const notifica = notificheAdmin.find(n => n.id === id);
+    if (notifica && !notifica.letta) {
+        notifica.letta = true;
+        aggiornaDropdownNotifiche();
+        aggiornaBadgeNotifiche();
+    }
+}
+
+// Segna tutte le notifiche come lette
+function segnaTutteComeLette() {
+    notificheAdmin.forEach(n => n.letta = true);
+    aggiornaDropdownNotifiche();
+    aggiornaBadgeNotifiche();
+}
+
+// Funzione helper: tempo relativo (es. "2 minuti fa")
+function getTempoRelativo(data) {
+    const secondi = Math.floor((new Date() - data) / 1000);
+
+    if (secondi < 60) return 'Pochi secondi fa';
+    if (secondi < 3600) return `${Math.floor(secondi / 60)} minuti fa`;
+    if (secondi < 86400) return `${Math.floor(secondi / 3600)} ore fa`;
+
+    return data.toLocaleDateString('it-IT', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Funzione helper: escape HTML per sicurezza
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// Event listener per pulsante "segna tutte come lette"
 document.addEventListener('DOMContentLoaded', function () {
-    const notificheLink = document.getElementById('notifiche-link');
-    if (notificheLink) {
-        notificheLink.addEventListener('click', function (e) {
-            // Reset contatore
-            contatoreNotifiche = 0;
-            aggiornaBadgeNotifiche(0);
+    const btnCancellaTutte = document.getElementById('cancella-tutte-notifiche');
+    if (btnCancellaTutte) {
+        btnCancellaTutte.addEventListener('click', function (e) {
+            e.preventDefault();
+            segnaTutteComeLette();
         });
     }
 });

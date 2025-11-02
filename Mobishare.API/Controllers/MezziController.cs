@@ -12,10 +12,11 @@ namespace Mobishare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class MezziController(MobishareDbContext context, IMqttIoTService mqttPublisher) : ControllerBase
+    public class MezziController(MobishareDbContext context, IMqttIoTService mqttPublisher, ILogger<MezziController> logger) : ControllerBase
     {
         private readonly MobishareDbContext _context = context;
         private readonly IMqttIoTService _mqttIoTService = mqttPublisher;
+        private readonly ILogger<MezziController> _logger = logger;
 
 
         // GET: api/mezzi -> serve all'admin per vedere tutti i mezzi della flotta (disponibili, occupati e guasti) 
@@ -137,6 +138,8 @@ namespace Mobishare.API.Controllers
             _context.Mezzi.Add(mezzo);
             await _context.SaveChangesAsync();
 
+            _logger.LogInformation("Creato nuovo mezzo {Matricola} di tipo {Tipo} con stato iniziale {Stato} nel parcheggio ID {ParcheggioId}", mezzo.Matricola, mezzo.Tipo, mezzo.Stato, mezzo.IdParcheggioCorrente);
+
             // mappa entità EF → DTO di risposta
             var response = new MezzoResponseDTO
             {
@@ -181,6 +184,16 @@ namespace Mobishare.API.Controllers
                 mezzo.ParcheggioCorrente = parcheggio;
             }
 
+            if (mezzo.Stato == StatoMezzo.NonPrelevabile)
+            {
+                _logger.LogWarning("Mezzo {Matricola} segnalato come guasto (batteria: {Batteria}%)",
+                    mezzo.Matricola, mezzo.LivelloBatteria);
+            }
+            else
+            {
+                _logger.LogInformation("Stato mezzo {Matricola} aggiornato a {Stato}", mezzo.Matricola, mezzo.Stato);
+            }
+
             await _context.SaveChangesAsync();
 
             await _mqttIoTService.PublishAsync("mobishare/mezzo/stato", new
@@ -192,6 +205,7 @@ namespace Mobishare.API.Controllers
                 timestamp = DateTime.Now
             });
 
+            _logger.LogInformation("Stato mezzo {Matricola} aggiornato a {Stato}", mezzo.Matricola, mezzo.Stato);
 
             return Ok(new SuccessResponse
             {
@@ -201,6 +215,60 @@ namespace Mobishare.API.Controllers
                     nuovoStato = mezzo.Stato.ToString(),
                     livelloBatteria = mezzo.LivelloBatteria,
                     parcheggio = mezzo.ParcheggioCorrente?.Nome
+                }
+            });
+        }
+
+
+        // PUT: api/mezzi/matricola/{matricola}/segnala-guasto
+        [Authorize]
+        [HttpPut("matricola/{matricola}/segnala-guasto")]
+        public async Task<IActionResult> SegnalaGuastoByMatricola(string matricola)
+        {
+            var mezzo = await _context.Mezzi
+                .FirstOrDefaultAsync(m => m.Matricola == matricola);
+
+            if (mezzo == null)
+                return NotFound(new { Messaggio = $"Mezzo con matricola {matricola} non trovato." });
+
+            // Se è già segnalato, evita di ripetere
+            if (mezzo.Stato == StatoMezzo.NonPrelevabile)
+            {
+                return Ok(new SuccessResponse
+                {
+                    Messaggio = "Il mezzo è già segnalato come guasto.",
+                    Dati = new
+                    {
+                        mezzo.Id,
+                        mezzo.Matricola,
+                        stato = mezzo.Stato.ToString()
+                    }
+                });
+            }
+
+            mezzo.Stato = StatoMezzo.NonPrelevabile;
+            await _context.SaveChangesAsync();
+
+            _logger.LogWarning("Segnalato guasto per mezzo {Matricola}", mezzo.Matricola);
+
+            // Pubblica aggiornamento su MQTT 
+            await _mqttIoTService.PublishAsync("mobishare/mezzo/stato", new
+            {
+                idMezzo = mezzo.Id,
+                matricola = mezzo.Matricola,
+                stato = mezzo.Stato.ToString(),
+                motivo = "Guasto segnalato dall’utente",
+                timestamp = DateTime.Now
+            });
+
+            return Ok(new SuccessResponse
+            {
+                Messaggio = $"Mezzo {mezzo.Matricola} segnalato come guasto con successo.",
+                Dati = new
+                {
+                    mezzo.Id,
+                    mezzo.Matricola,
+                    nuovoStato = mezzo.Stato.ToString()
                 }
             });
         }

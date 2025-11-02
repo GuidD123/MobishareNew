@@ -1,10 +1,12 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Mobishare.WebApp.Services;
 using Mobishare.Core.DTOs;
+using Mobishare.WebApp.Services;
 
 namespace Mobishare.WebApp.Pages.Admin.Corse;
 
+[Authorize(Roles = "Gestore")]
 public class CorseTotModel : PageModel
 {
     private readonly IMobishareApiService _apiService;
@@ -17,13 +19,14 @@ public class CorseTotModel : PageModel
     }
 
     public List<CorsaResponseDTO> Corse { get; set; } = new();
-
-    // Proprietà per i filtri
-    [BindProperty(SupportsGet = true)]
-    public int? FiltroIdUtente { get; set; }
+    public List<MezzoResponseDTO> MezziDisponibili { get; set; } = new();
+    public List<UtenteDTO> UtentiDisponibili { get; set; } = new();
 
     [BindProperty(SupportsGet = true)]
     public string? FiltroMatricola { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public int? FiltroIdUtente { get; set; }
 
     // Statistiche generali
     public int TotaleCorse { get; set; }
@@ -35,25 +38,13 @@ public class CorseTotModel : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        // Verifica autenticazione e ruolo
-        var userId = HttpContext.Session.GetInt32("UserId");
-        var userRole = HttpContext.Session.GetString("UserRole");
-
-        if (userId == null)
-        {
-            return RedirectToPage("/Account/Login");
-        }
-
-        if (userRole != "Gestore")
-        {
-            TempData["ErrorMessage"] = "Non hai i permessi per accedere a questa pagina.";
-            return RedirectToPage("/Index");
-        }
-
         try
         {
+            MezziDisponibili = await _apiService.GetMezziAsync() ?? [];
+            UtentiDisponibili = await _apiService.GetTuttiUtentiAsync() ?? [];
+
             // Carica tutte le corse (con eventuali filtri)
-            Corse = await _apiService.GetCorseAsync(FiltroIdUtente, FiltroMatricola);
+            Corse = await _apiService.GetCorseAsync(FiltroIdUtente, FiltroMatricola) ?? [];
 
             // Ordina per data più recente
             Corse = Corse.OrderByDescending(c => c.DataOraInizio).ToList();
@@ -61,16 +52,15 @@ public class CorseTotModel : PageModel
             // Calcola statistiche
             TotaleCorse = Corse.Count;
             CorseInCorso = Corse.Count(c => !c.DataOraFine.HasValue);
-            CorseCompletate = Corse.Count(c => c.DataOraFine.HasValue);
-            TotaleIncassato = Corse
-                .Where(c => c.CostoFinale.HasValue)
-                .Sum(c => c.CostoFinale!.Value);
+            CorseCompletate = TotaleCorse - CorseInCorso;
+            TotaleIncassato = Corse.Sum(c => c.CostoFinale ?? 0m);
+
+            _logger.LogInformation("Caricate {Count} corse (filtro: {Filtro})", Corse.Count, FiltroMatricola ?? "nessuno");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Errore nel caricamento delle corse per admin");
             ErrorMessage = "Errore nel caricamento delle corse. Riprova più tardi.";
-            Corse = new List<CorsaResponseDTO>();
         }
 
         return Page();

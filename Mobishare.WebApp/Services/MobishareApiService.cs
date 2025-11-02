@@ -406,7 +406,6 @@ public class MobishareApiService : IMobishareApiService
         }
         catch { return new(); }
     }
-
     public async Task<MezzoResponseDTO?> GetMezzoAsync(int id)
     {
         try
@@ -424,7 +423,6 @@ public class MobishareApiService : IMobishareApiService
         }
         catch { return null; }
     }
-
     public async Task<MezzoResponseDTO?> GetMezzoByMatricolaAsync(string matricola)
     {
         try
@@ -442,7 +440,6 @@ public class MobishareApiService : IMobishareApiService
         }
         catch { return null; }
     }
-
     public async Task<List<MezzoResponseDTO>> GetMezziDisponibiliAsync()
     {
         try
@@ -466,7 +463,6 @@ public class MobishareApiService : IMobishareApiService
         }
         catch { return new(); }
     }
-
     public async Task<List<MezzoResponseDTO>> GetMezziPerParcheggioAsync(int idParcheggio)
     {
         try
@@ -490,7 +486,6 @@ public class MobishareApiService : IMobishareApiService
         }
         catch { return new(); }
     }
-
     public async Task<MezzoResponseDTO?> CreaMezzoAsync(MezzoCreateDTO dto)
     {
         try
@@ -516,6 +511,58 @@ public class MobishareApiService : IMobishareApiService
             return null;
         }
     }
+    public async Task<bool> SpostaMezzoAsync(int idMezzo, MezzoUpdateDTO dto)
+    {
+        try
+        {
+            AddAuthorizationHeader();
+            var response = await _http.PutAsJsonAsync($"api/mezzi/{idMezzo}/stato", dto, _jsonOptions);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                LastError = $"Errore: {response.StatusCode}";
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LastError = ex.Message;
+            return false;
+        }
+    }
+    public async Task<bool> AggiornaMezzoAsync(int id, MezzoUpdateDTO dto)
+    {
+        try
+        {
+            AddAuthorizationHeader();
+
+            var response = await _http.PutAsJsonAsync($"api/mezzi/{id}/stato", dto);
+
+            if (response.IsSuccessStatusCode)
+                return true;
+
+            LastError = await response.Content.ReadAsStringAsync();
+            return false;
+        }
+        catch (Exception ex)
+        {
+            LastError = ex.Message;
+            return false;
+        }
+    }
+    public async Task<bool> SegnalaGuastoAsync(string matricola)
+    {
+        AddAuthorizationHeader();
+        var response = await _http.PutAsync($"api/mezzi/matricola/{matricola}/segnala-guasto", null);
+        if (response.IsSuccessStatusCode)
+            return true;
+
+        LastError = await response.Content.ReadAsStringAsync();
+        return false;
+    }
+
     #endregion
 
     #region FEEDBACK

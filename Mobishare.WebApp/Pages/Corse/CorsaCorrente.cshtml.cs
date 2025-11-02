@@ -112,7 +112,23 @@ public class CorsaCorrenteModel : PageModel
 
             if (corsaTerminata != null)
             {
-                TempData["SuccessMessage"] = $"Corsa terminata! Costo finale: €{corsaTerminata.CostoFinale:0.00}";
+                if (InputFineCorsa.SegnalazioneProblema)
+                {
+                    try
+                    {
+                        await _apiService.SegnalaGuastoAsync(corsaTerminata.MatricolaMezzo);
+                    }
+                    catch (Exception exGuasto)
+                    {
+                        // Non bloccare la terminazione corsa, ma registra l’errore
+                        Console.WriteLine($"[WARNING] Errore segnalazione guasto mezzo {corsaTerminata.MatricolaMezzo}: {exGuasto.Message}");
+                    }
+                }
+
+                TempData["SuccessMessage"] = InputFineCorsa.SegnalazioneProblema
+                ? $"Corsa terminata. Mezzo segnalato come guasto. Costo finale: €{corsaTerminata.CostoFinale:0.00}"
+                : $"Corsa terminata! Costo finale: €{corsaTerminata.CostoFinale:0.00}";
+
                 return RedirectToPage("/Corse/LasciaFeedback", new { idCorsa = corsaTerminata.Id }); 
             }
             else

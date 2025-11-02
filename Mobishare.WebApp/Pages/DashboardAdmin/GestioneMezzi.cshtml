@@ -39,7 +39,7 @@
             </h5>
         </div>
         <div class="card-body">
-            <form method="post">
+            <form method="post">aspetta
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="Matricola" class="form-label">
@@ -139,6 +139,7 @@
                                 <th>Parcheggio</th>
                                 <th>Batteria</th>
                                 <th>Stato</th>
+                                <th>Azioni</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -154,15 +155,18 @@
                                         {
                                             case "bicicletta":
                                             case "bici":
-                                                <text>Bicicletta</text>
+                                            case "bicimuscolare":
+                                                <text>🚴 Bicicletta</text>
                                                 break;
                                             case "biciclettaelettrica":
+                                            case "bicielettr":
                                             case "ebike":
-                                                <text>Bici Elettrica</text>
+                                                <text>🚲 Bici Elettrica</text>
                                                 break;
                                             case "monopattinoelettrico":
                                             case "escooter":
-                                                <text>Monopattino</text>
+                                            case "monopattino":
+                                                <text>⚡ Monopattino</text>
                                                 break;
                                             default:
                                                 @mezzo.Tipo
@@ -227,6 +231,33 @@
                                                 break;
                                         }
                                     </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-info" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#modalSposta"
+                                                onclick="preparaSposta(@mezzo.Id, '@mezzo.Matricola', '@mezzo.NomeParcheggio')">
+                                            <i class="bi bi-truck"></i> Sposta
+                                        </button>
+
+                                        @if (mezzo.Stato == "Disponibile" || mezzo.Stato == "InUso")
+                                        {
+                                            <form method="post" asp-page-handler="SegnalaGuasto" class="d-inline">
+                                                <input type="hidden" name="id" value="@mezzo.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="bi bi-tools"></i> Segnala Guasto
+                                                    </button>
+                                            </form>
+                                         }
+                                         else if (mezzo.Stato == "Manutenzione" || mezzo.Stato == "NonPrelevabile")
+                                         {
+                                            <form method="post" asp-page-handler="Ripristina" class="d-inline">
+                                                <input type="hidden" name="id" value="@mezzo.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-success">
+                                                        <i class="bi bi-check-circle"></i> Ripristina
+                                                    </button>
+                                            </form>
+                                         }
+                                    </td>
                                 </tr>
                             }
                         </tbody>
@@ -241,6 +272,53 @@
                     <p class="text-muted">Utilizza il form sopra per aggiungerne uno</p>
                 </div>
             }
+        </div>
+    </div>
+</div>
+
+<!-- Modale Sposta Mezzo -->
+<div class="modal fade" id="modalSposta" tabindex="-1" aria-labelledby="modalSpostaLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="Sposta">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="modalSpostaLabel">
+                        <i class="bi bi-truck"></i> Sposta Mezzo
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="IdMezzoSposta" name="IdMezzoSposta" />
+                    
+                    <div class="alert alert-info">
+                        <strong id="mezzoMatricola"></strong> attualmente si trova in <strong id="mezzoParcheggioCorrente"></strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="NuovoParcheggioId" class="form-label">
+                            <i class="bi bi-geo-alt"></i> Nuovo Parcheggio di Destinazione *
+                        </label>
+                        <select class="form-select" id="NuovoParcheggioId" name="NuovoParcheggioId" required>
+                            <option value="">Seleziona parcheggio...</option>
+                            @foreach (var parcheggio in Model.Parcheggi)
+                            {
+                                <option value="@parcheggio.Id">
+                                    @parcheggio.Nome (@parcheggio.Zona) - @parcheggio.Mezzi?.Count / @parcheggio.Capienza posti occupati
+                                </option>
+                            }
+                        </select>
+                        <div class="form-text">Seleziona il parcheggio dove spostare il mezzo</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle"></i> Annulla
+                    </button>
+                    <button type="submit" class="btn btn-info">
+                        <i class="bi bi-truck"></i> Conferma Spostamento
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -263,5 +341,12 @@
                 document.getElementById('LivelloBatteria').value = '';
             }
         });
+
+        // Funzione per preparare il modale di spostamento
+        function preparaSposta(idMezzo, matricola, parcheggioCorrente) {
+            document.getElementById('IdMezzoSposta').value = idMezzo;
+            document.getElementById('mezzoMatricola').textContent = matricola;
+            document.getElementById('mezzoParcheggioCorrente').textContent = parcheggioCorrente || 'N/A';
+        }
     </script>
 }

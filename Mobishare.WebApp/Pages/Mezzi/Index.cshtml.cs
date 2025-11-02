@@ -207,6 +207,26 @@ public class IndexModel : PageModel
         }
     }
 
+    public async Task<IActionResult> OnPostSegnalaGuastoAsync(string matricolaMezzo)
+    {
+        try
+        {
+            var success = await _apiService.SegnalaGuastoAsync(matricolaMezzo);
+            if (success)
+                TempData["SuccessMessage"] = "Guasto segnalato con successo. Grazie per la segnalazione.";
+            else
+                TempData["ErrorMessage"] = _apiService.LastError ?? "Errore nella segnalazione del guasto.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Errore durante la segnalazione guasto per mezzo {Id}", matricolaMezzo);
+            TempData["ErrorMessage"] = "Errore imprevisto durante la segnalazione.";
+        }
+
+        return RedirectToPage();
+    }
+
+
     /// <summary>
     /// Verifica se un mezzo è prelevabile in base al tipo e al livello di batteria
     /// </summary>
