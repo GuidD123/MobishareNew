@@ -109,7 +109,7 @@
             @if (Model.Parcheggi.Any())
             {
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr>
                                 <th>ID</th>
@@ -118,22 +118,27 @@
                                 <th>Indirizzo</th>
                                 <th>Capienza</th>
                                 <th>Mezzi</th>
+                                <th>Problemi</th>
                                 <th>Stato</th>
+                                <th class="text-center">Azioni</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var parcheggio in Model.Parcheggi.OrderBy(p => p.Id))
                             {
-                                <tr>
+                                <tr class="@(parcheggio.Attivo ? "" : "table-secondary")">
                                     <td><strong>#@parcheggio.Id</strong></td>
+
                                     <td>
                                         <i class="bi bi-building text-primary"></i>
                                         <strong>@parcheggio.Nome</strong>
                                     </td>
+
                                     <td>
                                         <i class="bi bi-geo-alt text-muted"></i>
                                         @parcheggio.Zona
                                     </td>
+
                                     <td>
                                         @if (!string.IsNullOrEmpty(parcheggio.Indirizzo))
                                         {
@@ -144,9 +149,11 @@
                                             <span class="text-muted">-</span>
                                         }
                                     </td>
+
                                     <td>
                                         <span class="badge bg-info">@parcheggio.Capienza posti</span>
                                     </td>
+
                                     <td>
                                         @{
                                             var mezziCount = parcheggio.Mezzi?.Count ?? 0;
@@ -161,6 +168,41 @@
                                             @mezziCount / @parcheggio.Capienza
                                         </span>
                                     </td>
+
+                                    <td>
+                                        @{
+                                            var mezziGuasti = parcheggio.Mezzi?
+                                                .Where(m => m.MotivoNonPrelevabile == "GuastoSegnalato")
+                                                .ToList() ?? new List<MezzoResponseDTO>();
+        
+                                            var mezziBatteriaScarica = parcheggio.Mezzi?
+                                                .Where(m => m.MotivoNonPrelevabile == "BatteriaScarica")
+                                                .ToList() ?? new List<MezzoResponseDTO>();
+        
+                                            var numGuasti = mezziGuasti.Count;
+                                            var numBatterie = mezziBatteriaScarica.Count;
+                                        }
+    
+                                        @if (numGuasti > 0)
+                                        {
+                                            <span class="badge bg-danger me-1" title="Guasti segnalati da utenti">
+                                                <i class="bi bi-tools"></i> @numGuasti
+                                            </span>
+                                        }
+    
+                                        @if (numBatterie > 0)
+                                        {
+                                            <span class="badge bg-warning" title="Batterie scariche da ricaricare">
+                                                <i class="bi bi-battery"></i> @numBatterie
+                                            </span>
+                                        }
+    
+                                        @if (numGuasti == 0 && numBatterie == 0)
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+
                                     <td>
                                         @if (parcheggio.Attivo)
                                         {
@@ -174,6 +216,18 @@
                                                 <i class="bi bi-x-circle"></i> Disattivo
                                             </span>
                                         }
+                                    </td>
+
+                                    <td class="text-center">
+                                        <form method="post" asp-page-handler="AggiornaStato" class="d-inline">
+                                            <input type="hidden" name="id" value="@parcheggio.Id" />
+                                            <input type="hidden" name="attivo" value="@(!parcheggio.Attivo)" />
+                                            <button type="submit" class="btn btn-sm @(parcheggio.Attivo ? "btn-outline-danger" : "btn-outline-success")"
+                                                    onclick="return confirm('Confermi di @(parcheggio.Attivo ? "disattivare" : "attivare") il parcheggio @parcheggio.Nome?');">
+                                                <i class="bi @(parcheggio.Attivo ? "bi-x-circle" : "bi-check-circle")"></i>
+                                                @(parcheggio.Attivo ? "Disattiva" : "Attiva")
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             }

@@ -81,4 +81,18 @@ public class IndexModel : PageModel
 
         return Page();
     }
+
+    public async Task<IActionResult> OnPostAggiornaStatoAsync(int id, bool attivo)
+    {
+        var success = await _apiService.AggiornaStatoParcheggioAsync(id, attivo);
+
+        if (success)
+            TempData["SuccessMessage"] = attivo
+                ? "Parcheggio riattivato correttamente."
+                : "Parcheggio disattivato correttamente.";
+        else
+            TempData["ErrorMessage"] = _apiService.LastError ?? "Errore nell'aggiornamento stato parcheggio.";
+
+        return RedirectToPage();
+    }
 }

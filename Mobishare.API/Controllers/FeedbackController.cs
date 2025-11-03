@@ -59,15 +59,20 @@ namespace Mobishare.API.Controllers
         {
             var feedbacks = await _context.Feedbacks
                 .Where(f => f.IdUtente == idUtente)
-                .Select(f => new
+                .Where(f => f.IdUtente == idUtente)
+                .Include(f => f.Utente)
+                .Include(f => f.Corsa)
+                .Select(f => new FeedbackResponseDTO
                 {
-                    f.Id,
-                    f.IdUtente,
-                    f.IdCorsa,
+                    Id = f.Id,
+                    IdUtente = f.IdUtente,
+                    IdCorsa = f.IdCorsa,
+                    NomeUtente = f.Utente != null ? $"{f.Utente.Nome} {f.Utente.Cognome}" : "N/A",
+                    MatricolaMezzo = f.Corsa != null ? f.Corsa.MatricolaMezzo : "N/A",
                     Valutazione = f.Valutazione.ToString(),
                     ValutazioneNumero = (int)f.Valutazione,
-                    f.Commento,
-                    f.DataFeedback
+                    Commento = f.Commento,
+                    DataFeedback = f.DataFeedback
                 })
                 .ToListAsync();
 
@@ -87,16 +92,17 @@ namespace Mobishare.API.Controllers
                 .Include(f => f.Corsa)
                 .OrderByDescending(f => f.DataFeedback)
                 .Take(10)
-                .Select(f => new
+                .Select(f => new FeedbackResponseDTO
                 {
-                    f.Id,
+                    Id = f.Id,
+                    IdUtente = f.IdUtente,
+                    IdCorsa = f.IdCorsa,
+                    NomeUtente = f.Utente != null ? $"{f.Utente.Nome} {f.Utente.Cognome}" : "N/A",
+                    MatricolaMezzo = f.Corsa != null ? f.Corsa.MatricolaMezzo : "N/A",
                     Valutazione = f.Valutazione.ToString(),
                     ValutazioneNumero = (int)f.Valutazione,
-                    f.Commento,
-                    f.DataFeedback,
-                    NomeUtente = f.Utente != null ? f.Utente.Nome : "Utente non disponibile",
-                    f.IdCorsa,
-                    MatricolaMezzo = f.Corsa != null ? f.Corsa.MatricolaMezzo : "N/A"
+                    Commento = f.Commento,
+                    DataFeedback = f.DataFeedback
                 })
                 .ToListAsync();
 
@@ -117,26 +123,27 @@ namespace Mobishare.API.Controllers
                 .Include(f => f.Utente)
                 .Include(f => f.Corsa)
                 .OrderByDescending(f => f.DataFeedback)
-                .Select(f => new
+                .Select(f => new FeedbackResponseDTO
                 {
-                    f.Id,
+                    Id = f.Id,
+                    IdUtente = f.IdUtente,
+                    IdCorsa = f.IdCorsa,
+                    NomeUtente = f.Utente != null ? $"{f.Utente.Nome} {f.Utente.Cognome}" : "N/A",
+                    MatricolaMezzo = f.Corsa != null ? f.Corsa.MatricolaMezzo : "N/A",
                     Valutazione = f.Valutazione.ToString(),
                     ValutazioneNumero = (int)f.Valutazione,
-                    f.Commento,
-                    f.DataFeedback,
-                    NomeUtente = f.Utente != null ? f.Utente.Nome : "N/A",
-                    f.IdCorsa,
-                    MatricolaMezzo = f.Corsa != null ? f.Corsa.MatricolaMezzo : "N/A"
+                    Commento = f.Commento,
+                    DataFeedback = f.DataFeedback
                 })
                 .ToListAsync();
 
             return Ok(new SuccessResponse
             {
                 Messaggio = "Feedback negativi",
-                Dati = new
+                Dati = new FeedbackNegativiResponseDTO
                 {
-                    totaleFeedbackNegativi = feedbacks.Count,
-                    feedbacks
+                    TotaleFeedbackNegativi = feedbacks.Count,
+                    Feedbacks = feedbacks
                 }
             });
         }
@@ -156,11 +163,11 @@ namespace Mobishare.API.Controllers
                 });
             }
 
-            var statistiche = new
+            var statistiche = new FeedbackStatisticheDTO
             {
                 TotaleFeedback = feedbacks.Count,
                 MediaGenerale = Math.Round(feedbacks.Average(f => (int)f.Valutazione), 2),
-                Distribuzione = new
+                Distribuzione = new FeedbackDistribuzioneDTO
                 {
                     Pessimo = feedbacks.Count(f => f.Valutazione == ValutazioneFeedback.Pessimo),
                     Scarso = feedbacks.Count(f => f.Valutazione == ValutazioneFeedback.Scarso),

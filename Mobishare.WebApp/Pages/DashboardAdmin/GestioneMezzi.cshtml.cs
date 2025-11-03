@@ -302,9 +302,76 @@ public class GestioneMezziModel : PageModel
         return RedirectToPage();
     }
 
+    public async Task<IActionResult> OnPostRicaricaAsync(int id)
+    {
+        var success = await _apiService.RicaricaMezzoAsync(id);
+        if (success)
+            TempData["SuccessMessage"] = "Batteria del mezzo ricaricata al 100%.";
+        else
+            TempData["ErrorMessage"] = _apiService.LastError ?? "Errore durante la ricarica.";
 
+        return RedirectToPage();
+    }
 
+    public async Task<IActionResult> OnPostMettiInManutenzioneAsync(int id)
+    {
+        var userId = HttpContext.Session.GetInt32("UserId");
+        var userRole = HttpContext.Session.GetString("UserRole");
 
+        if (userId == null)
+            return RedirectToPage("/Account/Login");
+
+        if (!userRole?.Equals("Gestore", StringComparison.OrdinalIgnoreCase) ?? true)
+        {
+            TempData["ErrorMessage"] = "Non hai i permessi per eseguire questa operazione.";
+            return RedirectToPage("/DashboardAdmin/Index");
+        }
+
+        try
+        {
+            var mezzo = await _apiService.GetMezzoAsync(id);
+            if (mezzo == null)
+            {
+                TempData["ErrorMessage"] = "Mezzo non trovato.";
+                return RedirectToPage();
+            }
+
+            // Verifica che sia disponibile
+            if (mezzo.Stato != "Disponibile")
+            {
+                TempData["ErrorMessage"] = $"Il mezzo '{mezzo.Matricola}' non è disponibile e non può essere messo in manutenzione.";
+                return RedirectToPage();
+            }
+
+            // Metti in manutenzione programmata
+            var dto = new MezzoUpdateDTO
+            {
+                IdParcheggioCorrente = mezzo.IdParcheggioCorrente ?? 0,
+                LivelloBatteria = mezzo.LivelloBatteria ?? 0,
+                Stato = StatoMezzo.Manutenzione
+            };
+
+            var success = await _apiService.AggiornaMezzoAsync(id, dto);
+
+            if (success)
+            {
+                TempData["SuccessMessage"] = $"Mezzo '{mezzo.Matricola}' messo in manutenzione programmata.";
+                _logger.LogInformation("Mezzo {Matricola} messo in manutenzione dal gestore {UserId}",
+                    mezzo.Matricola, userId);
+            }
+            else
+            {
+                TempData["ErrorMessage"] = _apiService.LastError ?? "Errore durante l'aggiornamento.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Errore durante messa in manutenzione del mezzo {Id}", id);
+            TempData["ErrorMessage"] = $"Errore imprevisto: {ex.Message}";
+        }
+
+        return RedirectToPage();
+    }
 
     private async Task CaricaDatiAsync()
     {

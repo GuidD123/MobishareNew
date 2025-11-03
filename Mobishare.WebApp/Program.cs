@@ -14,9 +14,9 @@ builder.Services.AddRazorPages();
 // SignalR
 builder.Services.AddSignalR();
 
-builder.Services.AddDistributedMemoryCache(); 
+builder.Services.AddDistributedMemoryCache();
 
-// HttpClient per chiamate al Backend API
+// configura l'HttpClient per chiamate al Backend API
 builder.Services.AddHttpClient<IMobishareApiService, MobishareApiService>(client =>
 {
     var baseUrl = builder.Configuration["MobishareApi:BaseUrl"] ?? "https://localhost:7001";
@@ -172,9 +172,6 @@ app.MapGet("/Account/Logout", async context =>
  
 // Map Razor Pages
 app.MapRazorPages();
-
-// Hub SignalR
-app.MapHub<Mobishare.Infrastructure.SignalRHubs.NotificheHub>("/notificheHub");
 
 // ========================================
 // RUN APP

@@ -39,7 +39,7 @@
             </h5>
         </div>
         <div class="card-body">
-            <form method="post">aspetta
+            <form method="post">
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="Matricola" class="form-label">
@@ -158,15 +158,15 @@
                                             case "bicimuscolare":
                                                 <text>🚴 Bicicletta</text>
                                                 break;
-                                            case "biciclettaelettrica":
+                                            case "bicielettrica":
                                             case "bicielettr":
                                             case "ebike":
-                                                <text>🚲 Bici Elettrica</text>
+                                                <text><i class="bi bi-lightning-charge text-warning"></i>Bicicletta Elettrica</text>
                                                 break;
                                             case "monopattinoelettrico":
                                             case "escooter":
                                             case "monopattino":
-                                                <text>⚡ Monopattino</text>
+                                                <text><i class="bi bi-lightning-charge text-warning"></i>Monopattino Elettrico</text>
                                                 break;
                                             default:
                                                 @mezzo.Tipo
@@ -185,22 +185,31 @@
                                             <span class="text-muted">-</span>
                                         }
                                     </td>
+
                                     <td>
-                                        @if (mezzo.LivelloBatteria.HasValue)
+                                        @if (mezzo.Tipo.Contains("Elettrica", StringComparison.OrdinalIgnoreCase)  || mezzo.Tipo.Contains("Monopattino", StringComparison.OrdinalIgnoreCase))
                                         {
-                                            var livello = mezzo.LivelloBatteria.Value;
-                                            var coloreBatteria = livello > 60 ? "success" 
+                                            if (mezzo.LivelloBatteria.HasValue)
+                                            { 
+                                                var livello = mezzo.LivelloBatteria.Value;
+                                                var coloreBatteria = livello > 60 ? "success" 
                                                                : livello > 30 ? "warning" 
                                                                : "danger";
-                                            <span class="badge bg-@coloreBatteria">
-                                                <i class="bi bi-battery-charging"></i> @livello%
-                                            </span>
-                                        }
-                                        else
-                                        {
+                                                <span class="badge bg-@coloreBatteria">
+                                                    <i class="bi bi-battery-charging"></i> @livello%
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">N/D</span>
+                                            }
+                                         }
+                                         else 
+                                         {
                                             <span class="text-muted">N/A</span>
-                                        }
+                                         }
                                     </td>
+
                                     <td>
                                         @switch(mezzo.Stato.ToLower())
                                         {
@@ -232,6 +241,7 @@
                                         }
                                     </td>
                                     <td>
+                                        <!-- Sposta mezzo -->
                                         <button type="button" class="btn btn-sm btn-outline-info" 
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#modalSposta"
@@ -239,24 +249,65 @@
                                             <i class="bi bi-truck"></i> Sposta
                                         </button>
 
-                                        @if (mezzo.Stato == "Disponibile" || mezzo.Stato == "InUso")
+                                        @if (mezzo.Stato == "Disponibile")
                                         {
-                                            <form method="post" asp-page-handler="SegnalaGuasto" class="d-inline">
+                                            <!-- Metti in manutenzione programmata -->
+                                            <form method="post" asp-page-handler="MettiInManutenzione" class="d-inline"
+                                                  onsubmit="return confirm('Mettere questo mezzo in manutenzione programmata?');">
                                                 <input type="hidden" name="id" value="@mezzo.Id" />
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                        <i class="bi bi-tools"></i> Segnala Guasto
-                                                    </button>
+                                                <button type="submit" class="btn btn-sm btn-outline-warning">
+                                                    <i class="bi bi-wrench"></i> Manutenzione
+                                                </button>
                                             </form>
-                                         }
-                                         else if (mezzo.Stato == "Manutenzione" || mezzo.Stato == "NonPrelevabile")
-                                         {
-                                            <form method="post" asp-page-handler="Ripristina" class="d-inline">
+                                        }
+                                        else if (mezzo.Stato == "Manutenzione" || mezzo.Stato == "NonPrelevabile")
+                                        {
+                                            <!-- Ripristina a Disponibile -->
+                                            <form method="post" asp-page-handler="Ripristina" class="d-inline"
+                                                  onsubmit="return confirm('Confermi il ripristino del mezzo a stato Disponibile?');">
                                                 <input type="hidden" name="id" value="@mezzo.Id" />
-                                                    <button type="submit" class="btn btn-sm btn-outline-success">
-                                                        <i class="bi bi-check-circle"></i> Ripristina
-                                                    </button>
+                                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                                    <i class="bi bi-check-circle"></i> Ripristina
+                                                </button>
                                             </form>
-                                         }
+
+                                            @if (mezzo.Stato == "NonPrelevabile") 
+                                            {
+                                                @if (mezzo.MotivoNonPrelevabile == "GuastoSegnalato")
+                                                {
+                                                    <small class="d-block text-danger mt-1">
+                                                        <i class="bi bi-exclamation-triangle-fill"></i> <strong>Guasto segnalato da utente</strong>
+                                                    </small>
+                                                }
+                                                else if (mezzo.MotivoNonPrelevabile == "BatteriaScarica")
+                                                {
+                                                    <small class="d-block text-warning mt-1">
+                                                        <i class="bi bi-battery"></i> <strong>Batteria scarica (&lt; 20%)</strong>
+                                                    </small>
+
+                                                    <!-- 🔋 Bottone ricarica -->
+                                                    <form method="post" asp-page-handler="Ricarica" class="d-inline"
+                                                        onsubmit="return confirm('Confermi la ricarica della batteria di questo mezzo?');">
+                                                        <input type="hidden" name="id" value="@mezzo.Id" />
+                                                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-battery-charging"></i> Ricarica
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <small class="d-block text-muted mt-1">
+                                                        <i class="bi bi-x-circle"></i> Non prelevabile
+                                                    </small>
+                                                }
+                                            }
+                                        }
+                                        else if (mezzo.Stato == "InUso")
+                                        {
+                                            <span class="badge bg-primary">
+                                                <i class="bi bi-lock"></i> In Corsa
+                                            </span>
+                                        }
                                     </td>
                                 </tr>
                             }
@@ -325,10 +376,12 @@
 
 @section Scripts {
     <script>
+        // Auto-dismiss alerts dopo 5 secondi (esclusi quelli permanenti)
         setTimeout(function() {
             $('.alert:not(.alert-permanent)').fadeOut('slow');
         }, 5000);
 
+        // Mostra/nascondi campo batteria in base al tipo mezzo
         document.getElementById('Tipo').addEventListener('change', function() {
             var tipo = this.value.toLowerCase();
             var batteriaCampo = document.getElementById('LivelloBatteria').parentElement;
@@ -348,5 +401,26 @@
             document.getElementById('mezzoMatricola').textContent = matricola;
             document.getElementById('mezzoParcheggioCorrente').textContent = parcheggioCorrente || 'N/A';
         }
+
+        // Previeni doppi submit e mostra loading
+        document.querySelectorAll('form[asp-page-handler]').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                const submitButton = form.querySelector('button[type="submit"]');
+                if (submitButton && !submitButton.disabled) {
+                    // Disabilita bottone
+                    submitButton.disabled = true;
+                    
+                    // Cambia testo
+                    const originalHTML = submitButton.innerHTML;
+                    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Attendi...';
+                    
+                    // Riabilita dopo 3 secondi (failsafe se non c'è redirect)
+                    setTimeout(() => {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = originalHTML;
+                    }, 3000);
+                }
+            });
+        });
     </script>
 }

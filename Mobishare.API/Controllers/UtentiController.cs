@@ -1,18 +1,19 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+//using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Mobishare.Core.Data;
+using Mobishare.Core.DTOs;
+using Mobishare.Core.Enums;
+using Mobishare.Core.Exceptions;
+using Mobishare.Core.Models;
+using Mobishare.Infrastructure.Services;
+using Mobishare.Infrastructure.SignalRHubs;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Mobishare.Core.Data;
-using Mobishare.Core.Models;
-using Mobishare.Core.Enums;
-using Mobishare.Infrastructure.Services;
-using Mobishare.Core.DTOs;
-using Mobishare.Core.Exceptions;
-using Mobishare.Infrastructure.SignalRHubs;
 
 
 namespace Mobishare.API.Controllers
@@ -110,7 +111,7 @@ namespace Mobishare.API.Controllers
                 ?? throw new ElementoNonTrovatoException("Utente", id);
 
             if (!utente.Sospeso)
-                return BadRequest(new { messaggio = "Utente già attivo" });
+                return BadRequest(new ErrorResponse { Errore = "Utente già attivo" });
 
             if (utente.Credito <= 0)
                 throw new OperazioneNonConsentitaException("Impossibile riattivare: credito insufficiente");
@@ -136,8 +137,6 @@ namespace Mobishare.API.Controllers
                 Dati = new { utente.Id, utente.Nome }
             });
         }
-
-
 
 
 
@@ -260,6 +259,54 @@ namespace Mobishare.API.Controllers
             });
         }
 
+        // POST: api/utenti/request-password-reset
+        [HttpPost("request-password-reset")]
+        public async Task<ActionResult<SuccessResponse<string>>> RequestPasswordReset([FromBody] ResetPasswordRequestDTO dto)
+        {
+            var utente = await _context.Utenti.FirstOrDefaultAsync(u => u.Email == dto.Email);
+            if (utente == null)
+                return NotFound(new ErrorResponse { Errore = "Email non trovata" });
+
+            // Genera token temporaneo (in produzione andrebbe salvato nel DB)
+            var token = Guid.NewGuid().ToString("N");
+
+            // Per progetto universitario: restituiamo direttamente il token
+            return Ok(new SuccessResponse<string>
+            {
+                Messaggio = "Token generato",
+                Dati = token
+            });
+        }
+
+        // POST: api/utenti/reset-password
+        [HttpPost("reset-password")]
+        public async Task<ActionResult<SuccessResponse>> ResetPassword([FromBody] ResetPasswordRequestDTO dto)
+        {
+            //Validazione input
+            if (string.IsNullOrWhiteSpace(dto.Email) ||
+                string.IsNullOrWhiteSpace(dto.NewPassword) ||
+                string.IsNullOrWhiteSpace(dto.Token))
+            {
+                return BadRequest(new ErrorResponse { Errore = "Richiesta non valida", Messaggio = "Compila tutti i campi richiesti." });
+            }
+
+            //Trova utente
+            var utente = await _context.Utenti.FirstOrDefaultAsync(u => u.Email == dto.Email);
+            if (utente == null)
+            {
+                return NotFound(new ErrorResponse { Errore = "Utente non trovato" });
+            }
+
+            //Aggiorna password
+            utente.Password = _passwordService.Hash(dto.NewPassword);
+            await _context.SaveChangesAsync();
+
+            //Risposta positiva
+            return Ok(new SuccessResponse
+            {
+                Messaggio = "Password aggiornata correttamente"
+            });
+        }
 
 
         //GET: api/utenti/{id} -> tira fuori info di un utente 
@@ -296,25 +343,43 @@ namespace Mobishare.API.Controllers
         }
 
 
-        //PUT: api/utenti/{id} -> EndPoint per aggiornare profilo: modifica nome e psw
+        //PUT: api/utenti/{id} -> Aggiorna profilo utente (solo Nome)
+        [Authorize]
         [HttpPut("{id}")]
-        public async Task<ActionResult<SuccessResponse>> UpdateInfoUtente(int id, [FromBody] Utente aggiornato)
+        public async Task<ActionResult<SuccessResponse>> UpdateInfoUtente(int id, [FromBody] UtenteDTO dto)
         {
-            if (id != aggiornato.Id)
-                throw new ValoreNonValidoException("Id", "non coincide con l’utente da aggiornare");
+            // Verifica coerenza ID
+            if (id != dto.Id)
+                throw new ValoreNonValidoException("Id", "non coincide con l'utente da aggiornare");
+
+            // Verifica autorizzazione: solo l'utente stesso o un gestore può modificare
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var currentUserRole = User.FindFirstValue(ClaimTypes.Role);
+
+            if (currentUserRole != UserRole.Gestore.ToString() && currentUserId != id)
+                throw new OperazioneNonConsentitaException("Non puoi modificare i dati di altri utenti");
 
             var utente = await _context.Utenti.FindAsync(id)
                 ?? throw new ElementoNonTrovatoException("Utente", id);
 
-            utente.Nome = aggiornato.Nome;
-            utente.Password = _passwordService.Hash(aggiornato.Password);
+            // Aggiorna SOLO il nome (Email non si cambia, password ha endpoint dedicato)
+            if (!string.IsNullOrWhiteSpace(dto.Nome))
+                utente.Nome = dto.Nome;
 
             await _context.SaveChangesAsync();
 
             return Ok(new SuccessResponse
             {
                 Messaggio = "Profilo aggiornato con successo",
-                Dati = new { utente.Id, utente.Nome, utente.Email }
+                Dati = new UtenteDTO
+                {
+                    Id = utente.Id,
+                    Nome = utente.Nome,
+                    Email = utente.Email,
+                    Ruolo = utente.Ruolo.ToString(),
+                    Credito = utente.Credito,
+                    Sospeso = utente.Sospeso
+                }
             });
         }
     }

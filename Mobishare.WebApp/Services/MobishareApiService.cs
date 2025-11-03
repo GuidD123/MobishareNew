@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 
 namespace Mobishare.WebApp.Services;
 
@@ -12,25 +13,36 @@ public class MobishareApiService : IMobishareApiService
     private readonly HttpClient _http;
     private readonly IHttpContextAccessor _contextAccessor;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly ILogger<MobishareApiService> _logger;
     public string? LastError { get; private set; }
 
-    public MobishareApiService(HttpClient http, IHttpContextAccessor contextAccessor)
+    public MobishareApiService(HttpClient http, IHttpContextAccessor contextAccessor, ILogger<MobishareApiService> logger)
     {
+        //ricevo HttpClient già configurato da Program.cs
         _http = http;
         _contextAccessor = contextAccessor;
+        _logger = logger;
+
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
         };
     }
-
+    
     private void AddAuthorizationHeader()
     {
         var token = _contextAccessor.HttpContext?.Session.GetString("JwtToken");
-        if (!string.IsNullOrEmpty(token))
+
+        if (string.IsNullOrEmpty(token))
+        {
+            Console.WriteLine("Nessun token JWT trovato in sessione (MobishareApiService).");
+            _http.DefaultRequestHeaders.Authorization = null;
+        }
+        else
         {
             _http.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
+            Console.WriteLine($"Token JWT trovato, lunghezza: {token.Length}");
         }
     }
 
@@ -175,21 +187,58 @@ public class MobishareApiService : IMobishareApiService
             return false;
         }
     }
+
+    public async Task<bool> ResetPasswordAsync(string email, string newPassword, string token)
+    {
+        try
+        {
+            var payload = new
+            {
+                Email = email,
+                NewPassword = newPassword,
+                Token = token
+            };
+
+            var response = await _http.PostAsJsonAsync("/api/utenti/reset-password", payload);
+            if (response.IsSuccessStatusCode)
+                return true;
+
+            LastError = await response.Content.ReadAsStringAsync();
+            return false;
+        }
+        catch (Exception ex)
+        {
+            LastError = ex.Message;
+            return false;
+        }
+    }
+
+    public async Task<bool> AggiornaProfiloAsync(int id, UtenteDTO dto)
+    {
+        try
+        {
+            LastError = null;
+            AddAuthorizationHeader();
+
+            // Invia UtenteDTO (già ha Id, Nome, Email, ecc.)
+            var response = await _http.PutAsJsonAsync($"api/utenti/{id}", dto);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                await SetLastErrorFromResponse(response);
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LastError = ex.Message;
+            return false;
+        }
+    }
+
     #endregion
-
-    /* public async Task<bool> AggiornaProfiloAsync(int id, AggiornaProfiloDto dto)
-     {
-         try
-         {
-             AddAuthorizationHeader();
-             var body = new { id, nome = dto.Nome, password = dto.Password };
-             var response = await _http.PutAsJsonAsync($"/api/utenti/{id}", body);
-             return response.IsSuccessStatusCode;
-         }
-         catch { return false; }
-     }
-    */
-
 
     #region RICARICHE
     public async Task<List<RicaricaResponseDTO>> GetRicaricheUtenteAsync(int utenteId)
@@ -349,10 +398,12 @@ public class MobishareApiService : IMobishareApiService
                 return null;
             }
 
-            var wrapper = await response.Content
-                .ReadFromJsonAsync<ApiSuccessResponse<CorsaResponseDTO>>(_jsonOptions);
+            //var wrapper = await response.Content
+            //    .ReadFromJsonAsync<ApiSuccessResponse<CorsaResponseDTO>>(_jsonOptions);
 
-            return wrapper?.Dati;
+            //return wrapper?.Dati;
+            var corsa = await response.Content.ReadFromJsonAsync<CorsaResponseDTO>(_jsonOptions);
+            return corsa;
         }
         catch (Exception ex)
         {
@@ -552,6 +603,27 @@ public class MobishareApiService : IMobishareApiService
             return false;
         }
     }
+
+    public async Task<bool> RicaricaMezzoAsync(int id)
+    {
+        try
+        {
+            AddAuthorizationHeader();
+            var response = await _http.PutAsync($"api/mezzi/{id}/ricarica", null);
+
+            if (response.IsSuccessStatusCode)
+                return true;
+
+            LastError = await response.Content.ReadAsStringAsync();
+            return false;
+        }
+        catch (Exception ex)
+        {
+            LastError = ex.Message;
+            return false;
+        }
+    }
+
     public async Task<bool> SegnalaGuastoAsync(string matricola)
     {
         AddAuthorizationHeader();
@@ -724,6 +796,33 @@ public class MobishareApiService : IMobishareApiService
             return null;
         }
     }
+
+    public async Task<bool> AggiornaStatoParcheggioAsync(int id, bool attivo)
+    {
+        try
+        {
+            AddAuthorizationHeader();
+
+            var payload = new { Attivo = attivo };
+            var response = await _http.PutAsJsonAsync($"api/parcheggi/{id}/stato", payload);
+
+            if (response.IsSuccessStatusCode)
+                return true;
+
+            var content = await response.Content.ReadAsStringAsync();
+            _logger?.LogWarning("AggiornaStatoParcheggioAsync fallito: {StatusCode} {Content}",
+                response.StatusCode, content);
+
+            LastError = $"Errore aggiornamento parcheggio ({response.StatusCode})";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Errore durante AggiornaStatoParcheggioAsync (id={Id})", id);
+            LastError = "Errore di connessione o server non raggiungibile.";
+            return false;
+        }
+    }
     #endregion
 
     #region ADMIN
@@ -805,7 +904,6 @@ public class MobishareApiService : IMobishareApiService
         catch { return null; }
     }
     #endregion
-
 
     #region TRANSAZIONI/PAGAMENTI
     public async Task<List<TransazioneResponseDTO>> GetTransazioniByUtenteAsync(int idUtente)

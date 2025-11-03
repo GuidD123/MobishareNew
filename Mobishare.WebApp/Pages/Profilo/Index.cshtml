@@ -87,14 +87,7 @@
                                    placeholder="Inserisci nuovo nome" />
                             <span asp-validation-for="InputNome.NuovoNome" class="text-danger small"></span>
                         </div>
-
-                        <div class="mb-3">
-                            <label asp-for="InputNome.Password" class="form-label">Password attuale</label>
-                            <input asp-for="InputNome.Password" class="form-control" 
-                                   type="password" placeholder="••••••••" />
-                            <span asp-validation-for="InputNome.Password" class="text-danger small"></span>
-                        </div>
-
+                  
                         <button type="submit" class="btn btn-info w-100">
                             <i class="bi bi-save"></i> Aggiorna Nome
                         </button>
@@ -111,25 +104,64 @@
                 </div>
                 <div class="card-body">
                     <form method="post" asp-page-handler="CambiaPassword">
+                        <!-- Password Attuale -->
                         <div class="mb-3">
                             <label asp-for="InputPassword.VecchiaPassword" class="form-label">Password Attuale</label>
-                            <input asp-for="InputPassword.VecchiaPassword" class="form-control" 
-                                   type="password" placeholder="••••••••" />
+                            <div class="input-group">
+                                <input asp-for="InputPassword.VecchiaPassword" 
+                                       class="form-control" 
+                                       type="password" 
+                                       id="vecchiaPassword"
+                                       autocomplete="current-password"
+                                       placeholder="••••••••" />
+                                <button class="btn btn-outline-secondary" 
+                                        type="button" 
+                                        onclick="togglePassword('vecchiaPassword', this)"
+                                        aria-label="Mostra password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
                             <span asp-validation-for="InputPassword.VecchiaPassword" class="text-danger small"></span>
                         </div>
 
+                        <!-- Nuova Password -->
                         <div class="mb-3">
                             <label asp-for="InputPassword.NuovaPassword" class="form-label">Nuova Password</label>
-                            <input asp-for="InputPassword.NuovaPassword" class="form-control" 
-                                   type="password" placeholder="••••••••" />
+                            <div class="input-group">
+                                <input asp-for="InputPassword.NuovaPassword" 
+                                       class="form-control" 
+                                       type="password" 
+                                       id="nuovaPassword"
+                                       autocomplete="new-password"
+                                       placeholder="••••••••" />
+                                <button class="btn btn-outline-secondary" 
+                                        type="button" 
+                                        onclick="togglePassword('nuovaPassword', this)"
+                                        aria-label="Mostra password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
                             <span asp-validation-for="InputPassword.NuovaPassword" class="text-danger small"></span>
                             <small class="form-text text-muted">Min 8 caratteri, 1 maiuscola, 1 numero</small>
                         </div>
 
+                        <!-- Conferma Password -->
                         <div class="mb-3">
                             <label asp-for="InputPassword.ConfermaPassword" class="form-label">Conferma Password</label>
-                            <input asp-for="InputPassword.ConfermaPassword" class="form-control" 
-                                   type="password" placeholder="••••••••" />
+                            <div class="input-group">
+                                <input asp-for="InputPassword.ConfermaPassword" 
+                                       class="form-control" 
+                                       type="password" 
+                                       id="confermaPassword"
+                                       autocomplete="new-password"
+                                       placeholder="••••••••" />
+                                <button class="btn btn-outline-secondary" 
+                                        type="button" 
+                                        onclick="togglePassword('confermaPassword', this)"
+                                        aria-label="Mostra password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
                             <span asp-validation-for="InputPassword.ConfermaPassword" class="text-danger small"></span>
                         </div>
 
@@ -159,4 +191,26 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    
+    <!-- Toggle Password Visibility -->
+    <script>
+        function togglePassword(inputId, button) {
+            const input = document.getElementById(inputId);
+            const icon = button.querySelector('i');
+            
+            if (input.type === 'password') {
+                // Mostra password
+                input.type = 'text';
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+                button.setAttribute('aria-label', 'Nascondi password');
+            } else {
+                // Nascondi password
+                input.type = 'password';
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+                button.setAttribute('aria-label', 'Mostra password');
+            }
+        }
+    </script>
 }

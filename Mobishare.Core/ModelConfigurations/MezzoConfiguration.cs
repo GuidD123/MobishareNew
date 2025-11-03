@@ -35,10 +35,11 @@ namespace Mobishare.Core.ModelConfigurations
 
             // Livello batteria con range 0-100 (validato nel controller)
             builder.Property(m => m.LivelloBatteria)
-                   .IsRequired()
+                   .IsRequired(false)
                    .HasDefaultValue(100);
 
-            builder.ToTable(m => { m.HasCheckConstraint("CK_Mezzi_LivelloBatteria", "[LivelloBatteria] >= 0 AND [LivelloBatteria] <= 100"); });
+            builder.ToTable(m => { m.HasCheckConstraint("CK_Mezzi_LivelloBatteria",
+                "[LivelloBatteria] IS NULL OR ([LivelloBatteria] >= 0 AND [LivelloBatteria] <= 100)"); });
 
             // Relazione con Parcheggio corrente - navigazione property
             builder.HasOne(m => m.ParcheggioCorrente)

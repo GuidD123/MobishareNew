@@ -132,11 +132,12 @@
                                     <!-- Parcheggi -->
                                     <td>
                                         <small>
-                                            <i class="bi bi-arrow-right"></i> Da: #@corsa.IdParcheggioPrelievo
+                                            <i class="bi bi-arrow-right"></i> Da: @(corsa.NomeParcheggioPrelievo ?? $"#{corsa.IdParcheggioPrelievo}")
+
                                             @if (corsa.IdParcheggioRilascio.HasValue)
                                             {
-                                                @:<br />
-                                                @:<i class="bi bi-arrow-left"></i> A: #@corsa.IdParcheggioRilascio
+                                                <br />
+                                                @:<i class="bi bi-arrow-left"></i> A: @(corsa.NomeParcheggioRilascio ?? $"#{corsa.IdParcheggioRilascio}")
                                             }
                                         </small>
                                     </td>

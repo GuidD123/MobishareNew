@@ -65,7 +65,6 @@ public class GestioneParcheggiModel : PageModel
 
         return Page();
     }
-
     public async Task<IActionResult> OnPostAsync()
     {
         var userId = HttpContext.Session.GetInt32("UserId");
@@ -149,7 +148,38 @@ public class GestioneParcheggiModel : PageModel
         await CaricaParcheggiAsync();
         return Page();
     }
+    public async Task<IActionResult> OnPostAggiornaStatoAsync(int id, bool attivo)
+    {
+        var userRole = HttpContext.Session.GetString("UserRole");
+        if (!userRole?.Equals("Gestore", StringComparison.OrdinalIgnoreCase) ?? true)
+        {
+            TempData["ErrorMessage"] = "Non hai i permessi per modificare lo stato dei parcheggi.";
+            return RedirectToPage("/DashboardAdmin/Index");
+        }
 
+        try
+        {
+            var success = await _apiService.AggiornaStatoParcheggioAsync(id, attivo);
+
+            if (success)
+            {
+                TempData["SuccessMessage"] = attivo
+                    ? "Parcheggio riattivato correttamente."
+                    : "Parcheggio disattivato correttamente.";
+            }
+            else
+            {
+                TempData["ErrorMessage"] = _apiService.LastError ?? "Errore nell'aggiornamento stato parcheggio.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Errore in OnPostAggiornaStatoAsync");
+            TempData["ErrorMessage"] = "Errore di connessione o server non raggiungibile.";
+        }
+
+        return RedirectToPage();
+    }
     private async Task CaricaParcheggiAsync()
     {
         try

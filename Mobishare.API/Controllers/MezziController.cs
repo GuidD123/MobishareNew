@@ -34,7 +34,12 @@ namespace Mobishare.API.Controllers
                     Stato = m.Stato.ToString(),
                     LivelloBatteria = m.LivelloBatteria,
                     IdParcheggioCorrente = m.IdParcheggioCorrente,
-                    NomeParcheggio = m.ParcheggioCorrente != null ? m.ParcheggioCorrente.Nome : null
+                    NomeParcheggio = m.ParcheggioCorrente != null ? m.ParcheggioCorrente.Nome : null,
+                    ZonaParcheggio = m.ParcheggioCorrente != null ? m.ParcheggioCorrente.Zona : null,
+                    IndirizzoParcheggio = m.ParcheggioCorrente != null ? m.ParcheggioCorrente.Indirizzo : null,
+                    MotivoNonPrelevabile = m.MotivoNonPrelevabile != Core.Enums.MotivoNonPrelevabile.Nessuno
+                        ? m.MotivoNonPrelevabile.ToString()
+                        : null
                 })
                 .ToListAsync();
 
@@ -45,14 +50,13 @@ namespace Mobishare.API.Controllers
             });
         }
 
-
-
         // GET: api/mezzi/{id} -> utile in backend/admin/opInterne
+        [Authorize(Roles = "Gestore, Utente")]
         [HttpGet("{id}")]
         public async Task<ActionResult<SuccessResponse>> GetMezzo(int id)
         {
             var dto = await _context.Mezzi
-                .Where(m => m.Id == id)
+                .Where(mezzo => mezzo.Id == id)
                 .Select(m => new MezzoResponseDTO
                 {
                     Id = m.Id,
@@ -61,7 +65,12 @@ namespace Mobishare.API.Controllers
                     Stato = m.Stato.ToString(),
                     LivelloBatteria = m.LivelloBatteria,
                     IdParcheggioCorrente = m.IdParcheggioCorrente,
-                    NomeParcheggio = m.ParcheggioCorrente != null ? m.ParcheggioCorrente.Nome : null
+                    NomeParcheggio = m.ParcheggioCorrente != null ? m.ParcheggioCorrente.Nome : null,
+                    ZonaParcheggio = m.ParcheggioCorrente != null ? m.ParcheggioCorrente.Zona : null,
+                    IndirizzoParcheggio = m.ParcheggioCorrente != null ? m.ParcheggioCorrente.Indirizzo : null,
+                    MotivoNonPrelevabile = m.MotivoNonPrelevabile != Core.Enums.MotivoNonPrelevabile.Nessuno
+                        ? m.MotivoNonPrelevabile.ToString()
+                        : null
                 })
                 .FirstOrDefaultAsync() ?? throw new ElementoNonTrovatoException("Mezzo", id);
 
@@ -71,7 +80,6 @@ namespace Mobishare.API.Controllers
                 Dati = dto
             });
         }
-
 
         // GET: api/mezzi/matricola/{matricola} -> unico modo per utente di vedere mezzo 
         [HttpGet("matricola/{matricola}")]
@@ -92,7 +100,12 @@ namespace Mobishare.API.Controllers
                 Stato = mezzo.Stato.ToString(),
                 LivelloBatteria = mezzo.LivelloBatteria,
                 IdParcheggioCorrente = mezzo.IdParcheggioCorrente,
-                NomeParcheggio = mezzo.ParcheggioCorrente?.Nome
+                NomeParcheggio = mezzo.ParcheggioCorrente?.Nome,
+                ZonaParcheggio = mezzo.ParcheggioCorrente?.Zona,
+                IndirizzoParcheggio = mezzo.ParcheggioCorrente?.Indirizzo,
+                MotivoNonPrelevabile = mezzo.MotivoNonPrelevabile != Core.Enums.MotivoNonPrelevabile.Nessuno
+                    ? mezzo.MotivoNonPrelevabile.ToString()
+                    : null
             };
 
             return Ok(new SuccessResponse
@@ -101,7 +114,6 @@ namespace Mobishare.API.Controllers
                 Dati = dto
             });
         }
-
 
         // POST: api/mezzi -> crea mezzo
         [Authorize(Roles = "Gestore")]
@@ -129,8 +141,8 @@ namespace Mobishare.API.Controllers
                     ? dto.LivelloBatteria
                     : (dto.Tipo == TipoMezzo.BiciElettrica || dto.Tipo == TipoMezzo.MonopattinoElettrico
                         ? Random.Shared.Next(20, 101) // batteria random 20-100
-                        : 100), // bici muscolare sempre 100
-                IdParcheggioCorrente = dto.IdParcheggioCorrente
+                        : null),// bici muscolare: nessuna batteria
+                IdParcheggioCorrente = dto.IdParcheggioCorrente,
             };
 
             ApplicaRegoleBatteria(mezzo);
@@ -149,7 +161,10 @@ namespace Mobishare.API.Controllers
                 Stato = mezzo.Stato.ToString(),
                 LivelloBatteria = mezzo.LivelloBatteria,
                 IdParcheggioCorrente = mezzo.IdParcheggioCorrente,
-                NomeParcheggio = parcheggio.Nome
+                NomeParcheggio = parcheggio.Nome,
+                MotivoNonPrelevabile = mezzo.MotivoNonPrelevabile != Core.Enums.MotivoNonPrelevabile.Nessuno
+                    ? mezzo.MotivoNonPrelevabile.ToString()
+                    : null
             };
 
             return CreatedAtAction(nameof(GetMezzo), new { id = mezzo.Id }, new SuccessResponse
@@ -159,7 +174,6 @@ namespace Mobishare.API.Controllers
             });
 
         }
-
 
         //PUT: api/mezzi/{id} -> cambia lo stato del mezzo e il parcheggio corrente
         [Authorize(Roles = "Gestore")]
@@ -178,7 +192,8 @@ namespace Mobishare.API.Controllers
             // Se viene cambiato il parcheggio, verifica che esista
             if (dto.IdParcheggioCorrente.HasValue)
             {
-                var parcheggio = await _context.Parcheggi.FindAsync(dto.IdParcheggioCorrente.Value) ?? throw new ElementoNonTrovatoException("Parcheggio", dto.IdParcheggioCorrente);
+                var parcheggio = await _context.Parcheggi.FindAsync(dto.IdParcheggioCorrente.Value) 
+                    ?? throw new ElementoNonTrovatoException("Parcheggio", dto.IdParcheggioCorrente);
 
                 mezzo.IdParcheggioCorrente = dto.IdParcheggioCorrente.Value;
                 mezzo.ParcheggioCorrente = parcheggio;
@@ -202,7 +217,8 @@ namespace Mobishare.API.Controllers
                 nuovoStato = mezzo.Stato.ToString(),
                 parcheggio = mezzo.ParcheggioCorrente?.Nome,
                 livelloBatteria = mezzo.LivelloBatteria,
-                timestamp = DateTime.Now
+                timestamp = DateTime.Now,
+                source = "API"
             });
 
             _logger.LogInformation("Stato mezzo {Matricola} aggiornato a {Stato}", mezzo.Matricola, mezzo.Stato);
@@ -215,6 +231,48 @@ namespace Mobishare.API.Controllers
                     nuovoStato = mezzo.Stato.ToString(),
                     livelloBatteria = mezzo.LivelloBatteria,
                     parcheggio = mezzo.ParcheggioCorrente?.Nome
+                }
+            });
+        }
+
+
+        // PUT: api/mezzi/{id}/ricarica
+        [Authorize(Roles = "Gestore")]
+        [HttpPut("{id}/ricarica")]
+        public async Task<IActionResult> RicaricaMezzo(int id)
+        {
+            var mezzo = await _context.Mezzi.FindAsync(id)
+                ?? throw new ElementoNonTrovatoException("Mezzo", id);
+
+            // solo per mezzi elettrici
+            if (mezzo.Tipo != TipoMezzo.BiciElettrica && mezzo.Tipo != TipoMezzo.MonopattinoElettrico)
+                return BadRequest(new { errore = "Solo i mezzi elettrici possono essere ricaricati." });
+
+            mezzo.LivelloBatteria = 100;
+            mezzo.Stato = StatoMezzo.Disponibile;
+            mezzo.MotivoNonPrelevabile = Core.Enums.MotivoNonPrelevabile.Nessuno;
+
+            await _context.SaveChangesAsync();
+
+            await _mqttIoTService.PublishAsync("mobishare/mezzo/ricarica", new
+            {
+                idMezzo = mezzo.Id,
+                mezzo.Matricola,
+                livelloBatteria = mezzo.LivelloBatteria,
+                stato = mezzo.Stato.ToString(),
+                timestamp = DateTime.Now,
+                source = "API"
+            });
+
+            return Ok(new SuccessResponse
+            {
+                Messaggio = $"Il mezzo {mezzo.Matricola} è stato ricaricato e reso disponibile.",
+                Dati = new
+                {
+                    mezzo.Id,
+                    mezzo.Matricola,
+                    mezzo.LivelloBatteria,
+                    nuovoStato = mezzo.Stato.ToString()
                 }
             });
         }
@@ -247,6 +305,7 @@ namespace Mobishare.API.Controllers
             }
 
             mezzo.Stato = StatoMezzo.NonPrelevabile;
+            mezzo.MotivoNonPrelevabile = Core.Enums.MotivoNonPrelevabile.GuastoSegnalato; 
             await _context.SaveChangesAsync();
 
             _logger.LogWarning("Segnalato guasto per mezzo {Matricola}", mezzo.Matricola);
@@ -258,7 +317,8 @@ namespace Mobishare.API.Controllers
                 matricola = mezzo.Matricola,
                 stato = mezzo.Stato.ToString(),
                 motivo = "Guasto segnalato dall’utente",
-                timestamp = DateTime.Now
+                timestamp = DateTime.Now,
+                source = "API"
             });
 
             return Ok(new SuccessResponse
@@ -272,7 +332,6 @@ namespace Mobishare.API.Controllers
                 }
             });
         }
-
 
         //GET: api/mezzi/disponibili
         [Authorize] // accesso consentito a Utente e Gestore
@@ -290,7 +349,9 @@ namespace Mobishare.API.Controllers
                     Stato = m.Stato.ToString(),
                     LivelloBatteria = m.LivelloBatteria,
                     IdParcheggioCorrente = m.IdParcheggioCorrente,
-                    NomeParcheggio = m.ParcheggioCorrente != null ? m.ParcheggioCorrente.Nome : null
+                    NomeParcheggio = m.ParcheggioCorrente != null ? m.ParcheggioCorrente.Nome : null,
+                    ZonaParcheggio = m.ParcheggioCorrente != null ? m.ParcheggioCorrente.Zona : null,
+                    IndirizzoParcheggio = m.ParcheggioCorrente != null ? m.ParcheggioCorrente.Indirizzo : null
                 })
                 .ToListAsync();
 
@@ -304,7 +365,6 @@ namespace Mobishare.API.Controllers
                 }
             });
         }
-
 
         // GET: api/mezzi/nonprelevabili?idUtente=99
         [Authorize(Roles = "Gestore")]  
@@ -347,8 +407,6 @@ namespace Mobishare.API.Controllers
             return "Motivo non specificato";
         }
 
-
-
         // POST: api/mezzi/mqtt-batteria -> simula aggiornamento livello batteria tramite MQTT
         [HttpPost("mqtt-batteria")]
         public async Task<IActionResult> SimulaMQTTBatteria([FromBody] BatteriaDTO input)
@@ -374,7 +432,8 @@ namespace Mobishare.API.Controllers
 
             //PUBLISH
             //Pubblica solo se c'è un cambiamento significativo
-            if (Math.Abs(vecchioLivello - mezzo.LivelloBatteria) >= 5 || vecchioStato != mezzo.Stato)
+            var diff = Math.Abs((vecchioLivello ?? 0) - (mezzo.LivelloBatteria ?? 0));
+            if (diff >= 5 || vecchioStato != mezzo.Stato)
             {
                 await _mqttIoTService.PublishAsync("mobishare/mezzo/telemetria", new
                 {
@@ -387,7 +446,8 @@ namespace Mobishare.API.Controllers
                         batteria = $"{vecchioLivello}% → {mezzo.LivelloBatteria}%",
                         stato = vecchioStato != mezzo.Stato ? $"{vecchioStato} → {mezzo.Stato}" : "invariato"
                     },
-                    timestamp = DateTime.Now
+                    timestamp = DateTime.Now,
+                    source = "API"
                 });
             }
 
@@ -430,7 +490,10 @@ namespace Mobishare.API.Controllers
                     Stato = m.Stato.ToString(),
                     LivelloBatteria = m.LivelloBatteria,
                     IdParcheggioCorrente = m.IdParcheggioCorrente,
-                    NomeParcheggio = m.ParcheggioCorrente != null ? m.ParcheggioCorrente.Nome : null
+                    NomeParcheggio = m.ParcheggioCorrente != null ? m.ParcheggioCorrente.Nome : null,
+                    MotivoNonPrelevabile = m.MotivoNonPrelevabile != Core.Enums.MotivoNonPrelevabile.Nessuno
+                        ? m.MotivoNonPrelevabile.ToString()
+                        : null
                 })
                 .ToListAsync();
 
@@ -460,8 +523,6 @@ namespace Mobishare.API.Controllers
                 }
             });
         }
-
-
 
         // GET: api/mezzi/statistiche -> endpoint statistiche mezzi
         [HttpGet("statistiche")]
@@ -502,18 +563,29 @@ namespace Mobishare.API.Controllers
         //Metodo helper per logica batteria 
         private static void ApplicaRegoleBatteria(Mezzo mezzo)
         {
+            if (mezzo.Tipo == TipoMezzo.BiciMuscolare)
+            {
+                mezzo.LivelloBatteria = null;
+                return;
+            }
+
             if (mezzo.Tipo == TipoMezzo.BiciElettrica || mezzo.Tipo == TipoMezzo.MonopattinoElettrico)
             {
+                // Se batteria scarica → NonPrelevabile con motivo BatteriaScarica
                 if (mezzo.LivelloBatteria < 20 && mezzo.Stato == StatoMezzo.Disponibile)
                 {
                     mezzo.Stato = StatoMezzo.NonPrelevabile;
+                    mezzo.MotivoNonPrelevabile = Core.Enums.MotivoNonPrelevabile.BatteriaScarica;
                 }
-                else if (mezzo.LivelloBatteria >= 20 && mezzo.Stato == StatoMezzo.NonPrelevabile)
+                // Se batteria OK E motivo era batteria scarica → torna Disponibile
+                else if (mezzo.LivelloBatteria >= 20
+                         && mezzo.Stato == StatoMezzo.NonPrelevabile
+                         && mezzo.MotivoNonPrelevabile == Core.Enums.MotivoNonPrelevabile.BatteriaScarica)
                 {
                     mezzo.Stato = StatoMezzo.Disponibile;
+                    mezzo.MotivoNonPrelevabile = Core.Enums.MotivoNonPrelevabile.Nessuno;
                 }
             }
         }
-
     }
 }

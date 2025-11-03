@@ -10,7 +10,7 @@ public class IndexModel : PageModel
     private readonly IMobishareApiService _apiService;
     private readonly ILogger<IndexModel> _logger;
 
-    // Soglia minima batteria per mezzi elettrici (20%)
+    //Soglia minima batteria per mezzi elettrici (20%)
     private const int SOGLIA_BATTERIA_MINIMA = 20;
 
     public IndexModel(IMobishareApiService apiService, ILogger<IndexModel> logger)

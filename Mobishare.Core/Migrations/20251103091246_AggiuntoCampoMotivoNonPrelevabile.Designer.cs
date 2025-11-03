@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Mobishare.Core.Data;
 
@@ -10,9 +11,11 @@ using Mobishare.Core.Data;
 namespace Mobishare.Core.Migrations
 {
     [DbContext(typeof(MobishareDbContext))]
-    partial class MobishareDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251103091246_AggiuntoCampoMotivoNonPrelevabile")]
+    partial class AggiuntoCampoMotivoNonPrelevabile
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.7");
@@ -155,7 +158,7 @@ namespace Mobishare.Core.Migrations
                     b.Property<int>("IdParcheggioCorrente")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("LivelloBatteria")
+                    b.Property<int>("LivelloBatteria")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(100);
@@ -206,7 +209,7 @@ namespace Mobishare.Core.Migrations
 
                     b.ToTable("Mezzi", t =>
                         {
-                            t.HasCheckConstraint("CK_Mezzi_LivelloBatteria", "[LivelloBatteria] IS NULL OR ([LivelloBatteria] >= 0 AND [LivelloBatteria] <= 100)");
+                            t.HasCheckConstraint("CK_Mezzi_LivelloBatteria", "[LivelloBatteria] >= 0 AND [LivelloBatteria] <= 100");
                         });
                 });
 
@@ -424,9 +427,6 @@ namespace Mobishare.Core.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("PuntiBonus")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Ruolo")
                         .IsRequired()

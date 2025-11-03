@@ -129,7 +129,7 @@ public class CorsaCorrenteModel : PageModel
                 ? $"Corsa terminata. Mezzo segnalato come guasto. Costo finale: €{corsaTerminata.CostoFinale:0.00}"
                 : $"Corsa terminata! Costo finale: €{corsaTerminata.CostoFinale:0.00}";
 
-                return RedirectToPage("/Corse/LasciaFeedback", new { idCorsa = corsaTerminata.Id }); 
+                return RedirectToPage("/Corse/FeedbackUtente", new { idCorsa = corsaTerminata.Id }); 
             }
             else
             {

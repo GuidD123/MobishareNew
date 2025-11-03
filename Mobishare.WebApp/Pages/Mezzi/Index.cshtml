@@ -58,7 +58,7 @@
                         <label class="form-label"><i class="bi bi-bicycle"></i> Tipo Mezzo</label>
                         <select name="tipoFiltro" class="form-select" asp-for="TipoFiltro">
                             <option value="">Tutti i tipi</option>
-                            <option value="Bicicletta">🚴 Bicicletta</option>
+                            <option value=BiciMuscolare">🚴 Bicicletta</option>
                             <option value="BiciElettrica">🚲 Bici Elettrica</option>
                             <option value="MonopattinoElettrico">⚡ Monopattino Elettrico</option>
                         </select>
@@ -206,11 +206,22 @@
                                 </p>
                             }
                             
-                            @if (!string.IsNullOrEmpty(mezzo.NomeParcheggio))
+                            @if (!string.IsNullOrEmpty(mezzo.NomeParcheggio) || !string.IsNullOrEmpty(mezzo.ZonaParcheggio) || !string.IsNullOrEmpty(mezzo.IndirizzoParcheggio))
                             {
                                 <p class="mb-2">
                                     <strong><i class="bi bi-geo-alt"></i> Parcheggio:</strong> 
-                                    <span class="text-muted">@mezzo.NomeParcheggio</span>
+                                    <span class="text-muted">
+                                        @if (!string.IsNullOrEmpty(mezzo.ZonaParcheggio) || !string.IsNullOrEmpty(mezzo.IndirizzoParcheggio))
+                                        {
+                                            @mezzo.ZonaParcheggio
+                                            @if (!string.IsNullOrEmpty(mezzo.IndirizzoParcheggio))
+                                            {
+                                                <text>, @mezzo.IndirizzoParcheggio</text>
+                                            }
+                                        } else {
+                                            @mezzo.NomeParcheggio
+                                        }
+                                    </span>
                                 </p>
                             }
                             
@@ -218,17 +229,17 @@
                             
                             @if (!Model.UtenteCorrente?.Sospeso ?? true && !Model.HasCorsaInCorso)
                             {
-                                <form method="post" class="mt-3" onsubmit="return confirm('Confermi il noleggio di questo mezzo?');">
+                                <form method="post" class="mt-3 noleggio-form" onsubmit="return handleNoleggioSubmit(this);">
                                     <input type="hidden" name="matricolaMezzo" value="@mezzo.Matricola" />
                                     <input type="hidden" name="idParcheggio" value="@mezzo.IdParcheggioCorrente" />
-                                    <button type="submit" class="btn btn-success w-100">
+                                    <button type="submit" class="btn btn-success w-100 btn-noleggio">
                                         <i class="bi bi-play-circle"></i> Noleggia Ora
                                     </button>
                                 </form>
 
                                 <!-- pulsante segnala guasto -->
                                 <form method="post" asp-page-handler="SegnalaGuasto" class="mt-2">
-                                    <input type="hidden" name="id" value="@mezzo.Id" />
+                                    <input type="hidden" name="id" value="@mezzo.Matricola" />
                                         <button type="submit" class="btn btn-outline-danger w-100" 
                                             onclick="return confirm('Vuoi segnalare questo mezzo come guasto?');">
                                             <i class="bi bi-tools"></i> Segnala Guasto
@@ -289,5 +300,47 @@
             transform: translateY(-3px);
             box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
         }
+
+        .btn-noleggio:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
     </style>
+
+
+     <script>
+        //Funzione per gestire il submit del form di noleggio
+        function handleNoleggioSubmit(form) {
+            // Conferma noleggio
+            if (!confirm('Confermi il noleggio di questo mezzo?')) {
+                return false;
+            }
+            
+            // Trova il bottone submit
+            const submitButton = form.querySelector('button[type="submit"]');
+            
+            // Disabilita il bottone per prevenire doppi click
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i>Noleggio in corso...';
+            
+            // Disabilita anche tutti gli altri form di noleggio nella pagina
+            document.querySelectorAll('.noleggio-form button[type="submit"]').forEach(btn => {
+                btn.disabled = true;
+            });
+            
+            // Permetti il submit
+            return true;
+        }
+        
+        //Auto-dismiss degli alert dopo 5 secondi
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert:not([data-auto-dismiss="false"])');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+        });
+    </script>
 }

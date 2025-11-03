@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Mobishare.Core.Data;
 using Mobishare.Core.Models;
 using Mobishare.Core.Enums;
+using Microsoft.AspNetCore.SignalR;
+using Mobishare.Infrastructure.SignalRHubs;
 
 namespace Mobishare.Infrastructure.Services
 {
@@ -26,13 +28,16 @@ namespace Mobishare.Infrastructure.Services
     {
         private readonly MobishareDbContext _context;
         private readonly ILogger<RideMonitoringService> _logger;
+        private readonly IHubContext<NotificheHub> _hubContext;
 
         public RideMonitoringService(
             MobishareDbContext context,
-            ILogger<RideMonitoringService> logger)
+            ILogger<RideMonitoringService> logger,
+            IHubContext<NotificheHub> hubContext)
         {
             _context = context;
             _logger = logger;
+            _hubContext = hubContext;
         }
 
         /// <summary>
@@ -44,7 +49,6 @@ namespace Mobishare.Infrastructure.Services
 
             try
             {
-                // ✅ USA JOIN ESPLICITO invece di Include
                 var corseAttive = await (from c in _context.Corse
                                          join u in _context.Utenti on c.IdUtente equals u.Id
                                          join m in _context.Mezzi on c.MatricolaMezzo equals m.Matricola
@@ -66,7 +70,7 @@ namespace Mobishare.Infrastructure.Services
                     var utente = item.Utente;
                     var mezzo = item.Mezzo;
 
-                    // 3. Calcola i minuti trascorsi
+                    //Calcola i minuti trascorsi
                     var startTime = corsa.DataOraInizio.Kind == DateTimeKind.Utc
                         ? corsa.DataOraInizio
                         : corsa.DataOraInizio.ToUniversalTime();
@@ -80,10 +84,20 @@ namespace Mobishare.Infrastructure.Services
                         continue;
                     }
 
-                    // 4. Calcola il costo attuale
+                    //Calcola il costo attuale
                     var costoAttuale = CalcolaCosto(durataMinuti, mezzo.Tipo);
 
-                    // 5. Verifica se il credito è insufficiente
+                    //aggiornamento live tramite SignalR
+                    await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                        .SendAsync("AggiornaCorsa", new
+                        {
+                            idCorsa = corsa.Id,
+                            tipoMezzo = mezzo.Tipo.ToString(),
+                            durataMinuti = Math.Round(durataMinuti, 1),
+                            costoParziale = Math.Round(costoAttuale, 2)
+                        });
+
+                    //Verifica se il credito è insufficiente
                     if (costoAttuale >= utente.Credito)
                     {
                         _logger.LogWarning(
@@ -95,18 +109,18 @@ namespace Mobishare.Infrastructure.Services
                             costoAttuale,
                             durataMinuti);
 
-                        // 6. Termina la corsa
+                        //Termina la corsa
                         corsa.DataOraFine = DateTime.Now;
                         corsa.Stato = StatoCorsa.Completata;
                         corsa.CostoFinale = utente.Credito;
 
-                        // 8. Gestione debito e sospensione utente
+                        //Gestione debito e sospensione utente
                         var debitoResiduo = costoAttuale - utente.Credito;
                         utente.DebitoResiduo += debitoResiduo;
                         utente.Credito = 0;
                         utente.Sospeso = true;
 
-                        // 9. Rendi il mezzo disponibile
+                        //Rendi il mezzo disponibile
                         var batteriaScarica = (mezzo.Tipo == TipoMezzo.BiciElettrica ||
                                               mezzo.Tipo == TipoMezzo.MonopattinoElettrico)
                                               && mezzo.LivelloBatteria < 20;
@@ -126,7 +140,7 @@ namespace Mobishare.Infrastructure.Services
                     }
                 }
 
-                // 10. Salva tutte le modifiche
+                //Salva tutte le modifiche
                 if (corseTerminate.Count > 0)
                 {
                     var changesCount = await _context.SaveChangesAsync();

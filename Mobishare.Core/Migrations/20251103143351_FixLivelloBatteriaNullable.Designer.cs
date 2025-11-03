@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Mobishare.Core.Data;
 
@@ -10,9 +11,11 @@ using Mobishare.Core.Data;
 namespace Mobishare.Core.Migrations
 {
     [DbContext(typeof(MobishareDbContext))]
-    partial class MobishareDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251103143351_FixLivelloBatteriaNullable")]
+    partial class FixLivelloBatteriaNullable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.7");
@@ -424,9 +427,6 @@ namespace Mobishare.Core.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("PuntiBonus")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Ruolo")
                         .IsRequired()

@@ -49,7 +49,7 @@
                                 </p>
                                 <p class="mb-2">
                                     <strong>Parcheggio Prelievo:</strong> 
-                                    <span class="text-muted">#@Model.CorsaAttiva.IdParcheggioPrelievo</span>
+                                    <span class="text-muted">@(Model.CorsaAttiva.NomeParcheggioPrelievo ?? $"#{Model.CorsaAttiva.IdParcheggioPrelievo}")</span>
                                 </p>
                                 <p class="mb-0">
                                     <strong>Inizio Corsa:</strong><br/>
@@ -109,7 +109,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-danger btn-lg w-100">
+                    <button type="submit" class="btn btn-danger btn-lg w-100" onclick="this.disabled=true; this.form.submit();">
                         <i class="bi bi-stop-circle"></i> Termina Corsa Ora
                     </button>
                 </form>

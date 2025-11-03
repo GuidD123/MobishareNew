@@ -930,3 +930,8 @@ footer {
         transform: translateY(0);
     }
 }
+
+#durataCorsa.updated, #costoCorsa.updated {
+    background-color: #198754 !important;
+    transition: background-color 0.4s ease;
+}

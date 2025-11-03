@@ -49,10 +49,11 @@ namespace Mobishare.API.Middleware
 
                     case ImportoNonValidoException inv:
                         statusCode = (int)HttpStatusCode.BadRequest;
-                        response = new { 
-                            Errore = inv.
-                            Message, inv.Importo, 
-                            TraceId = traceId 
+                        response = new 
+                        {
+                            Errore = inv.Message,
+                            inv.Importo,
+                            TraceId = traceId
                         };
                         break;
 
@@ -99,6 +100,15 @@ namespace Mobishare.API.Middleware
                         };
                         break;
 
+                    case OperazioneNonConsentitaException oce:
+                        statusCode = (int)HttpStatusCode.Unauthorized;
+                        response = new
+                        {
+                            Errore = oce.Message,
+                            TraceId = traceId
+                        };
+                        break;
+
                     //402 Payment Required 
                     case PagamentoFallitoException pfe:
                         statusCode = 402;
@@ -112,15 +122,6 @@ namespace Mobishare.API.Middleware
 
 
                     //403 Forbidden
-
-                    case OperazioneNonConsentitaException oce:
-                        statusCode = (int)HttpStatusCode.Forbidden;
-                        response = new
-                        {
-                            Errore = oce.Message,
-                            TraceId = traceId
-                        };
-                        break;
 
                     case UtenteSospesoException use:
                         statusCode = (int)HttpStatusCode.Forbidden;

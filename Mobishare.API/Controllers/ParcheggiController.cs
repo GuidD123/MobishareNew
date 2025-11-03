@@ -25,7 +25,7 @@ namespace Mobishare.API.Controllers
                 .AsNoTracking()
                 .ToListAsync();
 
-            // carico i mezzi separatamente
+            //carico i mezzi separatamente
             var result = parcheggi.Select(p => new ParcheggioResponseDTO
             {
                 Id = p.Id,
@@ -42,7 +42,10 @@ namespace Mobishare.API.Controllers
                     Stato = m.Stato.ToString(),
                     LivelloBatteria = m.LivelloBatteria,
                     IdParcheggioCorrente = m.IdParcheggioCorrente,
-                    NomeParcheggio = p.Nome
+                    NomeParcheggio = p.Nome,
+                    MotivoNonPrelevabile = m.MotivoNonPrelevabile != Core.Enums.MotivoNonPrelevabile.Nessuno
+                        ? m.MotivoNonPrelevabile.ToString()
+                        : null
                 }).ToList()
             }).ToList();
 
@@ -82,7 +85,10 @@ namespace Mobishare.API.Controllers
                     Stato = m.Stato.ToString(),
                     LivelloBatteria = m.LivelloBatteria,
                     IdParcheggioCorrente = m.IdParcheggioCorrente,
-                    NomeParcheggio = parcheggio.Nome
+                    NomeParcheggio = parcheggio.Nome,
+                    MotivoNonPrelevabile = m.MotivoNonPrelevabile != Core.Enums.MotivoNonPrelevabile.Nessuno
+                        ? m.MotivoNonPrelevabile.ToString()
+                        : null
                 }).ToList()
             };
 
@@ -164,6 +170,96 @@ namespace Mobishare.API.Controllers
                 Messaggio = "Parcheggio creato correttamente",
                 Dati = response
             });
+        }
+
+
+        [HttpPut("{id}/stato")]
+        public async Task<ActionResult<SuccessResponse>> AggiornaStatoParcheggio(int id, [FromBody] ParcheggioStatoDTO dto)
+        {
+            var parcheggio = await _context.Parcheggi
+                .Include(p => p.Mezzi)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (parcheggio == null)
+                throw new ElementoNonTrovatoException("Parcheggio", id);
+
+            parcheggio.Attivo = dto.Attivo;
+
+            if (!dto.Attivo)
+            {
+                // Cerca altri parcheggi attivi
+                var parcheggiAttivi = await _context.Parcheggi
+                    .Include(p => p.Mezzi)
+                    .Where(p => p.Attivo && p.Id != parcheggio.Id)
+                    .Select(p => new
+                    {
+                        Parcheggio = p,
+                        Carico = p.Mezzi.Count
+                    })
+                    .ToListAsync();
+
+                if (parcheggiAttivi.Any())
+                {
+                    // Ordina per carico crescente
+                    var ordinati = parcheggiAttivi.OrderBy(pa => pa.Carico).ToList();
+                    int index = 0;
+                    int totaleDest = ordinati.Count;
+
+                    foreach (var mezzo in parcheggio.Mezzi)
+                    {
+                        var destinazione = ordinati[index % totaleDest].Parcheggio;
+
+                        // Verifica capienza
+                        if (destinazione.Mezzi.Count < destinazione.Capienza)
+                        {
+                            mezzo.IdParcheggioCorrente = destinazione.Id;
+                            mezzo.Stato = StatoMezzo.Disponibile;
+                            destinazione.Mezzi.Add(mezzo);
+
+                            ordinati[index % totaleDest] = new
+                            {
+                                Parcheggio = destinazione,
+                                Carico = destinazione.Mezzi.Count
+                            };
+                        }
+                        else
+                        {
+                            // Nessun posto libero, metti in manutenzione
+                            mezzo.Stato = StatoMezzo.Manutenzione;
+                        }
+
+                        index++;
+                    }
+                }
+                else
+                {
+                    // Nessun parcheggio attivo → tutti in manutenzione
+                    foreach (var mezzo in parcheggio.Mezzi)
+                        mezzo.Stato = StatoMezzo.Manutenzione;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new SuccessResponse
+            {
+                Messaggio = dto.Attivo
+                    ? $"Parcheggio {parcheggio.Nome} riattivato correttamente."
+                    : $"Parcheggio {parcheggio.Nome} disattivato: mezzi spostati verso parcheggi meno carichi o messi in manutenzione.",
+                Dati = new
+                {
+                    parcheggio.Id,
+                    parcheggio.Nome,
+                    parcheggio.Attivo,
+                    TotaleMezziCoinvolti = parcheggio.Mezzi.Count
+                }
+            });
+        }
+
+
+        public class ParcheggioStatoDTO
+        {
+            public bool Attivo { get; set; }
         }
 
     }

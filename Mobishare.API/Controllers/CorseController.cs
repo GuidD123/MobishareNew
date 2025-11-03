@@ -65,8 +65,22 @@ namespace Mobishare.API.Controllers
                                    IdParcheggioRilascio = c.IdParcheggioRilascio,
                                    DataOraInizio = c.DataOraInizio,
                                    DataOraFine = c.DataOraFine,
-                                   CostoFinale = c.CostoFinale
+                                   CostoFinale = c.CostoFinale,
                                }).ToListAsync();
+
+            // Recupera i nomi parcheggi in un dizionario (una sola query)
+            var parcheggi = await _context.Parcheggi
+                .AsNoTracking()
+                .ToDictionaryAsync(p => p.Id, p => $"{p.Zona} ({p.Indirizzo!.Split(',')[0]})");
+
+            foreach (var c in corse)
+            {
+                if (c.IdParcheggioPrelievo.HasValue && parcheggi.TryGetValue(c.IdParcheggioPrelievo.Value, out var nomePrelievo))
+                    c.NomeParcheggioPrelievo = nomePrelievo;
+
+                if (c.IdParcheggioRilascio.HasValue && parcheggi.TryGetValue(c.IdParcheggioRilascio.Value, out var nomeRilascio))
+                    c.NomeParcheggioRilascio = nomeRilascio;
+            }
 
             return Ok(new SuccessResponse
             {
@@ -97,11 +111,20 @@ namespace Mobishare.API.Controllers
                                    TipoMezzo = m.Tipo.ToString(),
                                    IdParcheggioPrelievo = c.IdParcheggioPrelievo,
                                    DataOraInizio = c.DataOraInizio,
-                                   CostoFinale = c.CostoFinale
+                                   CostoFinale = c.CostoFinale,
                                }).FirstOrDefaultAsync();
 
             if (corsa == null)
                 return NotFound(new ErrorResponse { Messaggio = "Nessuna corsa attiva trovata." });
+
+            // Dizionario parcheggi
+            var parcheggi = await _context.Parcheggi
+                .AsNoTracking()
+                .ToDictionaryAsync(p => p.Id, p => $"{p.Zona} ({p.Indirizzo!.Split(',')[0]})");
+
+            if (corsa.IdParcheggioPrelievo.HasValue &&
+                parcheggi.TryGetValue(corsa.IdParcheggioPrelievo.Value, out var nomePrelievo))
+                corsa.NomeParcheggioPrelievo = nomePrelievo;
 
             return Ok(new SuccessResponse
             {
@@ -151,8 +174,21 @@ namespace Mobishare.API.Controllers
                                    IdParcheggioRilascio = c.IdParcheggioRilascio,
                                    DataOraInizio = c.DataOraInizio,
                                    DataOraFine = c.DataOraFine,
-                                   CostoFinale = c.CostoFinale
+                                   CostoFinale = c.CostoFinale,
                                }).ToListAsync();
+
+            var parcheggi = await _context.Parcheggi
+                .AsNoTracking()
+                .ToDictionaryAsync(p => p.Id, p => $"{p.Zona} ({p.Indirizzo!.Split(',')[0]})");
+
+            foreach (var c in corse)
+            {
+                if (c.IdParcheggioPrelievo.HasValue && parcheggi.TryGetValue(c.IdParcheggioPrelievo.Value, out var pre))
+                    c.NomeParcheggioPrelievo = pre;
+
+                if (c.IdParcheggioRilascio.HasValue && parcheggi.TryGetValue(c.IdParcheggioRilascio.Value, out var ril))
+                    c.NomeParcheggioRilascio = ril;
+            }
 
             return Ok(new SuccessResponse
             {
@@ -170,7 +206,6 @@ namespace Mobishare.API.Controllers
             if (id <= 0)
                 throw new ValoreNonValidoException(nameof(id), "deve essere maggiore di 0");
 
-            // ✅ Aggiungi join
             var dto = await (from c in _context.Corse.AsNoTracking()
                              join m in _context.Mezzi on c.MatricolaMezzo equals m.Matricola
                              where c.Id == id
@@ -184,12 +219,23 @@ namespace Mobishare.API.Controllers
                                  IdParcheggioRilascio = c.IdParcheggioRilascio,
                                  DataOraInizio = c.DataOraInizio,
                                  DataOraFine = c.DataOraFine,
-                                 CostoFinale = c.CostoFinale
+                                 CostoFinale = c.CostoFinale,
                              }).FirstOrDefaultAsync()
                 ?? throw new ElementoNonTrovatoException("Corsa", id);
 
+            var parcheggi = await _context.Parcheggi
+                .AsNoTracking()
+                .ToDictionaryAsync(p => p.Id, p => $"{p.Zona} ({p.Indirizzo!.Split(',')[0]})");
+
+            if (dto.IdParcheggioPrelievo.HasValue && parcheggi.TryGetValue(dto.IdParcheggioPrelievo.Value, out var nomePre))
+                dto.NomeParcheggioPrelievo = nomePre;
+
+            if (dto.IdParcheggioRilascio.HasValue && parcheggi.TryGetValue(dto.IdParcheggioRilascio.Value, out var nomeRil))
+                dto.NomeParcheggioRilascio = nomeRil;
+
             var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? throw new OperazioneNonConsentitaException("Utente non autenticato"));
+
             var isGestore = User.IsInRole("Gestore");
             if (!isGestore && dto.IdUtente != callerId)
                 throw new OperazioneNonConsentitaException("Non autorizzato a visualizzare questa corsa");
@@ -211,10 +257,8 @@ namespace Mobishare.API.Controllers
 
             var matricola = dto.MatricolaMezzo.Trim();
 
-            // ============================================
             // gestione race condition
-            // Fino a 3 tentativi con delay esponenziale
-            // ============================================
+            // Fino a 3 tentativi con delay esponenziale 
             const int MAX_RETRY = 3;
             int attempt = 0;
 
@@ -235,6 +279,32 @@ namespace Mobishare.API.Controllers
 
                     // Verifica che l'utente non abbia già una corsa in corso
                     bool corsaInCorso = await _context.Corse.AnyAsync(c => c.IdUtente == utente.Id && c.DataOraFine == null);
+
+                    //utilizzo punti bonus (bici muscolare) 
+                    const int sogliaPunti = 10;       // punti necessari per bonus
+                    const decimal scontoEuro = 1.0m;  // sconto di 1€ per ogni soglia
+
+                    if (utente.PuntiBonus >= sogliaPunti)
+                    {
+                        utente.Credito += scontoEuro;
+                        utente.PuntiBonus -= sogliaPunti;
+
+                        _logger.LogInformation("Applicato bonus a utente {IdUtente}: +{Sconto:C2} credito per {Soglia} punti (restano {Residui})",
+                            utente.Id, scontoEuro, sogliaPunti, utente.PuntiBonus);
+
+                        // Notifica in tempo reale
+                        await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                            .SendAsync("BonusUsato", new
+                            {
+                                Tipo = "BonusScontoCorsa",
+                                Valore = scontoEuro,
+                                PuntiUsati = sogliaPunti,
+                                PuntiResidui = utente.PuntiBonus,
+                                Messaggio = $"Hai utilizzato {sogliaPunti} punti per ottenere uno sconto di {scontoEuro:F2} € sulla corsa!"
+                            });
+
+                        await _context.SaveChangesAsync();
+                    }
 
                     if (corsaInCorso)
                         throw new OperazioneNonConsentitaException("Hai già una corsa in corso. Termina quella prima di avviarne un'altra.");
@@ -268,9 +338,9 @@ namespace Mobishare.API.Controllers
                     _context.Corse.Add(corsa);
 
                     await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
+                    //await transaction.CommitAsync();
 
-                    bool mqttSuccesso = false;
+                    bool mqttSuccesso = true;
                     string? mqttErrore = null;
 
                     try
@@ -324,12 +394,12 @@ namespace Mobishare.API.Controllers
                             DataOraInizio = corsa.DataOraInizio
                         };
 
-                        return CreatedAtAction(nameof(GetCorsaById), new { id = corsa.Id },
-                            new SuccessResponse
-                            {
-                                Messaggio = "Corsa avviata correttamente",
-                                Dati = response
-                            });
+                        return CreatedAtAction(nameof(GetCorsaById), new { id = corsa.Id }, response); 
+                            //new SuccessResponse
+                            //{
+                            //    Messaggio = "Corsa avviata correttamente",
+                            //    Dati = response
+                            //});
                     }
                     else
                     {
@@ -390,12 +460,15 @@ namespace Mobishare.API.Controllers
 
             try
             {
-                var corsaEsistente = await _context.Corse.FindAsync(id) ?? throw new ElementoNonTrovatoException("Corsa", id);
+                var corsaEsistente = await _context.Corse.FindAsync(id) 
+                    ?? throw new ElementoNonTrovatoException("Corsa", id);
+
                 if (corsaEsistente.DataOraFine.HasValue)
                     throw new OperazioneNonConsentitaException("La corsa è già terminata");
 
                 corsaEsistente.DataOraFine = dto.DataOraFineCorsa;
                 corsaEsistente.IdParcheggioRilascio = dto.IdParcheggioRilascio;
+
 
                 var utente = await _context.Utenti.FindAsync(corsaEsistente.IdUtente);
                 var mezzo = await _context.Mezzi.FirstOrDefaultAsync(m => m.Matricola == corsaEsistente.MatricolaMezzo);
@@ -404,6 +477,8 @@ namespace Mobishare.API.Controllers
                     throw new ElementoNonTrovatoException("Utente", corsaEsistente.IdUtente);
                 if (mezzo == null)
                     throw new ElementoNonTrovatoException("Mezzo", corsaEsistente.MatricolaMezzo);
+
+                mezzo.IdParcheggioCorrente = dto.IdParcheggioRilascio;
 
                 // Calcolo costo della corsa
                 TimeSpan durata = corsaEsistente.DataOraFine.Value - corsaEsistente.DataOraInizio;
@@ -437,16 +512,98 @@ namespace Mobishare.API.Controllers
                     corsaEsistente.MatricolaMezzo
                 );
 
-
                 corsaEsistente.CostoFinale = costo;
+                corsaEsistente.Stato = StatoCorsa.Completata;
+
+                //BONUS bicicletta muscolare
+                // === BONUS BICI MUSCOLARE ===
+                if (mezzo.Tipo == TipoMezzo.BiciMuscolare)
+                {
+                    // assegna 10 punti per ogni 30 minuti di utilizzo
+                    int puntiGuadagnati = (int)Math.Max(1, Math.Floor(durata.TotalMinutes / 30));
+                    utente.PuntiBonus += puntiGuadagnati;
+
+                    _logger.LogInformation("Utente {IdUtente} ha guadagnato {Punti} punti bonus per uso bici muscolare (totale: {Totale})",
+                        utente.Id, puntiGuadagnati, utente.PuntiBonus);
+
+                    // notifica all'utente
+                    await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                        .SendAsync("BonusApplicato", new
+                        {
+                            Tipo = "BonusBiciMuscolare",
+                            Punti = puntiGuadagnati,
+                            TotalePunti = utente.PuntiBonus,
+                            Messaggio = $"Hai guadagnato {puntiGuadagnati} punti bonus per aver usato una bici muscolare!"
+                        });
+                }
+
 
                 bool problemaSegnalato = dto.SegnalazioneProblema;
                 bool batteriaScarica = (mezzo.Tipo == TipoMezzo.MonopattinoElettrico || mezzo.Tipo == TipoMezzo.BiciElettrica)
                                        && mezzo.LivelloBatteria < 20;
 
+                // Simula scaricamento batteria per mezzi elettrici
+                if (mezzo.Tipo == TipoMezzo.BiciElettrica || mezzo.Tipo == TipoMezzo.MonopattinoElettrico)
+                {
+                    // Parametri configurabili
+                    const double minutiPerPercentuale = 6.0; // ogni 6 min si consuma 1%
+                    const int consumoMassimo = 80;           // mai più di 80% per corsa
+
+                    // Consumo proporzionale alla durata
+                    int consumoStimato = (int)Math.Min(consumoMassimo, Math.Ceiling(durata.TotalMinutes / minutiPerPercentuale)); 
+
+                    mezzo.LivelloBatteria = Math.Max(0, (mezzo.LivelloBatteria ?? 100) - consumoStimato);
+
+                    // Aggiorna stato se batteria scesa sotto soglia
+                    if (mezzo.LivelloBatteria < 20)
+                    {
+                        mezzo.Stato = StatoMezzo.NonPrelevabile;
+                        mezzo.MotivoNonPrelevabile = MotivoNonPrelevabile.BatteriaScarica;
+                    }
+
+                    _logger.LogInformation("Consumo stimato per mezzo {Matricola}: -{Consumo}% → Batteria attuale {Livello}%",
+                        mezzo.Matricola, consumoStimato, mezzo.LivelloBatteria);
+                }
+
                 mezzo.Stato = (problemaSegnalato || batteriaScarica)
                     ? StatoMezzo.NonPrelevabile
                     : StatoMezzo.Disponibile;
+
+                //salva corsa e mezzo
+                await _context.SaveChangesAsync();
+
+                //Registra il movimento (ora la corsa esiste con DataOraFine)
+                await _pagamentoService.RegistraMovimentoAsync(
+                    idUtente: utente.Id,
+                    importo: -costo,
+                    stato: StatoPagamento.Completato,
+                    tipo: "Corsa",
+                    idCorsa: corsaEsistente.Id
+                );
+
+                //verifica sospensione
+                if (utente.Credito < 0)
+                {
+                    await SospendiUtenteAsync(utente, "Credito negativo dopo la corsa");
+                }
+
+                //commit transazione
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Corsa {CorsaId} terminata e committata con successo", corsaEsistente.Id);
+
+                // Publish solo dopo commit
+                try
+                {
+                    await _mqttIoTService.BloccaMezzoAsync(
+                        corsaEsistente.IdParcheggioRilascio ?? 0,
+                        corsaEsistente.MatricolaMezzo
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Errore pubblicazione MQTT per corsa {CorsaId}", corsaEsistente.Id);
+                }
 
                 //NOTIFICA ADMIN: Mezzo guasto segnalato
                 if (problemaSegnalato)
@@ -484,85 +641,65 @@ namespace Mobishare.API.Controllers
                     }
                 }
 
-                //salva modifiche corsa +  mezzo
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                // Publish solo dopo commit
-                await _mqttIoTService.BloccaMezzoAsync(
-                    corsaEsistente.IdParcheggioRilascio ?? 0,
-                    corsaEsistente.MatricolaMezzo
-                );
-
-
-                //servizio accede al db per registrare la transazione e aggiornare il credito utente, quindi viene chiamato fuori dalla transazione locale di PutCorsa
-                await _pagamentoService.RegistraMovimentoAsync(
-                    idUtente: utente.Id,
-                    importo: -costo,
-                    stato: StatoPagamento.Completato,
-                    tipo: "Corsa",
-                    idCorsa: corsaEsistente.Id
-                );
-
-                if (utente.Credito < 0)
-                {
-                    await SospendiUtenteAsync(utente, "Credito negativo dopo la corsa");
-                }
-
-                /*await _context.RegistraTransazioneAsync(
-                    idUtente: utente.Id,
-                    importo: -corsaEsistente.CostoFinale.GetValueOrDefault(),
-                    stato: StatoPagamento.Completato,
-                    idCorsa: corsaEsistente.Id
-                );*/
-
-                await _hubContext.Clients.Group($"utenti:{utente.Id}")
-                .SendAsync("NuovaTransazione", new
-                {
-                    Importo = -corsaEsistente.CostoFinale,
-                    Tipo = "Corsa",
-                    Data = DateTime.Now
-                });
-
-
 
                 try
                 {
-                    //Notifica l’utente con credito aggiornato
                     await _hubContext.Clients.Group($"utenti:{utente.Id}")
                         .SendAsync("CreditoAggiornato", utente.Credito);
 
-                    //Notifica tutti gli admin con dettagli della corsa terminata
+                    await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                        .SendAsync("NuovaTransazione", new
+                        {
+                            Importo = -corsaEsistente.CostoFinale,
+                            Tipo = "Corsa",
+                            Data = DateTime.Now
+                        });
+
                     await _hubContext.Clients.Group("admin")
                         .SendAsync("RiceviNotificaAdmin",
                             "Corsa terminata",
                             $"Utente {utente.Nome} (ID {utente.Id}) ha terminato una corsa da {corsaEsistente.CostoFinale:F2}€");
+
+                    if (problemaSegnalato)
+                    {
+                        await _hubContext.Clients.Group("admin")
+                            .SendAsync("RiceviNotificaAdmin",
+                                "Mezzo Guasto Segnalato",
+                                $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) è stato segnalato guasto");
+                    }
+
+                    if (batteriaScarica)
+                    {
+                        await _hubContext.Clients.Group("admin")
+                            .SendAsync("RiceviNotificaAdmin",
+                                "Batteria Critica",
+                                $"Il mezzo {mezzo.Matricola} ha batteria al {mezzo.LivelloBatteria}%");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Invio notifica SignalR fallito per Corsa {CorsaId}", corsaEsistente.Id);
+                    _logger.LogWarning(ex, "Errore invio notifiche SignalR per corsa {CorsaId}", corsaEsistente.Id);
                 }
-
-                _notifiche.Enqueue(utente.Id.ToString(),"CorsaTerminata",
-                    new
-                    {
-                        CorsaId = corsaEsistente.Id,
-                        Costo = corsaEsistente.CostoFinale,
-                        NuovoCredito = utente.Credito,
-                        StatoUtente = utente.Sospeso ? "Sospeso" : "Attivo",
-                        DataOraFine = corsaEsistente.DataOraFine
-                    }
-                );
 
                 try
                 {
+                    _notifiche.Enqueue(utente.Id.ToString(), "CorsaTerminata",
+                        new
+                        {
+                            CorsaId = corsaEsistente.Id,
+                            Costo = corsaEsistente.CostoFinale,
+                            NuovoCredito = utente.Credito,
+                            StatoUtente = utente.Sospeso ? "Sospeso" : "Attivo",
+                            DataOraFine = corsaEsistente.DataOraFine
+                        });
+
                     await _notifiche.FlushAsync();
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Outbox flush fallito dopo Corsa {CorsaId}", corsaEsistente.Id);
+                    _logger.LogWarning(ex, "Errore flush outbox per corsa {CorsaId}", corsaEsistente.Id);
                 }
-                ;
+
 
                 var response = new CorsaResponseDTO
                 {
@@ -586,6 +723,7 @@ namespace Mobishare.API.Controllers
             catch (DbUpdateConcurrencyException)
             {
                 await transaction.RollbackAsync();
+
                 if (!_context.Corse.Any(e => e.Id == id))
                     throw new ElementoNonTrovatoException("Corsa", id);
                 else

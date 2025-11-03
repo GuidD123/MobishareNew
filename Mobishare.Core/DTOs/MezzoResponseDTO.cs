@@ -16,5 +16,8 @@ namespace Mobishare.Core.DTOs
         public int? LivelloBatteria { get; set; }
         public int? IdParcheggioCorrente { get; set; }
         public string? NomeParcheggio { get; set; }
+        public string? ZonaParcheggio { get; set; }
+        public string? IndirizzoParcheggio { get; set; }
+        public string? MotivoNonPrelevabile { get; set; } 
     }
 }

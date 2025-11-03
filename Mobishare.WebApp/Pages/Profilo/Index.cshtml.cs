@@ -1,8 +1,10 @@
-using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Mobishare.WebApp.Services;
+using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.BlazorIdentity.Pages.Manage;
 using Mobishare.Core.DTOs;
+using Mobishare.WebApp.Services;
+using System.ComponentModel.DataAnnotations;
+using System.Data;
 
 namespace Mobishare.WebApp.Pages.Profilo;
 
@@ -31,11 +33,6 @@ public class IndexModel : PageModel
         [MinLength(3, ErrorMessage = "Il nome deve avere almeno 3 caratteri")]
         [Display(Name = "Nuovo Nome")]
         public string NuovoNome { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "La password è obbligatoria")]
-        [DataType(DataType.Password)]
-        [Display(Name = "Password attuale")]
-        public string Password { get; set; } = string.Empty;
     }
 
     public class CambiaPasswordInput
@@ -86,13 +83,13 @@ public class IndexModel : PageModel
         return Page();
     }
 
-   /* public async Task<IActionResult> OnPostAggiornaNomeAsync()
+   public async Task<IActionResult> OnPostAggiornaNomeAsync()
     {
         // Ricarica dati utente per visualizzazione
         var userId = HttpContext.Session.GetInt32("UserId");
         if (userId == null)
         {
-            return RedirectToPage("/Auth/Login");
+            return RedirectToPage("/Account/Login");
         }
 
         Utente = await _apiService.GetUtenteAsync(userId.Value);
@@ -102,12 +99,23 @@ public class IndexModel : PageModel
             return Page();
         }
 
+        if (Utente == null)
+        {
+            ErrorMessage = "Impossibile recuperare i dati dell'utente.";
+            return Page();
+        }
+
         try
         {
-            var dto = new AggiornaProfiloDto(
-                Nome: InputNome.NuovoNome,
-                Password: InputNome.Password
-            );
+            var dto = new UtenteDTO
+            {
+                Id = userId.Value,
+                Nome = InputNome.NuovoNome,
+                Email = Utente.Email,
+                Ruolo = Utente.Ruolo,
+                Credito = Utente.Credito,
+                Sospeso = Utente.Sospeso
+            };
 
             var success = await _apiService.AggiornaProfiloAsync(userId.Value, dto);
 
@@ -133,7 +141,7 @@ public class IndexModel : PageModel
         }
 
         return Page();
-    }*/
+    }
 
     public async Task<IActionResult> OnPostCambiaPasswordAsync()
     {
