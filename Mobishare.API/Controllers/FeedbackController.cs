@@ -57,11 +57,13 @@ namespace Mobishare.API.Controllers
         [HttpGet("utente/{idUtente}")]
         public async Task<IActionResult> GetFeedbackPerUtente(int idUtente)
         {
-            var feedbacks = await _context.Feedbacks
-                .Where(f => f.IdUtente == idUtente)
+            var feedbackEntities = await _context.Feedbacks
                 .Where(f => f.IdUtente == idUtente)
                 .Include(f => f.Utente)
                 .Include(f => f.Corsa)
+                .ToListAsync();
+
+            var feedbacks = feedbackEntities
                 .Select(f => new FeedbackResponseDTO
                 {
                     Id = f.Id,
@@ -74,7 +76,7 @@ namespace Mobishare.API.Controllers
                     Commento = f.Commento,
                     DataFeedback = f.DataFeedback
                 })
-                .ToListAsync();
+                .ToList();
 
             return Ok(new SuccessResponse
             {
@@ -87,11 +89,14 @@ namespace Mobishare.API.Controllers
         [HttpGet("recenti")]
         public async Task<IActionResult> GetFeedbackRecenti()
         {
-            var recenti = await _context.Feedbacks
+            var feedbackEntities = await _context.Feedbacks
                 .Include(f => f.Utente)
                 .Include(f => f.Corsa)
                 .OrderByDescending(f => f.DataFeedback)
                 .Take(10)
+                .ToListAsync();
+
+            var recenti = feedbackEntities
                 .Select(f => new FeedbackResponseDTO
                 {
                     Id = f.Id,
@@ -104,7 +109,7 @@ namespace Mobishare.API.Controllers
                     Commento = f.Commento,
                     DataFeedback = f.DataFeedback
                 })
-                .ToListAsync();
+                .ToList();
 
             return Ok(new SuccessResponse
             {
@@ -117,12 +122,15 @@ namespace Mobishare.API.Controllers
         [HttpGet("negativi")]
         public async Task<IActionResult> GetFeedbackNegativi()
         {
-            var feedbacks = await _context.Feedbacks
+            var feedbackEntities = await _context.Feedbacks
                 .Where(f => f.Valutazione == ValutazioneFeedback.Pessimo ||
-                           f.Valutazione == ValutazioneFeedback.Scarso)
+                            f.Valutazione == ValutazioneFeedback.Scarso)
                 .Include(f => f.Utente)
                 .Include(f => f.Corsa)
                 .OrderByDescending(f => f.DataFeedback)
+                .ToListAsync();
+
+            var feedbacks = feedbackEntities
                 .Select(f => new FeedbackResponseDTO
                 {
                     Id = f.Id,
@@ -135,7 +143,7 @@ namespace Mobishare.API.Controllers
                     Commento = f.Commento,
                     DataFeedback = f.DataFeedback
                 })
-                .ToListAsync();
+                .ToList();
 
             return Ok(new SuccessResponse
             {

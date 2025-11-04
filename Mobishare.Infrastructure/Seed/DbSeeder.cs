@@ -83,7 +83,7 @@ namespace Mobishare.Infrastructure.Seed
                     Nome = "Mario", //2
                     Cognome = "Rossi",
                     Email = "mariorossi@email.com",
-                    Password = passwordService.Hash("MarioR123!"),
+                    Password = passwordService.Hash("MarioRTest1"),
                     Ruolo = UserRole.Utente,
                     Credito = 30.00m
                 },
@@ -114,17 +114,6 @@ namespace Mobishare.Infrastructure.Seed
                     Ruolo = UserRole.Utente,
                     Credito = 15.00m
                 },
-
-                // Utente sospeso
-                new() {
-                    Nome = "Giovanni",
-                    Cognome = "Sospeso",
-                    Email = "sospeso@email.com",
-                    Password = passwordService.Hash("Sospeso123!"),
-                    Ruolo = UserRole.Utente,
-                    Credito = 0, // account sospeso
-                    Sospeso = true
-                }
             }; 
 
             context.Utenti.AddRange(utenti);

@@ -351,8 +351,8 @@ namespace Mobishare.API.Controllers
             // Simula latenza processamento
             await Task.Delay(1000);
 
-            // In produzione: integrazione con Stripe, PayPal, etc.
-            // Per ora simula successo al 90%
+            
+            //simula successo al 90%
             var random = new Random();
             var successo = random.Next(1, 101) <= 90;
 

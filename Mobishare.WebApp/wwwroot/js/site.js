@@ -1,13 +1,7 @@
-﻿// ============================================
-// MOBISHARE - JAVASCRIPT PRINCIPALE
-// ============================================
+﻿document.addEventListener('DOMContentLoaded', function () {
 
-document.addEventListener('DOMContentLoaded', function () {
 
-    // ====================================
-    // AUTO-DISMISS ALERTS (CORRETTI)
-    // ====================================
-    // Chiudi SOLO gli alert temporanei, NON quelli permanenti o con data-auto-dismiss="false"
+    //Chiude solo gli alert temporanei, non quelli permanenti o con data-auto-dismiss="false"
     const alerts = document.querySelectorAll('.alert:not(.alert-permanent):not([data-auto-dismiss="false"]):not(.no-auto-dismiss)');
     alerts.forEach(alert => {
         // Auto-dismiss SOLO per alert di successo/info temporanei
@@ -17,7 +11,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (bsAlert) {
                     bsAlert.close();
                 } else {
-                    // Se non è già un'istanza Bootstrap, creala
                     new bootstrap.Alert(alert).close();
                 }
             }, 5000);
@@ -25,9 +18,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Alert di errore e warning restano aperti fino a dismissione manuale
     });
 
-    // ====================================
     // CONFERMA ELIMINAZIONE
-    // ====================================
     const deleteButtons = document.querySelectorAll('[data-confirm-delete]');
     deleteButtons.forEach(button => {
         button.addEventListener('click', function (e) {
@@ -39,9 +30,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ====================================
+
     // VALIDAZIONE FORM LATO CLIENT
-    // ====================================
     const forms = document.querySelectorAll('.needs-validation');
     forms.forEach(form => {
         form.addEventListener('submit', function (event) {
@@ -53,9 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }, false);
     });
 
-    // ====================================
     // TOGGLE PASSWORD VISIBILITY
-    // ====================================
     const togglePasswordButtons = document.querySelectorAll('.toggle-password');
     togglePasswordButtons.forEach(button => {
         button.addEventListener('click', function () {
@@ -75,9 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ====================================
     // FORMATTAZIONE VALUTA
-    // ====================================
     const currencyElements = document.querySelectorAll('[data-format="currency"]');
     currencyElements.forEach(element => {
         const value = parseFloat(element.textContent);
@@ -89,9 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // ====================================
     // FORMATTAZIONE DATE
-    // ====================================
     const dateElements = document.querySelectorAll('[data-format="datetime"]');
     dateElements.forEach(element => {
         const dateStr = element.textContent.trim();
@@ -107,21 +91,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // ====================================
+
     // TOOLTIP BOOTSTRAP
-    // ====================================
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-    // ====================================
     // POPOVER BOOTSTRAP
-    // ====================================
     const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
     [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
 
-    // ====================================
     // SMOOTH SCROLL PER ANCHOR
-    // ====================================
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
             const href = this.getAttribute('href');
@@ -138,9 +117,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ====================================
-    // LOADING SPINNER SU FORM SUBMIT
-    // ====================================
+
+    //LOADING SPINNER SU FORM SUBMIT
     const formsWithLoader = document.querySelectorAll('form[data-show-loader]');
     formsWithLoader.forEach(form => {
         form.addEventListener('submit', function () {
@@ -152,9 +130,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ====================================
-    // COUNTDOWN TIMER PER CORSE
-    // ====================================
+
+    //COUNTDOWN TIMER PER CORSE
     const countdownElements = document.querySelectorAll('[data-countdown]');
     countdownElements.forEach(element => {
         const startTime = new Date(element.getAttribute('data-countdown'));

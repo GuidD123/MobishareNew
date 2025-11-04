@@ -46,7 +46,7 @@ namespace Mobishare.API.Controllers
                 .Where(c => c.DataOraInizio >= oggi.AddDays(-7))
                 .CountAsync();
 
-            // === Invio real-time ai gestori ===
+            //Invio real-time ai gestori
             await _hubContext.Clients.Group("admin").SendAsync("AggiornaDashboard", new
             {
                 NumeroCorseTotali = numeroCorseTotali,

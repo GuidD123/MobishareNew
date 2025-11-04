@@ -816,7 +816,7 @@ namespace Mobishare.API.Controllers
                 })
                 .OrderByDescending(x => x.Spesa).Take(5).ToList();
 
-            // costruiamo il DTO finale
+            // costruisce il DTO finale
             var statistiche = new StatisticheCorseDTO
             {
                 TotaleCorse = totale,

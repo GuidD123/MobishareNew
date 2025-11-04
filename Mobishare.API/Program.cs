@@ -184,10 +184,8 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<NotificationOutboxService>();
 builder.Services.AddHostedService<NotificationRetryService>();
 
-
 // Costruzione app
 var app = builder.Build();
-
 
 // Seeder iniziale
 using (var scope = app.Services.CreateScope())
@@ -199,10 +197,8 @@ using (var scope = app.Services.CreateScope())
     Mobishare.Infrastructure.Seed.DbSeeder.SeedDatabase(context, passwordService);
 }
 
-
 // Middleware custom
 app.UseExceptionHandling();
-
 
 #region Pipeline HTTP
 if (app.Environment.IsDevelopment())
@@ -236,7 +232,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 #endregion
 
-
 #region Endpoint Health Check
 app.MapGet("/health", async (MobishareDbContext context) =>
 {
@@ -258,11 +253,9 @@ app.MapGet("/health", async (MobishareDbContext context) =>
 });
 #endregion
 
-
 // Controllers + Hub
 app.MapControllers();
 app.MapHub<NotificheHub>("/hub/notifiche");
-
 
 #region Gestione Arresto Pulito
 var cts = new CancellationTokenSource();

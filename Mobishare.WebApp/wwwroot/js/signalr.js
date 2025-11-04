@@ -1,7 +1,4 @@
-﻿
-// ==================================================
-// CONNESSIONE SIGNALR AL BACKEND
-// ==================================================
+﻿// CONNESSIONE SIGNALR AL BACKEND
 
 if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
 
@@ -17,12 +14,7 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
         .build();
 
 
-
-    // ==================================================
     // EVENTI RICEVUTI DAL SERVER
-    // ==================================================
-
-
     connection.on("CreditoAggiornato", function (nuovoCredito) {
         aggiornaCredito(nuovoCredito);
         showSuccessMessage(`Credito aggiornato: ${mobishare.formatCurrency(nuovoCredito)}`);
@@ -73,9 +65,7 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
         console.log("Bonus usato:", data);
     });
 
-    // ==================================================
     // GESTIONE NOTIFICHE ADMIN CON DROPDOWN
-    // ==================================================
 
     // Array notifiche lato client (massimo 20)
     let notificheAdmin = [];
@@ -94,18 +84,16 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
             letta: false
         };
 
-        notificheAdmin.unshift(nuovaNotifica); // Aggiungi all'inizio
+        notificheAdmin.unshift(nuovaNotifica); 
 
         // Mantieni solo le ultime MAX_NOTIFICHE
         if (notificheAdmin.length > MAX_NOTIFICHE) {
             notificheAdmin = notificheAdmin.slice(0, MAX_NOTIFICHE);
         }
 
-        // Aggiorna UI
         aggiornaDropdownNotifiche();
         aggiornaBadgeNotifiche();
 
-        // Mostra anche toast
         showWarningMessage(`🔔 ${titolo}: ${testo}`);
     });
 
@@ -174,7 +162,7 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
         });
     }
 
-    // Segna una notifica come letta
+    //Segna una notifica come letta
     function segnaNotificaComeLettura(id) {
         const notifica = notificheAdmin.find(n => n.id === id);
         if (notifica && !notifica.letta) {
@@ -184,14 +172,14 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
         }
     }
 
-    // Segna tutte le notifiche come lette
+    //Segna tutte le notifiche come lette
     function segnaTutteComeLette() {
         notificheAdmin.forEach(n => n.letta = true);
         aggiornaDropdownNotifiche();
         aggiornaBadgeNotifiche();
     }
 
-    // Funzione helper: tempo relativo (es. "2 minuti fa")
+    //Funzione helper: tempo relativo (es. "2 minuti fa")
     function getTempoRelativo(data) {
         const secondi = Math.floor((new Date() - data) / 1000);
 
@@ -207,7 +195,7 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
         });
     }
 
-    // Funzione helper: escape HTML per sicurezza
+    //Funzione helper: escape HTML per sicurezza
     function escapeHtml(text) {
         const map = {
             '&': '&amp;',
@@ -220,7 +208,7 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
     }
 
 
-    // Event listener per pulsante "segna tutte come lette"
+    //Event listener per pulsante "segna tutte come lette"
     document.addEventListener('DOMContentLoaded', function () {
         const btnCancellaTutte = document.getElementById('cancella-tutte-notifiche');
         if (btnCancellaTutte) {
@@ -232,7 +220,7 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
     });
 
 
-    // Aggiornamento telemetria (mezzi, batterie, ecc.)
+    //Aggiornamento telemetria (mezzi, batterie, ecc.)
     connection.on("AggiornamentoTelemetria", function (data) {
         console.log("Telemetria ricevuta:", data);
 
@@ -243,10 +231,8 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
         }
     });
 
-    // ==================================================
     // FUNZIONE: aggiornaStatoMezzo()
     // Aggiorna dinamicamente la tabella mezzi in GestioneMezzi
-    // ==================================================
     function aggiornaStatoMezzo(idMezzo, livelloBatteria, stato) {
         // Trova la riga corrispondente cercando il numero ID
         const righe = document.querySelectorAll("table tbody tr");
@@ -261,9 +247,7 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
 
         if (!rigaTrovata) return; // mezzo non trovato
 
-        // ===============================
         // Aggiorna livello batteria
-        // ===============================
         const cellaBatteria = rigaTrovata.querySelector("td:nth-child(5)");
         if (cellaBatteria && livelloBatteria !== undefined && livelloBatteria !== null) {
             let colore = "success";
@@ -277,9 +261,7 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
         `;
         }
 
-        // ===============================
         // Aggiorna stato
-        // ===============================
         const cellaStato = rigaTrovata.querySelector("td:nth-child(6)");
         if (cellaStato && stato) {
             let badgeHtml = "";
@@ -305,9 +287,7 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
             cellaStato.innerHTML = badgeHtml;
         }
 
-        // ===============================
         // Effetto visivo di aggiornamento
-        // ===============================
         rigaTrovata.style.transition = "background-color 0.6s ease";
         rigaTrovata.style.backgroundColor = "#e6f7ff";
         setTimeout(() => (rigaTrovata.style.backgroundColor = ""), 800);
@@ -350,9 +330,7 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
         }, 5000);
     });
 
-    // ==================================================
     // AGGIORNAMENTO CORSA IN TEMPO REALE
-    // ==================================================
     connection.on("AggiornaCorsa", data => {
         console.log("Aggiornamento corsa:", data);
 
@@ -385,9 +363,7 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
     });
 
 
-    // ==================================================
     // GESTIONE RICONNESSIONE E CHIUSURA
-    // ==================================================
     connection.onreconnecting(error => {
         console.warn("SignalR: connessione persa, riconnessione in corso...", error);
         showWarningMessage("Connessione persa. Tentativo di riconnessione...");
@@ -403,9 +379,7 @@ if (typeof signalR !== "undefined" && window.MOBISHARE_CONFIG?.jwtToken) {
         showErrorMessage("Connessione persa definitivamente.");
     });
 
-    // ==================================================
     // FUNZIONE DI AVVIO CON RETRY AUTOMATICO
-    // ==================================================
     async function startSignalR() {
         try {
             await connection.start();

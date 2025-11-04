@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-//using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -95,12 +94,6 @@ namespace Mobishare.API.Controllers
         }
 
 
-        /// <summary>
-        /// Riattiva un utente sospeso, se il chiamante è un gestore autorizzato
-        /// </summary>
-        /// <param name="id">ID utente da riattivare</param>
-        /// <param name="idGestore">ID del gestore che effettua richiesta</param>
-        /// <returns>CConferma riattivazione o messaggio di errore</returns>
         // PUT: api/utenti/{id}/riattiva
         [Authorize(Roles = "Gestore")]
         [HttpPut("{id}/riattiva")]
@@ -239,17 +232,17 @@ namespace Mobishare.API.Controllers
         [Authorize]
         public async Task<ActionResult<SuccessResponse>> CambiaPsw([FromBody] CambiaPswDTO dto)
         {
-            // 1. Estrai ID utente dal token JWT
+            //Estrai ID utente dal token JWT
             var idUtente = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             var utente = await _context.Utenti.FindAsync(idUtente)
              ?? throw new ElementoNonTrovatoException("Utente", idUtente);
 
-            // 2. Verifica password attuale
+            //Verifica password attuale
             if (!_passwordService.Verify(dto.VecchiaPassword, utente.Password))
                 throw new OperazioneNonConsentitaException("La password attuale non è corretta");
 
-            // 3. Aggiorna -> la nuova password viene hashata 
+            //Aggiorna -> la nuova password viene hashata 
             utente.Password = _passwordService.Hash(dto.NuovaPassword);
             await _context.SaveChangesAsync();
 
@@ -326,7 +319,6 @@ namespace Mobishare.API.Controllers
             var utente = await _context.Utenti.FindAsync(id)
                 ?? throw new ElementoNonTrovatoException("Utente", id);
 
-            //No esporre password (anche se hashata)
             return Ok(new SuccessResponse
             {
                 Messaggio = "Dettaglio utente",

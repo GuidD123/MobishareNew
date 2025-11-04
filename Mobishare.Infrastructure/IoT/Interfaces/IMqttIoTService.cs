@@ -10,11 +10,6 @@ namespace Mobishare.Infrastructure.IoT.Interfaces
     /// </summary>
     public interface IMqttIoTService
     {
-        //Tolti Task StartAsync(CancellationToken cancellationToken = default); e Task StopAsync(CancellationToken cancellationToken = default)
-        //Perchè: Lifecycle = responsabilità dell’host. In ASP.NET Core l’avvio/stop dei servizi avviene via IHostedService al boot/shutdown dell’app. Non dai ai controller il potere di avviare/fermare connessioni di infrastruttura.
-        //Interfaccia applicativa pulita. IMqttIoTService deve esporre solo funzioni di dominio (comandi, publish, eventi) + uno stato IsConnected. Niente dettagli di hosting.
-        //Eviti abusi e race. Se lasci StartAsync/StopAsync pubblici, qualcuno potrebbe chiamarli da un endpoint o in momenti sbagliati, creando doppie connessioni, resubscribe inconsistenti o stop inattesi.
-        //
 
         /// <summary>
         /// Verifica se il client è connesso al broker

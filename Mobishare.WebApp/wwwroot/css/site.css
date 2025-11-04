@@ -935,3 +935,42 @@ footer {
     background-color: #198754 !important;
     transition: background-color 0.4s ease;
 }
+
+
+
+
+/* ===========================
+   FEEDBACK - Grafico 
+
+.custom-progress {
+    background-color: #f0f2f5;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+
+.bg-success-gradient {
+    background: linear-gradient(90deg, #28a745, #6bd46b);
+}
+
+.bg-info-gradient {
+    background: linear-gradient(90deg, #0dcaf0, #6fe7ff);
+}
+
+.bg-warning-gradient {
+    background: linear-gradient(90deg, #ffc107, #ffda6a);
+}
+
+.bg-orange-gradient {
+    background: linear-gradient(90deg, #ff8c00, #ffb84d);
+}
+
+.bg-danger-gradient {
+    background: linear-gradient(90deg, #dc3545, #ff6b6b);
+}
+
+.progress-bar {
+    transition: width 0.8s ease;
+}
+FEEDBACK - Grafico
+=========================== */

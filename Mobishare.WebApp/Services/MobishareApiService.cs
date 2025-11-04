@@ -990,8 +990,6 @@ public class MobishareApiService : IMobishareApiService
             return false;
         }
     }
-
-
     #endregion
 }
 

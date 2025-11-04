@@ -12,9 +12,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mobishare.IoT.Gateway", "Mobishare.IoT.Gateway\Mobishare.IoT.Gateway.csproj", "{A776ECB5-BE56-421B-990E-95A26C7424A5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Elementi di soluzione", "Elementi di soluzione", "{9DF70304-0A22-CE1E-AA12-D5904EE55694}"
-	ProjectSection(SolutionItems) = preProject
-		SCENARI_TEST_MANUALI.md = SCENARI_TEST_MANUALI.md
-	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mobishare.WebApp", "Mobishare.WebApp\Mobishare.WebApp.csproj", "{E78F3409-057C-4C6D-AD57-DC3434F7269C}"
 EndProject

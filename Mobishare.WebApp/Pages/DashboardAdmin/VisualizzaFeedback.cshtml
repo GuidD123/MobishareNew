@@ -78,19 +78,30 @@
                     </div>
                     <div class="card-body">
                         @{
-                            var totale = Model.Statistiche.TotaleFeedback;
-                            var percOttimo = totale > 0 ? (double)Model.Statistiche.Distribuzione.Ottimo / totale * 100 : 0;
-                            var percBuono = totale > 0 ? (double)Model.Statistiche.Distribuzione.Buono / totale * 100 : 0;
-                            var percSufficiente = totale > 0 ? (double)Model.Statistiche.Distribuzione.Sufficiente / totale * 100 : 0;
-                            var percScarso = totale > 0 ? (double)Model.Statistiche.Distribuzione.Scarso / totale * 100 : 0;
-                            var percPessimo = totale > 0 ? (double)Model.Statistiche.Distribuzione.Pessimo / totale * 100 : 0;
+                            int totale = Model.Statistiche?.TotaleFeedback ?? 0;
+                            // evita divisione per zero
+                            double Perc(int n) => totale > 0 ? (double)n / totale * 100 : 0;
+                            var dist = Model.Statistiche?.Distribuzione ?? new FeedbackDistribuzioneDTO();
+                           
+                            var percOttimo = Perc(dist.Ottimo);
+                            var percBuono = Perc(dist.Buono);
+                            var percSufficiente = Perc(dist.Sufficiente);
+                            var percScarso = Perc(dist.Scarso);
+                            var percPessimo = Perc(dist.Pessimo);
                         }
 
+                        @if (totale == 0)
+                        {
+                            <p class="text-muted text-center my-3">Nessun feedback disponibile per generare la distribuzione.</p>
+                        } else {
+
+                       
                         <div class="mb-3">
                             <div class="d-flex justify-content-between mb-1">
                                 <span>⭐⭐⭐⭐⭐ Ottimo</span>
-                                <strong class="text-success">@percOttimo.ToString("0.0")% (@Model.Statistiche.Distribuzione.Ottimo)</strong>
+                                <strong class="text-success">@percOttimo.ToString("0.0")% (@dist.Ottimo)</strong>
                             </div>
+                            
                             <div class="progress" style="height: 25px;">
                                 <div class="progress-bar bg-success" style="width: @percOttimo%"></div>
                             </div>
@@ -99,7 +110,7 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between mb-1">
                                 <span>⭐⭐⭐⭐ Buono</span>
-                                <strong class="text-info">@percBuono.ToString("0.0")% (@Model.Statistiche.Distribuzione.Buono)</strong>
+                                <strong class="text-info">@percBuono.ToString("0.0")% (@dist.Buono)</strong>
                             </div>
                             <div class="progress" style="height: 25px;">
                                 <div class="progress-bar bg-info" style="width: @percBuono%"></div>
@@ -109,7 +120,7 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between mb-1">
                                 <span>⭐⭐⭐ Sufficiente</span>
-                                <strong class="text-warning">@percSufficiente.ToString("0.0")% (@Model.Statistiche.Distribuzione.Sufficiente)</strong>
+                                <strong class="text-warning">@percSufficiente.ToString("0.0")% (@dist.Sufficiente)</strong>
                             </div>
                             <div class="progress" style="height: 25px;">
                                 <div class="progress-bar bg-warning" style="width: @percSufficiente%"></div>
@@ -119,22 +130,23 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between mb-1">
                                 <span>⭐⭐ Scarso</span>
-                                <strong class="text-orange">@percScarso.ToString("0.0")% (@Model.Statistiche.Distribuzione.Scarso)</strong>
+                                <strong class="text-orange">@percScarso.ToString("0.0")% (@dist.Scarso)</strong>
                             </div>
                             <div class="progress" style="height: 25px;">
-                                <div class="progress-bar" style="width: @percScarso%; background-color: #ff8c00;"></div>
+                                <div class="progress-bar bg-orange" style="width: @percScarso%;"></div>
                             </div>
                         </div>
 
                         <div class="mb-0">
                             <div class="d-flex justify-content-between mb-1">
                                 <span>⭐ Pessimo</span>
-                                <strong class="text-danger">@percPessimo.ToString("0.0")% (@Model.Statistiche.Distribuzione.Pessimo)</strong>
+                                <strong class="text-danger">@percPessimo.ToString("0.0")% (@dist.Pessimo)</strong>
                             </div>
                             <div class="progress" style="height: 25px;">
                                 <div class="progress-bar bg-danger" style="width: @percPessimo%"></div>
                             </div>
                         </div>
+                    }
                     </div>
                 </div>
             </div>
