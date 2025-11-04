@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Mobishare.API.BackgroundServices;
-using Mobishare.API.DTO;
+using Mobishare.Core.DTOs;
 using Mobishare.API.Middleware;
 using Mobishare.Core.Data;
 using Mobishare.Infrastructure.IoT.HostedServices;

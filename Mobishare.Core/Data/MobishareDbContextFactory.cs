@@ -19,7 +19,6 @@ namespace Mobishare.Core.Data
             var optionsBuilder = new DbContextOptionsBuilder<MobishareDbContext>();
 
             // Connection string temporanea per le migrations
-            // IMPORTANTE: questo deve corrispondere al path del database usato in Mobishare.API
             optionsBuilder.UseSqlite("Data Source=../Mobishare.API/mobishare.db");
 
             return new MobishareDbContext(optionsBuilder.Options);

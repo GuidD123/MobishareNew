@@ -361,3 +361,26 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# aggiunte specifiche per mobishare
+# Repository Git interno 
+.git/
+
+# File di ambiente locale
+.env
+appsettings.Development.json
+
+# File di pubblicazione e pacchetti generati
+publish/
+dist/
+artifacts/
+
+# Log e cache
+*.log
+*.cache
+*.tmp
+
+# File del sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini

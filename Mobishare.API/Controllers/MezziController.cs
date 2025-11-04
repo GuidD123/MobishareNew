@@ -1,22 +1,25 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Mobishare.Core.Data;
+using Mobishare.Core.DTOs;
 using Mobishare.Core.Enums;
 using Mobishare.Core.Exceptions;
 using Mobishare.Core.Models;
-using Mobishare.Core.DTOs;
 using Mobishare.Infrastructure.IoT.Interfaces;
+using Mobishare.Infrastructure.SignalRHubs;
 
 namespace Mobishare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class MezziController(MobishareDbContext context, IMqttIoTService mqttPublisher, ILogger<MezziController> logger) : ControllerBase
+    public class MezziController(MobishareDbContext context, IMqttIoTService mqttPublisher, ILogger<MezziController> logger, IHubContext<NotificheHub> hubContext) : ControllerBase
     {
         private readonly MobishareDbContext _context = context;
         private readonly IMqttIoTService _mqttIoTService = mqttPublisher;
         private readonly ILogger<MezziController> _logger = logger;
+        private readonly IHubContext<NotificheHub> _hubContext = hubContext;
 
 
         // GET: api/mezzi -> serve all'admin per vedere tutti i mezzi della flotta (disponibili, occupati e guasti) 
@@ -321,6 +324,36 @@ namespace Mobishare.API.Controllers
                 source = "API"
             });
 
+            //Notifica SignalR Admin
+            try
+            {
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+                if (int.TryParse(userIdClaim, out int userId))
+                {
+                    var utente = await _context.Utenti.FindAsync(userId);
+
+                    await _hubContext.Clients.Group("admin")
+                        .SendAsync("RiceviNotificaAdmin",
+                            "Mezzo Guasto Segnalato",
+                            $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) è stato segnalato guasto dall'utente {utente?.Nome} {utente?.Cognome} (ID: {userId}).");
+
+                    _logger.LogInformation("Notifica guasto inviata agli admin per mezzo {Matricola} da utente {UserId}", mezzo.Matricola, userId);
+                }
+                else
+                {
+                    // Notifica senza info utente
+                    await _hubContext.Clients.Group("admin")
+                        .SendAsync("RiceviNotificaAdmin",
+                            "Mezzo Guasto Segnalato",
+                            $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) è stato segnalato come guasto.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Errore invio notifica SignalR per guasto mezzo {Matricola}", mezzo.Matricola);
+            }
+
             return Ok(new SuccessResponse
             {
                 Messaggio = $"Mezzo {mezzo.Matricola} segnalato come guasto con successo.",
@@ -400,6 +433,16 @@ namespace Mobishare.API.Controllers
         // Metodo helper per dedurre il motivo per cui un mezzo è non prelevabile
         private static string GetMotivoNonPrelevabile(Mezzo mezzo)
         {
+            if (mezzo.MotivoNonPrelevabile != Core.Enums.MotivoNonPrelevabile.Nessuno)
+            {
+                return mezzo.MotivoNonPrelevabile switch
+                {
+                    Core.Enums.MotivoNonPrelevabile.GuastoSegnalato => "Guasto segnalato dall'utente",
+                    Core.Enums.MotivoNonPrelevabile.BatteriaScarica => "Batteria scarica",
+                    _ => mezzo.MotivoNonPrelevabile.ToString()
+                };
+            }
+
             if ((mezzo.Tipo == TipoMezzo.BiciElettrica || mezzo.Tipo == TipoMezzo.MonopattinoElettrico)
                 && mezzo.LivelloBatteria < 20)
                 return "Batteria scarica";
