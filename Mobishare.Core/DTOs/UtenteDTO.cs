@@ -14,5 +14,6 @@ namespace Mobishare.Core.DTOs
         public string Ruolo { get; set; } = string.Empty;
         public decimal Credito { get; set; }
         public bool Sospeso { get; set; }
+        public int PuntiBonus { get; set; }
     }
 }

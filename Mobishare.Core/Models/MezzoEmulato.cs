@@ -1,5 +1,6 @@
 ﻿using Mobishare.Core.Enums;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -16,7 +17,7 @@ namespace Mobishare.Core.Models
         public string Matricola { get; set; } = string.Empty;
         public TipoMezzo Tipo { get; set; }
         public StatoMezzo Stato { get; set; }
-        public int LivelloBatteria { get; set; }
+        public int? LivelloBatteria { get; set; }
         public ColoreSpia ColoreSpia { get; set; }
         public DateTime UltimoAggiornamento { get; set; }
     }

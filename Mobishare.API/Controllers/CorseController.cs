@@ -11,7 +11,8 @@ using Mobishare.Core.Models;
 using Mobishare.Infrastructure.IoT.Interfaces;
 using Mobishare.Infrastructure.Services;
 using Mobishare.Infrastructure.SignalRHubs;
-using Mobishare.Infrastructure.SignalRHubs.Services;
+using Mobishare.Infrastructure.PhilipsHue;
+using Mobishare.IoT.Gateway.Services;
 using System.Security.Claims;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
@@ -19,15 +20,14 @@ namespace Mobishare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class CorseController(MobishareDbContext context, IMqttIoTService mqttIoTService, ILogger<CorseController> logger, IHubContext<NotificheHub> hubContext, NotificationOutboxService notifiche, PagamentoService pagamentoService) : ControllerBase
+    public class CorseController(MobishareDbContext context, IMqttIoTService mqttIoTService, ILogger<CorseController> logger, IHubContext<NotificheHub> hubContext, PagamentoService pagamentoService, PhilipsHueControl philipsHueControl) : ControllerBase
     {
         private readonly MobishareDbContext _context = context;
         private readonly IMqttIoTService _mqttIoTService = mqttIoTService;
         private readonly ILogger<CorseController> _logger = logger;
         private readonly IHubContext<NotificheHub> _hubContext = hubContext;
-        private readonly NotificationOutboxService _notifiche = notifiche;
         private readonly PagamentoService _pagamentoService = pagamentoService;
-
+        private readonly PhilipsHueControl _philipsHueControl = philipsHueControl;
 
 
         // GET: api/corse? idUtente=& matricolaMezzo=..
@@ -91,7 +91,7 @@ namespace Mobishare.API.Controllers
 
 
         //legge id utente dal JWT -> ritorna corsa con DataOraFine == null -> accessibile solo da utente -> include TipoMezzo con join a Mezzo
-        // GET: api/corse/attiva -> corsa in corso dell'utente autenticato
+        //GET: api/corse/attiva -> corsa in corso dell'utente autenticato
         [Authorize(Roles = "Utente")]
         [HttpGet("attiva")]
         public async Task<ActionResult<SuccessResponse>> GetCorsaAttiva()
@@ -257,14 +257,25 @@ namespace Mobishare.API.Controllers
 
             var matricola = dto.MatricolaMezzo.Trim();
 
-            // gestione race condition
-            // Fino a 3 tentativi con delay esponenziale 
-            const int MAX_RETRY = 3;
+            // === GESTIONE RACE CONDITION CON LOCK OTTIMISTICO ===
+            // Fino a 5 tentativi con exponential backoff migliorato
+            const int MAX_RETRY = 5;
             int attempt = 0;
+            Exception? lastException = null;
 
             while (attempt < MAX_RETRY)
             {
                 attempt++;
+                
+                // Delay esponenziale progressivo: 200ms, 500ms, 1s, 2s, 4s
+                if (attempt > 1)
+                {
+                    var delayMs = (int)(100 * Math.Pow(2, attempt - 1));
+                    _logger.LogInformation(
+                        "Retry tentativo {Attempt}/{MaxRetry} per mezzo {Matricola} dopo attesa di {Delay}ms",
+                        attempt, MAX_RETRY, matricola, delayMs);
+                    await Task.Delay(delayMs);
+                }
 
                 await using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -314,8 +325,13 @@ namespace Mobishare.API.Controllers
                     var parcheggio = await _context.Parcheggi.FindAsync(dto.IdParcheggioPrelievo)
                         ?? throw new ElementoNonTrovatoException("Parcheggio", dto.IdParcheggioPrelievo);
 
-                    var mezzo = await _context.Mezzi.FirstOrDefaultAsync(m => m.Matricola == dto.MatricolaMezzo)
+                    // === LOCK OTTIMISTICO: Carica mezzo con tracking per RowVersion ===
+                    var mezzo = await _context.Mezzi
+                        .FirstOrDefaultAsync(m => m.Matricola == dto.MatricolaMezzo)
                         ?? throw new ElementoNonTrovatoException("Mezzo", dto.MatricolaMezzo);
+
+                    // Salva RowVersion originale per logging (opzionale)
+                    var originalRowVersion = mezzo.RowVersion;
 
                     // Verifiche Business Logic 
                     if (utente.Credito < Tariffe.COSTO_BASE)
@@ -337,6 +353,8 @@ namespace Mobishare.API.Controllers
 
                     _context.Corse.Add(corsa);
 
+                    // === SALVATAGGIO CON VERIFICA AUTOMATICA ROWVERSION ===
+                    // EF Core verifica automaticamente RowVersion durante SaveChangesAsync
                     await _context.SaveChangesAsync();
                     //await transaction.CommitAsync();
 
@@ -384,6 +402,26 @@ namespace Mobishare.API.Controllers
                             "Corsa avviata con successo. CorsaId={CorsaId} Mezzo={Matricola}",
                             corsa.Id, matricola);
 
+                        // === NOTIFICA ADMIN: Nuova corsa iniziata ===
+                        await _hubContext.Clients.Group("admin").SendAsync("NotificaAdmin",
+                            new
+                            {
+                                Titolo = "Nuova Corsa Iniziata",
+                                Testo = $"L'utente {utente.Nome} {utente.Cognome} (ID: {utente.Id}) ha iniziato una corsa con il mezzo {mezzo.Matricola}"
+                            });
+
+                        // === PHILIPS HUE: Accendi luce BLU (mezzo in uso) ===
+                        try
+                        {
+                            await _philipsHueControl.SetSpiaColor(mezzo.Matricola, ColoreSpia.Blu);
+                            _logger.LogInformation("💡 Philips Hue: Luce {Matricola} cambiata a BLU (InUso)", mezzo.Matricola);
+                        }
+                        catch (Exception hueEx)
+                        {
+                            _logger.LogWarning(hueEx, "Impossibile controllare Philips Hue per mezzo {Matricola}", mezzo.Matricola);
+                            // Non bloccare la corsa se le luci falliscono
+                        }
+
                         var response = new CorsaResponseDTO
                         {
                             Id = corsa.Id,
@@ -395,11 +433,6 @@ namespace Mobishare.API.Controllers
                         };
 
                         return CreatedAtAction(nameof(GetCorsaById), new { id = corsa.Id }, response); 
-                            //new SuccessResponse
-                            //{
-                            //    Messaggio = "Corsa avviata correttamente",
-                            //    Dati = response
-                            //});
                     }
                     else
                     {
@@ -420,26 +453,65 @@ namespace Mobishare.API.Controllers
                 catch (DbUpdateConcurrencyException ex)
                 {
                     await transaction.RollbackAsync();
+                    lastException = ex;
+
+                    // Identifica l'entità in conflitto per logging dettagliato
+                    var conflictedEntry = ex.Entries.FirstOrDefault();
+                    if (conflictedEntry?.Entity is Mezzo mezzoConflitto)
+                    {
+                        _logger.LogWarning(
+                            "Race condition rilevata su mezzo {Matricola}. " +
+                            "Tentativo {Attempt}/{MaxRetry}. RowVersion non corrisponde - mezzo modificato da altro processo.",
+                            mezzoConflitto.Matricola, attempt, MAX_RETRY);
+                    }
+
+                    // Rimuovi entità dal context per reload pulito nel prossimo tentativo
+                    if (conflictedEntry != null)
+                    {
+                        conflictedEntry.State = EntityState.Detached;
+                    }
+
                     if (attempt < MAX_RETRY)
                     {
-                        // Ritenta dopo delay esponenziale (50ms, 100ms, 200ms)
-                        _logger.LogWarning(
-                            "Race condition su mezzo {Matricola}. Tentativo {Attempt}/{MaxRetry}",
-                            matricola, attempt, MAX_RETRY);
-
-                        await Task.Delay(50 * (int)Math.Pow(2, attempt - 1));
-                        continue; // Torna all'inizio del while
+                        // Continua il loop per ritentare
+                        continue;
                     }
                     else
                     {
                         // Tentativi esauriti
                         _logger.LogError(ex,
-                            "Mezzo {Matricola} non prenotabile dopo {MaxRetry} tentativi",
+                            "Mezzo {Matricola} non prenotabile dopo {MaxRetry} tentativi. " +
+                            "Probabile alta concorrenza o conflitto persistente.",
                             matricola, MAX_RETRY);
 
                         throw new OperazioneNonConsentitaException(
-                            "Il mezzo è stato appena prenotato da un altro utente. Riprova tra qualche secondo.");
+                            "Il mezzo è molto richiesto in questo momento. " +
+                            "Riprova tra qualche secondo o scegli un altro mezzo disponibile.");
                     }
+                }
+                catch (MezzoNonDisponibileException)
+                {
+                    // Mezzo già prenotato - errore NON recuperabile, non ritentare
+                    await transaction.RollbackAsync();
+                    
+                    _logger.LogWarning(
+                        "Mezzo {Matricola} non più disponibile al tentativo {Attempt}. Già prenotato da altro utente.",
+                        matricola, attempt);
+
+                    throw new OperazioneNonConsentitaException(
+                        "Il mezzo selezionato è stato appena prenotato. Scegli un altro mezzo disponibile.");
+                }
+                catch (CreditoInsufficienteException)
+                {
+                    // Errore di business logic - NON recuperabile, non ritentare
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+                catch (OperazioneNonConsentitaException)
+                {
+                    // Errore di business logic - NON recuperabile, non ritentare
+                    await transaction.RollbackAsync();
+                    throw;
                 }
                 catch (Exception)
                 {
@@ -447,7 +519,14 @@ namespace Mobishare.API.Controllers
                     throw;
                 }
             }
-            throw new OperazioneNonConsentitaException("Errore imprevisto durante la prenotazione. Riprova.");
+
+            // Se arriviamo qui, tutti i tentativi sono falliti
+            _logger.LogError(lastException,
+                "Impossibile prenotare mezzo {Matricola} dopo {MaxRetry} tentativi. Ultima eccezione registrata.",
+                matricola, MAX_RETRY);
+
+            throw new OperazioneNonConsentitaException(
+                "Impossibile completare la prenotazione in questo momento. Riprova tra qualche istante.");
         }
 
 
@@ -456,15 +535,21 @@ namespace Mobishare.API.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult<SuccessResponse>> PutCorsa(int id, [FromBody] FineCorsaDTO dto)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            using var transaction = await _context.Database.BeginTransactionAsync(
+                System.Data.IsolationLevel.ReadCommitted);
 
             try
             {
-                var corsaEsistente = await _context.Corse.FindAsync(id) 
+                // === CARICA CORSA CON TRACKING PER VERIFICA CONCORRENZA ===
+                var corsaEsistente = await _context.Corse
+                    .FirstOrDefaultAsync(c => c.Id == id)
                     ?? throw new ElementoNonTrovatoException("Corsa", id);
 
                 if (corsaEsistente.DataOraFine.HasValue)
                     throw new OperazioneNonConsentitaException("La corsa è già terminata");
+
+                // Salva RowVersion originale per logging (opzionale)
+                var originalCorsaRowVersion = corsaEsistente.RowVersion;
 
                 corsaEsistente.DataOraFine = dto.DataOraFineCorsa;
                 corsaEsistente.IdParcheggioRilascio = dto.IdParcheggioRilascio;
@@ -477,8 +562,6 @@ namespace Mobishare.API.Controllers
                     throw new ElementoNonTrovatoException("Utente", corsaEsistente.IdUtente);
                 if (mezzo == null)
                     throw new ElementoNonTrovatoException("Mezzo", corsaEsistente.MatricolaMezzo);
-
-                mezzo.IdParcheggioCorrente = dto.IdParcheggioRilascio;
 
                 // Calcolo costo della corsa
                 TimeSpan durata = corsaEsistente.DataOraFine.Value - corsaEsistente.DataOraInizio;
@@ -516,7 +599,6 @@ namespace Mobishare.API.Controllers
                 corsaEsistente.Stato = StatoCorsa.Completata;
 
                 //BONUS bicicletta muscolare
-                // === BONUS BICI MUSCOLARE ===
                 if (mezzo.Tipo == TipoMezzo.BiciMuscolare)
                 {
                     // assegna 10 punti per ogni 30 minuti di utilizzo
@@ -569,6 +651,8 @@ namespace Mobishare.API.Controllers
                     ? StatoMezzo.NonPrelevabile
                     : StatoMezzo.Disponibile;
 
+                mezzo.IdParcheggioCorrente = dto.IdParcheggioRilascio;
+
                 //salva corsa e mezzo
                 await _context.SaveChangesAsync();
 
@@ -587,33 +671,70 @@ namespace Mobishare.API.Controllers
                     await SospendiUtenteAsync(utente, "Credito negativo dopo la corsa");
                 }
 
+                // === BLOCCA MEZZO VIA MQTT PRIMA DEL COMMIT ===
+                // Se MQTT fallisce, facciamo rollback di tutta la transazione
+                bool mqttSuccesso = true;
+                try
+                {
+                    _logger.LogInformation("Tentativo invio comando MQTT blocco mezzo {Matricola}...", corsaEsistente.MatricolaMezzo);
+                    
+                    await _mqttIoTService.BloccaMezzoAsync(
+                        dto.IdParcheggioRilascio,
+                        corsaEsistente.MatricolaMezzo
+                    );
+                    
+                    mqttSuccesso = true;
+                }
+                catch (Exception mqttEx)
+                {
+                    mqttSuccesso = false;
+                    _logger.LogError(mqttEx, "Errore MQTT durante blocco mezzo {Matricola}", corsaEsistente.MatricolaMezzo);
+                    // Continua comunque - MQTT non è critico per la terminazione corsa
+                }
+
                 //commit transazione
                 await transaction.CommitAsync();
 
-                _logger.LogInformation("Corsa {CorsaId} terminata e committata con successo", corsaEsistente.Id);
+                _logger.LogInformation("Corsa {CorsaId} terminata e committata con successo (MQTT: {Status})", 
+                    corsaEsistente.Id, mqttSuccesso ? "OK" : "FALLITO");
 
-                // Publish solo dopo commit
+                // === NOTIFICHE SIGNALR DOPO COMMIT ===
+                // Invia notifiche solo dopo che i dati sono confermati nel DB
+                await _pagamentoService.InviaNotificheMovimentoAsync(
+                    utente.Id,
+                    utente.Credito,
+                    -costo,
+                    "Corsa",
+                    StatoPagamento.Completato
+                );
+
+                // === PHILIPS HUE: Cambia colore in base allo stato mezzo ===
                 try
                 {
-                    await _mqttIoTService.BloccaMezzoAsync(
-                        corsaEsistente.IdParcheggioRilascio ?? 0,
-                        corsaEsistente.MatricolaMezzo
-                    );
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Errore pubblicazione MQTT per corsa {CorsaId}", corsaEsistente.Id);
-                }
+                    var coloreHue = mezzo.Stato == StatoMezzo.Disponibile
+                        ? ColoreSpia.Verde
+                        : ColoreSpia.Rosso;
 
+                    await _philipsHueControl.SetSpiaColor(mezzo.Matricola, coloreHue);
+                    
+                    _logger.LogInformation(
+                        "💡 Philips Hue: Luce {Matricola} cambiata a {Colore} (fine corsa, stato: {Stato})",
+                        mezzo.Matricola, coloreHue, mezzo.Stato);
+                }
+                catch (Exception hueEx)
+                {
+                    _logger.LogWarning(hueEx, "Impossibile controllare Philips Hue per mezzo {Matricola}", mezzo.Matricola);
+                }
                 //NOTIFICA ADMIN: Mezzo guasto segnalato
                 if (problemaSegnalato)
                 {
                     try
                     {
                         await _hubContext.Clients.Group("admin")
-                            .SendAsync("RiceviNotificaAdmin",
-                                "Mezzo Guasto Segnalato",
-                                $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) è stato segnalato guasto dall'utente {utente.Nome} {utente.Cognome} (ID: {utente.Id})");
+                            .SendAsync("NotificaAdmin", new {
+                                Titolo = "Mezzo Guasto Segnalato",
+                                Testo = $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) è stato segnalato guasto dall'utente {utente.Nome} {utente.Cognome} (ID: {utente.Id})"
+                            });
 
                         _logger.LogWarning("Mezzo {Matricola} segnalato guasto da utente {UtenteId}", mezzo.Matricola, utente.Id);
                     }
@@ -629,9 +750,10 @@ namespace Mobishare.API.Controllers
                     try
                     {
                         await _hubContext.Clients.Group("admin")
-                            .SendAsync("RiceviNotificaAdmin",
-                                "Batteria Critica",
-                                $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) ha batteria al {mezzo.LivelloBatteria}%. Richiede ricarica urgente.");
+                            .SendAsync("NotificaAdmin", new {
+                                Titolo = "Batteria Critica",
+                                Testo = $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) ha batteria al {mezzo.LivelloBatteria}%. Richiede ricarica urgente."
+                            });
 
                         _logger.LogWarning("Mezzo {Matricola} con batteria bassa: {Livello}%", mezzo.Matricola, mezzo.LivelloBatteria);
                     }
@@ -656,48 +778,32 @@ namespace Mobishare.API.Controllers
                         });
 
                     await _hubContext.Clients.Group("admin")
-                        .SendAsync("RiceviNotificaAdmin",
-                            "Corsa terminata",
-                            $"Utente {utente.Nome} (ID {utente.Id}) ha terminato una corsa da {corsaEsistente.CostoFinale:F2}€");
+                        .SendAsync("NotificaAdmin", new {
+                            Titolo = "Corsa terminata",
+                            Testo = $"Utente {utente.Nome} (ID {utente.Id}) ha terminato una corsa da {corsaEsistente.CostoFinale:F2}€"
+                        });
 
                     if (problemaSegnalato)
                     {
                         await _hubContext.Clients.Group("admin")
-                            .SendAsync("RiceviNotificaAdmin",
-                                "Mezzo Guasto Segnalato",
-                                $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) è stato segnalato guasto");
+                            .SendAsync("NotificaAdmin", new {
+                                Titolo = "Mezzo Guasto Segnalato",
+                                Testo = $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) è stato segnalato guasto"
+                            });
                     }
 
                     if (batteriaScarica)
                     {
                         await _hubContext.Clients.Group("admin")
-                            .SendAsync("RiceviNotificaAdmin",
-                                "Batteria Critica",
-                                $"Il mezzo {mezzo.Matricola} ha batteria al {mezzo.LivelloBatteria}%");
+                            .SendAsync("NotificaAdmin", new {
+                                Titolo = "Batteria Critica",
+                                Testo = $"Il mezzo {mezzo.Matricola} ha batteria al {mezzo.LivelloBatteria}%"
+                            });
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Errore invio notifiche SignalR per corsa {CorsaId}", corsaEsistente.Id);
-                }
-
-                try
-                {
-                    _notifiche.Enqueue(utente.Id.ToString(), "CorsaTerminata",
-                        new
-                        {
-                            CorsaId = corsaEsistente.Id,
-                            Costo = corsaEsistente.CostoFinale,
-                            NuovoCredito = utente.Credito,
-                            StatoUtente = utente.Sospeso ? "Sospeso" : "Attivo",
-                            DataOraFine = corsaEsistente.DataOraFine
-                        });
-
-                    await _notifiche.FlushAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Errore flush outbox per corsa {CorsaId}", corsaEsistente.Id);
                 }
 
 
@@ -720,14 +826,44 @@ namespace Mobishare.API.Controllers
                     Dati = response
                 });
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException ex)
             {
                 await transaction.RollbackAsync();
 
+                // Identifica quale entità ha generato il conflitto
+                var conflictedEntry = ex.Entries.FirstOrDefault();
+                var entityName = conflictedEntry?.Entity.GetType().Name ?? "Unknown";
+
+                _logger.LogError(ex,
+                    "Conflitto di concorrenza durante terminazione corsa {CorsaId}. " +
+                    "Entità in conflitto: {EntityName}. RowVersion non corrisponde.",
+                    id, entityName);
+
+                // Verifica se la corsa esiste ancora
                 if (!_context.Corse.Any(e => e.Id == id))
                     throw new ElementoNonTrovatoException("Corsa", id);
+                
+                // Messaggio specifico in base all'entità in conflitto
+                if (conflictedEntry?.Entity is Corsa)
+                {
+                    throw new OperazioneNonConsentitaException(
+                        "La corsa è stata modificata da un altro processo. Ricarica la pagina e riprova.");
+                }
+                else if (conflictedEntry?.Entity is Mezzo mezzoConflitto)
+                {
+                    throw new OperazioneNonConsentitaException(
+                        $"Lo stato del mezzo {mezzoConflitto.Matricola} è stato modificato da un altro processo. Riprova.");
+                }
+                else if (conflictedEntry?.Entity is Utente)
+                {
+                    throw new OperazioneNonConsentitaException(
+                        "I dati dell'utente sono stati modificati. Ricarica la pagina.");
+                }
                 else
-                    throw new OperazioneNonConsentitaException("La corsa è stata modificata da un altro processo");
+                {
+                    throw new OperazioneNonConsentitaException(
+                        "Si è verificato un conflitto durante il salvataggio. Ricarica la pagina e riprova.");
+                }
             }
             catch (Exception)
             {
@@ -863,8 +999,10 @@ namespace Mobishare.API.Controllers
                 try
                 {
                     await _hubContext.Clients.Group("admin")
-                        .SendAsync("RiceviNotificaAdmin", "Utente sospeso",
-                            $"L’utente {utente.Nome} (ID {utente.Id}) è stato sospeso. Motivo: {motivo}");
+                        .SendAsync("NotificaAdmin", new {
+                            Titolo = "Utente sospeso",
+                            Testo = $"L'utente {utente.Nome} (ID {utente.Id}) è stato sospeso. Motivo: {motivo}"
+                        });
                 }
                 catch (Exception ex)
                 {

@@ -1,6 +1,6 @@
 ﻿
 
-namespace Mobishare.API.DTO
+/*namespace Mobishare.API.DTO
 {
     /// <summary>
     /// DTO per sbloccare un mezzo via API
@@ -23,3 +23,4 @@ namespace Mobishare.API.DTO
         public string UtenteId { get; set; } = string.Empty;
     }
 }
+*/

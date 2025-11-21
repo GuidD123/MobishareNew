@@ -51,8 +51,6 @@ namespace Mobishare.API.Controllers
             });
         }
 
-
-
         // SOLO GESTORE PUO' VEDERE UTENTI SOSPESI 
         // GET: api/utenti/sospesi
         [Authorize(Roles = "Gestore")]
@@ -112,8 +110,8 @@ namespace Mobishare.API.Controllers
             utente.Sospeso = false;
             await _context.SaveChangesAsync();
 
-            await _hubContext.Clients.Group($"utenti-{utente.Id}")
-                .SendAsync("AccountRiattivato", new
+            await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                .SendAsync("UtenteRiattivato", new
                 {
                     idUtente = utente.Id,
                     nome = utente.Nome,
@@ -121,8 +119,11 @@ namespace Mobishare.API.Controllers
                 });
 
             await _hubContext.Clients.Group("admin")
-                .SendAsync("RiceviNotificaAdmin", "Utente riattivato",
-                    $"Il gestore ha riattivato l’utente {utente.Nome} (ID {utente.Id})");
+                .SendAsync("NotificaAdmin", new
+                {
+                    Titolo = "Utente riattivato",
+                    Testo = $"Il gestore ha riattivato l’utente {utente.Nome} (ID {utente.Id})"
+                });
 
             return Ok(new SuccessResponse
             {
@@ -162,11 +163,11 @@ namespace Mobishare.API.Controllers
             await _context.SaveChangesAsync();
 
             await _hubContext.Clients.Group("admin")
-                .SendAsync("RiceviNotificaAdmin",
-                "Nuovo Utente Registrato",
-                $"L'utente {nuovoUtente.Nome} {nuovoUtente.Cognome} ({nuovoUtente.Email}) si è appena registrato");
-
-
+                .SendAsync("NotificaAdmin", new {
+                    Titolo = "Nuovo Utente Registrato",
+                    Testo = $"L'utente {nuovoUtente.Nome} {nuovoUtente.Cognome} ({nuovoUtente.Email}) si è appena registrato"
+                });
+              
             return CreatedAtAction(nameof(GetUtente), new { id = nuovoUtente.Id }, new SuccessResponse
             {
                 Messaggio = "Registrazione completata",
@@ -374,5 +375,37 @@ namespace Mobishare.API.Controllers
                 }
             });
         }
+
+        [Authorize]
+        [HttpGet("profilo")]
+        public async Task<ActionResult<SuccessResponse>> GetProfiloUtente()
+        {
+            var idUtente = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new OperazioneNonConsentitaException("Utente non autenticato"));
+
+            var utente = await _context.Utenti
+                .AsNoTracking()
+                .Where(u => u.Id == idUtente)
+                .Select(u => new ProfiloResponseDTO
+                {
+                    Id = u.Id,
+                    Nome = u.Nome,
+                    Cognome = u.Cognome,
+                    Email = u.Email,
+                    Ruolo = u.Ruolo.ToString(),
+                    Credito = u.Credito,
+                    PuntiBonus = u.PuntiBonus,
+                    Sospeso = u.Sospeso
+                })
+                .FirstOrDefaultAsync()
+                ?? throw new ElementoNonTrovatoException("Utente", idUtente);
+
+            return Ok(new SuccessResponse
+            {
+                Messaggio = "Profilo utente",
+                Dati = utente
+            });
+        }
+
     }
 }

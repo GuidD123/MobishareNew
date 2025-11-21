@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Mobishare.Core.Data;
@@ -46,23 +46,26 @@ namespace Mobishare.Infrastructure.Services
             //Applica variazione di credito
             utente.Credito += importo;
 
+            //NUOVO -> Chiama il metodo per aggiornare stato sospensione
+            await AggiornaStatoSospensioneAsync(utente); 
+
             // Aggiorna sospensione in base al nuovo credito
-            if (utente.Credito <= 0)
-            {
-                if (!utente.Sospeso)
-                {
-                    utente.Sospeso = true;
-                    _logger.LogWarning("Utente {Id} sospeso per credito insufficiente ({Credito})", utente.Id, utente.Credito);
-                }
-            }
-            else
-            {
-                if (utente.Sospeso)
-                {
-                    utente.Sospeso = false;
-                    _logger.LogInformation("Utente {Id} riattivato automaticamente (credito positivo: {Credito})", utente.Id, utente.Credito);
-                }
-            }
+            //if (utente.Credito <= 0)
+            //{
+            //    if (!utente.Sospeso)
+            //    {
+            //        utente.Sospeso = true;
+            //        _logger.LogWarning("Utente {Id} sospeso per credito insufficiente ({Credito})", utente.Id, utente.Credito);
+            //    }
+            //}
+            //else
+            //{
+            //    if (utente.Sospeso)
+            //    {
+            //        utente.Sospeso = false;
+            //        _logger.LogInformation("Utente {Id} riattivato automaticamente (credito positivo: {Credito})", utente.Id, utente.Credito);
+            //    }
+            //}
 
             //Crea record transazione
             var transazione = new Transazione
@@ -94,13 +97,66 @@ namespace Mobishare.Infrastructure.Services
 
             //Notifica admin
             await _hubContext.Clients.Group("admin")
-                .SendAsync("RiceviNotificaAdmin",
-                    "Nuova transazione",
-                    $"Utente {utente.Nome} (ID {utente.Id}) - {tipo}: {importo:+0.00;-0.00}€ ({stato})");
+                .SendAsync("NotificaAdmin", new
+                {
+                    Titolo = "Nuova transazione",
+                    Testo = $"Utente {utente.Nome} (ID {utente.Id}) - {tipo}: {importo:+0.00;-0.00}€ ({stato})"
+                });
 
             _logger.LogInformation("Transazione registrata: Utente={Id}, Importo={Importo}, Tipo={Tipo}", idUtente, importo, tipo);
 
             return transazione;
+        }
+
+        /// <summary>
+        /// Invia notifiche SignalR per un movimento completato.
+        /// IMPORTANTE: Chiamare SOLO DOPO CommitAsync() per garantire coerenza UI/DB.
+        /// </summary>
+        public async Task InviaNotificheMovimentoAsync(
+            int idUtente,
+            decimal nuovoCredito,
+            decimal importo,
+            string tipo,
+            StatoPagamento stato)
+        {
+            var utente = await _context.Utenti.FindAsync(idUtente);
+            if (utente == null)
+            {
+                _logger.LogWarning("Impossibile inviare notifiche: Utente {Id} non trovato", idUtente);
+                return;
+            }
+
+            try
+            {
+                // Notifica credito aggiornato
+                await _hubContext.Clients.Group($"utenti:{idUtente}")
+                    .SendAsync("CreditoAggiornato", nuovoCredito);
+
+                // Notifica nuova transazione
+                await _hubContext.Clients.Group($"utenti:{idUtente}")
+                    .SendAsync("NuovaTransazione", new
+                    {
+                        Tipo = tipo,
+                        Importo = importo,
+                        Stato = stato.ToString(),
+                        Data = DateTime.Now
+                    });
+
+                // Notifica admin
+                await _hubContext.Clients.Group("admin")
+                    .SendAsync("NotificaAdmin", new
+                    {
+                        Titolo = "Nuova transazione",
+                        Testo = $"Utente {utente.Nome} (ID {utente.Id}) - {tipo}: {importo:+0.00;-0.00}€ ({stato})"
+                    });
+
+                _logger.LogInformation("Notifiche SignalR inviate per transazione: Utente={Id}, Tipo={Tipo}", idUtente, tipo);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Errore invio notifiche SignalR per utente {Id}", idUtente);
+                // Non propagare l'errore - le notifiche sono best-effort
+            }
         }
 
         /// <summary>
@@ -119,22 +175,57 @@ namespace Mobishare.Infrastructure.Services
                 _logger.LogInformation("Utente {Id} {Stato} automaticamente (credito = {Credito})",
                     utente.Id, stato, utente.Credito);
 
-                // Notifica in tempo reale all’utente
                 if (utente.Sospeso)
                 {
-                    await _hubContext.Clients.Group($"utenti:{utente.Id}")
-                        .SendAsync("AccountSospeso", new
-                        {
-                            messaggio = "Il tuo account è stato sospeso per credito insufficiente."
+                    try
+                    {
+                        //notifica utente
+                        await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                            .SendAsync("UtenteSospeso", new
+                            {
+                                id = utente.Id, 
+                                nome = utente.Nome, 
+                                messaggio = "Il tuo account è stato sospeso per credito insufficiente."
+                            });
+
+                        //Notifica admin
+                        await _hubContext.Clients.Group("admin")
+                            .SendAsync("NotificaAdmin", new
+                            {
+                                Titolo = "Utente sospeso",
+                                Testo = $"L'utente {utente.Nome} (ID {utente.Id}) è stato sospeso per credito insufficiente."
                         });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "SignalR: impossibile inviare notifica sospensione utente {Id}", utente.Id);
+                    }
                 }
                 else
                 {
-                    await _hubContext.Clients.Group($"utenti:{utente.Id}")
-                        .SendAsync("AccountRiattivato", new
-                        {
-                            messaggio = "Il tuo account è stato riattivato. Puoi nuovamente usare Mobishare."
-                        });
+                    try
+                    {
+                        //notifica utente
+                        await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                            .SendAsync("UtenteRiattivato", new
+                            {
+                                nome = utente.Nome,
+                                messaggio = "Il tuo account è stato riattivato. Puoi nuovamente usare Mobishare."
+                            });
+
+                        //Notifica admin
+                        await _hubContext.Clients.Group("admin")
+                            .SendAsync("NotificaAdmin", new 
+                            {
+                                Titolo = "Utente riattivato",
+                                Testo = $"L'utente {utente.Nome} (ID {utente.Id}) è stato riattivato automaticamente."
+                            });
+                               
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "SignalR: impossibile inviare notifica riattivazione utente {Id}", utente.Id);
+                    }
                 }
             }
         }

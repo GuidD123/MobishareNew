@@ -40,27 +40,6 @@ namespace Mobishare.Infrastructure.Seed
                 context.SaveChanges();
             }
 
-            //corse
-            if (!context.Corse.Any())
-            {
-                SeedCorse(context);
-                context.SaveChanges();
-            }
-
-            //ricariche
-            if (!context.Ricariche.Any())
-            {
-                SeedRicariche(context);
-                context.SaveChanges();
-            }
-
-            //feedbacks
-            if (!context.Feedbacks.Any())
-            {
-                SeedFeedback(context);
-                context.SaveChanges();
-            }
-
             Console.WriteLine("Database seeding completato");
         }
 
@@ -186,8 +165,7 @@ namespace Mobishare.Infrastructure.Seed
                     Matricola = "BM001",
                     Tipo = TipoMezzo.BiciMuscolare,
                     Stato = StatoMezzo.Disponibile,
-                    IdParcheggioCorrente = 1,
-                    LivelloBatteria = 100 // Bici muscolare sempre 100%
+                    IdParcheggioCorrente = 1,  
                 },
                 new Mezzo
                 {
@@ -195,7 +173,7 @@ namespace Mobishare.Infrastructure.Seed
                     Tipo = TipoMezzo.BiciElettrica,
                     Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 1,
-                    LivelloBatteria = random.Next(60, 100)
+                    LivelloBatteria = 100
                 },
                 new Mezzo
                 {
@@ -203,15 +181,14 @@ namespace Mobishare.Infrastructure.Seed
                     Tipo = TipoMezzo.MonopattinoElettrico,
                     Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 1,
-                    LivelloBatteria = random.Next(40, 90)
+                    LivelloBatteria = 100
                 },
                 new Mezzo
                 {
                     Matricola = "BM004",
                     Tipo = TipoMezzo.BiciMuscolare,
-                    Stato = StatoMezzo.InUso,
+                    Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 1,
-                    LivelloBatteria = 100
                 }
             ]);
 
@@ -224,7 +201,7 @@ namespace Mobishare.Infrastructure.Seed
                     Tipo = TipoMezzo.BiciElettrica,
                     Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 2,
-                    LivelloBatteria = random.Next(50, 100)
+                    LivelloBatteria = 100
                 },
                 new Mezzo
                 {
@@ -232,24 +209,23 @@ namespace Mobishare.Infrastructure.Seed
                     Tipo = TipoMezzo.MonopattinoElettrico,
                     Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 2,
-                    LivelloBatteria = random.Next(30, 90)
+                    LivelloBatteria = 100
                 },
                 new Mezzo
                 {
                     Matricola = "BM007",
                     Tipo = TipoMezzo.BiciMuscolare,
-                    Stato = StatoMezzo.Manutenzione,
+                    Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 2,
-                    LivelloBatteria = 100
                 },
 
                 new Mezzo
                 {
-                    Matricola = "BM008",
+                    Matricola = "BE008",
                     Tipo = TipoMezzo.BiciElettrica,
                     Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 2,
-                    LivelloBatteria = random.Next(30, 80)
+                    LivelloBatteria = 100
                 }
             ]);
 
@@ -262,15 +238,15 @@ namespace Mobishare.Infrastructure.Seed
                     Tipo = TipoMezzo.BiciElettrica,
                     Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 3,
-                    LivelloBatteria = random.Next(70, 100)
+                    LivelloBatteria = 100
                 },
                 new Mezzo
                 {
                     Matricola = "ME010",
                     Tipo = TipoMezzo.MonopattinoElettrico,
-                    Stato = StatoMezzo.NonPrelevabile,
+                    Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 3,
-                    LivelloBatteria = 15 // Batteria scarica
+                    LivelloBatteria = 100
                 },
                 new Mezzo
                 {
@@ -278,15 +254,14 @@ namespace Mobishare.Infrastructure.Seed
                     Tipo = TipoMezzo.BiciMuscolare,
                     Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 3,
-                    LivelloBatteria = 100
                 },
                 new Mezzo
                 {
-                    Matricola = "BM012",
+                    Matricola = "ME012",
                     Tipo = TipoMezzo.MonopattinoElettrico,
                     Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 3,
-                    LivelloBatteria = random.Next(70, 90)
+                    LivelloBatteria = 100
                 }
             ]);
 
@@ -299,15 +274,15 @@ namespace Mobishare.Infrastructure.Seed
                     Tipo = TipoMezzo.BiciElettrica,
                     Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 4,
-                    LivelloBatteria = random.Next(40, 60)
+                    LivelloBatteria = 100
                 },
                 new Mezzo
                 {
                     Matricola = "ME014",
                     Tipo = TipoMezzo.MonopattinoElettrico,
-                    Stato = StatoMezzo.NonPrelevabile,
+                    Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 4,
-                    LivelloBatteria = 10
+                    LivelloBatteria = 100
                 },
                 new Mezzo
                 {
@@ -315,15 +290,14 @@ namespace Mobishare.Infrastructure.Seed
                     Tipo = TipoMezzo.BiciMuscolare,
                     Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 4,
-                    LivelloBatteria = 100
                 },
                 new Mezzo
                 {
-                    Matricola = "BM016",
+                    Matricola = "BE016",
                     Tipo = TipoMezzo.BiciElettrica,
                     Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 4,
-                    LivelloBatteria = random.Next(70, 90)
+                    LivelloBatteria = 100
                 },
 
                 new Mezzo
@@ -332,7 +306,7 @@ namespace Mobishare.Infrastructure.Seed
                     Tipo = TipoMezzo.BiciElettrica,
                     Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 1,
-                    LivelloBatteria = 3 // quasi scarico
+                    LivelloBatteria = 100
                 },
 
                 new Mezzo
@@ -341,164 +315,11 @@ namespace Mobishare.Infrastructure.Seed
                     Tipo = TipoMezzo.MonopattinoElettrico,
                     Stato = StatoMezzo.Disponibile,
                     IdParcheggioCorrente = 2,
-                    LivelloBatteria = 2 // quasi scarico
+                    LivelloBatteria = 100
                 }
             ]);
 
             context.Mezzi.AddRange(mezzi);
-        }
-
-
-
-
-        //SeedCorse
-        private static void SeedCorse(MobishareDbContext context)
-        {
-            var corse = new List<Corsa>
-            {
-                // Corsa completata
-                new() {
-                    IdUtente = 2,
-                    MatricolaMezzo = "BM001",
-                    IdParcheggioPrelievo = 1,
-                    IdParcheggioRilascio = 2,
-                    DataOraInizio = DateTime.Now.AddHours(-2),
-                    DataOraFine = DateTime.Now.AddHours(-1),
-                    Stato = StatoCorsa.Completata,
-                    CostoFinale = 3.50m,
-                    SegnalazioneProblema = false
-                },
-                
-                // Corsa in corso
-                new() {
-                    IdUtente = 3,
-                    MatricolaMezzo = "BM004",  // BM004 (InUso) 
-                    IdParcheggioPrelievo = 1,
-                    DataOraInizio = DateTime.Now.AddMinutes(-30),
-                    Stato = StatoCorsa.InCorso,
-                    //CostoFinale = 0 // Sarà calcolato alla fine
-                    SegnalazioneProblema = false
-                },
-                
-                // Corsa completata ieri
-                new() {
-                    IdUtente = 4,
-                    MatricolaMezzo ="BE002",  // BE002
-                    IdParcheggioPrelievo = 1,
-                    IdParcheggioRilascio = 3,
-                    DataOraInizio = DateTime.Now.AddDays(-1).AddHours(-3),
-                    DataOraFine = DateTime.Now.AddDays(-1).AddHours(-2),
-                    Stato = StatoCorsa.Completata,
-                    CostoFinale  = 5.20m,
-                    SegnalazioneProblema = false
-                },
-
-                // Corsa in corso
-                new() {
-                    IdUtente = 5,
-                    MatricolaMezzo = "ME010",  // ME010 (InUso) 
-                    IdParcheggioPrelievo = 1,
-                    DataOraInizio = DateTime.Now.AddMinutes(-30),
-                    Stato = StatoCorsa.InCorso,
-                    //CostoFinale = 0 // Sarà calcolato alla fine
-                    SegnalazioneProblema = false
-                },
-
-                new() {
-                    IdUtente = 2,
-                    MatricolaMezzo = "BE005",
-                    IdParcheggioPrelievo = 2,
-                    IdParcheggioRilascio = 3,
-                    DataOraInizio = DateTime.Now.AddHours(-5),
-                    DataOraFine = DateTime.Now.AddHours(-4),
-                    Stato = StatoCorsa.Completata,
-                    CostoFinale = 4.00m,
-                    SegnalazioneProblema = true // guasto segnalato
-                }
-            };
-
-            context.Corse.AddRange(corse);
-        }
-
-
-
-        //SeedPagamenti
-        private static void SeedRicariche(MobishareDbContext context)
-        {
-            //credito utente = somma ricariche - costo corse 
-
-            var ricariche = new List<Ricarica>
-            {
-                new() {
-                    IdUtente = 3,
-                    ImportoRicarica = 40.00m,
-                    DataRicarica = DateTime.Now.AddHours(-4),
-                    Tipo = TipoRicarica.CartaDiCredito,
-                    Stato = StatoPagamento.Completato,
-                },
-
-                new() {
-                    IdUtente = 5,
-                    ImportoRicarica = 20.00m,
-                    DataRicarica = DateTime.Now.AddDays(-1).AddHours(-2),
-                    Tipo = TipoRicarica.CartaDiCredito,
-                    Stato = StatoPagamento.Completato,
-                },
-                
-                // Ricarica credito
-                new() {
-                    IdUtente = 4,
-                    ImportoRicarica = 30.00m,
-                    DataRicarica = DateTime.Now.AddDays(-3),
-                    Tipo = TipoRicarica.PayPal,
-                    Stato = StatoPagamento.InSospeso,
-                }, 
-
-                //SeedRicariche (aggiunta fallita)
-                new() {
-                    IdUtente = 2,
-                    ImportoRicarica = 15.00m,
-                    DataRicarica = DateTime.Now.AddDays(-2),
-                    Tipo = TipoRicarica.CartaDiCredito,
-                    Stato = StatoPagamento.Fallito
-                }
-            };
-
-            context.Ricariche.AddRange(ricariche);
-        }
-
-        //SeedFeedback
-        private static void SeedFeedback(MobishareDbContext context)
-        {
-            var feedback = new List<Feedback>
-            {
-                new() {
-                    IdUtente = 3, // Mario Rossi
-                    IdCorsa = 1,
-                    Valutazione = ValutazioneFeedback.Buono,
-                    Commento = "Bici in buone condizioni, percorso piacevole",
-                    DataFeedback = DateTime.Now.AddHours(-1)
-                },
-
-                new() {
-                    IdUtente = 5, // Luca Verdi
-                    IdCorsa = 3,
-                    Valutazione = ValutazioneFeedback.Ottimo,
-                    Commento = "Servizio eccellente, bici elettrica molto comoda",
-                    DataFeedback = DateTime.Now.AddDays(-1).AddHours(-2)
-                },
-
-                //SeedFeedback (aggiunta negativa)
-                new() {
-                    IdUtente = 4,
-                    IdCorsa = 2,
-                    Valutazione = ValutazioneFeedback.Scarso,
-                    Commento = "Monopattino con freni difettosi",
-                    DataFeedback = DateTime.Now.AddMinutes(-50)
-                }
-            };
-
-            context.Feedbacks.AddRange(feedback);
         }
     }
 }

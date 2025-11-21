@@ -1,4 +1,4 @@
-﻿using Mobishare.Core.Enums;
+﻿/*using Mobishare.Core.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace Mobishare.API.DTO
@@ -28,3 +28,4 @@ namespace Mobishare.API.DTO
         public int LivelloBatteria { get; set; } = 100;
     }
 }
+*/

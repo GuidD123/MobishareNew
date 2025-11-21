@@ -1,12 +1,19 @@
-using Mobishare.WebApp.Services;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore;
+using Mobishare.Core.Data;
+using Mobishare.WebApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ========================================
 // SERVIZI APPLICATIVI
 // ========================================
+
+#region Configurazione Database
+builder.Services.AddDbContext<MobishareDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+#endregion
 
 // Razor Pages
 builder.Services.AddRazorPages();
@@ -38,7 +45,7 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 
-    //Durante lo sviluppo lascia questi due valori più permissivi:
+    //Durante lo sviluppo lascia questi due valori piï¿½ permissivi:
     //ricodarsi di rimettere SecurePolicy.Always e SameSite.Strict.
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
@@ -71,11 +78,11 @@ builder.Services.AddAuthorization(options =>
 });
 
 // ========================================
-// SERVIZI INFRASTRUCTURE (IoT, Background Services)
+// NOTA: Gateway IoT rimossi da WebApp
 // ========================================
-builder.Services.AddSingleton<Mobishare.IoT.Gateway.Interfaces.IMqttGatewayEmulatorService, Mobishare.IoT.Gateway.Services.MqttGatewayEmulatorService>();
-
-builder.Services.AddHostedService<Mobishare.WebApp.Services.MqttGatewayHostedService>();
+// I gateway MQTT sono ora gestiti dal progetto standalone Mobishare.IoT.Gateway.
+// WebApp si occupa SOLO del frontend (Razor Pages) e chiamate API.
+// Per avviare i gateway, eseguire separatamente Mobishare.IoT.Gateway.exe
 
 // Cookie Policy
 builder.Services.Configure<CookiePolicyOptions>(options =>

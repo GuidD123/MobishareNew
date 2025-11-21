@@ -159,6 +159,24 @@
                 </div>
             </div>
         </div>
+
+        <!-- Punti Bonus BiciMuscolare-->
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 shadow-sm border-start border-4 border-warning">
+                 <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                          <h6 class="text-muted mb-0">Punti Bonus</h6>
+                          <i class="bi bi-star-fill text-warning fs-4"></i>
+                        </div>
+
+                        <h2 class="mb-2 text-warning fw-bold" id="puntiBonus">@Model.PuntiBonus</h2>
+
+                        <small class="text-muted d-block mb-2">
+                            +1 punti ogni 30 min di bici muscolare
+                        </small>
+                </div>
+             </div>
+        </div>
     </div>
 
     <!-- Corsa in corso -->
@@ -296,6 +314,8 @@
 
 
 @section Scripts {
+
+    @* --- TIMER CORSA ATTIVA --- *@
     @if (Model.HasCorsaInCorso && Model.CorsaAttiva != null)
     {
         <script>

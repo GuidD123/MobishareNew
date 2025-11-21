@@ -1,21 +1,26 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Mobishare.Core.Data;
 using Mobishare.Core.DTOs;
 using Mobishare.Core.Enums;
 using Mobishare.Core.Exceptions;
 using Mobishare.Core.Models;
+using Mobishare.Infrastructure.PhilipsHue;
 
 namespace Mobishare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ParcheggiController(MobishareDbContext context) : ControllerBase
+    public class ParcheggiController(MobishareDbContext context, ILogger<MezziController> logger, PhilipsHueControl philipsHueControl) : ControllerBase
     {
         private readonly MobishareDbContext _context = context;
+        private readonly ILogger<MezziController> _logger = logger;
+        private readonly PhilipsHueControl _philipsHueControl = philipsHueControl;
+
 
         // ZONA UTENTE 
-
         // GET: api/parcheggi
         [HttpGet]
         public async Task<ActionResult<SuccessResponse>> GetParcheggi()
@@ -56,7 +61,6 @@ namespace Mobishare.API.Controllers
             });
         }
 
-       
         // GET: api/parcheggi/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<SuccessResponse>> GetParcheggio(int id)
@@ -171,7 +175,6 @@ namespace Mobishare.API.Controllers
             });
         }
 
-
         [HttpPut("{id}/stato")]
         public async Task<ActionResult<SuccessResponse>> AggiornaStatoParcheggio(int id, [FromBody] ParcheggioStatoDTO dto)
         {
@@ -225,6 +228,19 @@ namespace Mobishare.API.Controllers
                         {
                             // Nessun posto libero, metti in manutenzione
                             mezzo.Stato = StatoMezzo.Manutenzione;
+                            
+                            // === PHILIPS HUE: Luce GIALLA (manutenzione) ===
+                            try
+                            {
+                                await _philipsHueControl.SetSpiaColor(mezzo.Matricola, ColoreSpia.Giallo);
+                                _logger.LogInformation(
+                                    "💡 Philips Hue: Luce {Matricola} → GIALLO (Manutenzione - parcheggio pieno)",
+                                    mezzo.Matricola);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Impossibile aggiornare luce Philips Hue per mezzo {Matricola}", mezzo.Matricola);
+                            }
                         }
 
                         index++;
@@ -234,7 +250,22 @@ namespace Mobishare.API.Controllers
                 {
                     // Nessun parcheggio attivo → tutti in manutenzione
                     foreach (var mezzo in parcheggio.Mezzi)
+                    {
                         mezzo.Stato = StatoMezzo.Manutenzione;
+                        
+                        // === PHILIPS HUE: Luce GIALLA (manutenzione) ===
+                        try
+                        {
+                            await _philipsHueControl.SetSpiaColor(mezzo.Matricola, ColoreSpia.Giallo);
+                            _logger.LogInformation(
+                                "💡 Philips Hue: Luce {Matricola} → GIALLO (Manutenzione - no parcheggi attivi)",
+                                mezzo.Matricola);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Impossibile aggiornare luce Philips Hue per mezzo {Matricola}", mezzo.Matricola);
+                        }
+                    }
                 }
             }
 
@@ -251,6 +282,165 @@ namespace Mobishare.API.Controllers
                     parcheggio.Nome,
                     parcheggio.Attivo,
                     TotaleMezziCoinvolti = parcheggio.Mezzi.Count
+                }
+            });
+        }
+
+        // DELETE: api/parcheggi/{id}
+        [Authorize(Roles = "Gestore")]
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteParcheggio(int id)
+        {
+            var parcheggio = await _context.Parcheggi
+                .Include(p => p.Mezzi)
+                .FirstOrDefaultAsync(p => p.Id == id)
+                ?? throw new ElementoNonTrovatoException("Parcheggio", id);
+
+            //Verifica che il parcheggio sia vuoto
+            if (parcheggio.Mezzi.Any())
+            {
+                throw new OperazioneNonConsentitaException(
+                    $"Impossibile eliminare: il parcheggio contiene {parcheggio.Mezzi.Count} mezzi. " +
+                    "Sposta prima i mezzi in altri parcheggi.");
+            }
+
+            //Verifica che non sia referenziato in corse come prelievo
+            var haCorsePrelievo = await _context.Corse
+                .AnyAsync(c => c.IdParcheggioPrelievo == id);
+
+            if (haCorsePrelievo)
+            {
+                throw new OperazioneNonConsentitaException(
+                    "Impossibile eliminare: il parcheggio è referenziato in corse storiche come punto di prelievo. " +
+                    "L'eliminazione comprometterebbe l'integrità dei dati.");
+            }
+
+            //Verifica che non sia referenziato in corse come rilascio
+            var haCorseRilascio = await _context.Corse
+                .AnyAsync(c => c.IdParcheggioRilascio == id);
+
+            if (haCorseRilascio)
+            {
+                throw new OperazioneNonConsentitaException(
+                    "Impossibile eliminare: il parcheggio è referenziato in corse storiche come punto di rilascio. " +
+                    "L'eliminazione comprometterebbe l'integrità dei dati.");
+            }
+
+
+            var mezziDaSpostare = parcheggio.Mezzi.ToList();
+            int mezziSpostati = 0;
+            int mezziInManutenzione = 0;
+
+            //ridistribuzione mezzi automaticamente
+            if (mezziDaSpostare.Any())
+            {
+                // Cerca parcheggi attivi con spazio disponibile
+                var parcheggiAttivi = await _context.Parcheggi
+                    .Include(p => p.Mezzi)
+                    .Where(p => p.Attivo && p.Id != parcheggio.Id)
+                    .Select(p => new
+                    {
+                        Parcheggio = p,
+                        PostiLiberi = p.Capienza - p.Mezzi.Count
+                    })
+                    .Where(p => p.PostiLiberi > 0)
+                    .OrderByDescending(p => p.PostiLiberi) // Priorità ai più vuoti
+                    .ToListAsync();
+
+                if (parcheggiAttivi.Count != 0)
+                {
+                    int index = 0;
+                    foreach (var mezzo in mezziDaSpostare)
+                    {
+                        var destinazione = parcheggiAttivi[index % parcheggiAttivi.Count].Parcheggio;
+
+                        // Verifica capienza
+                        if (destinazione.Mezzi.Count < destinazione.Capienza)
+                        {
+                            mezzo.IdParcheggioCorrente = destinazione.Id;
+                            mezzo.Stato = StatoMezzo.Disponibile;
+                            mezziSpostati++;
+
+                            _logger.LogInformation(
+                                "Mezzo {Matricola} spostato da parcheggio {ParcheggioOld} a {ParcheggioNew}",
+                                mezzo.Matricola, parcheggio.Nome, destinazione.Nome);
+                        }
+                        else
+                        {
+                            // Parcheggio pieno, vai al prossimo
+                            index++;
+                            if (index >= parcheggiAttivi.Count)
+                            {
+                                // Nessun posto libero rimasto
+                                mezzo.Stato = StatoMezzo.Manutenzione;
+                                //mezzo.IdParcheggioCorrente = null; // ← IMPORTANTE
+                                mezziInManutenzione++;
+                                
+                                // === PHILIPS HUE: Luce GIALLA (manutenzione) ===
+                                try
+                                {
+                                    await _philipsHueControl.SetSpiaColor(mezzo.Matricola, ColoreSpia.Giallo);
+                                    _logger.LogInformation(
+                                        "💡 Philips Hue: Luce {Matricola} → GIALLO (Manutenzione - no posti liberi)",
+                                        mezzo.Matricola);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogWarning(ex, "Impossibile aggiornare luce Philips Hue per mezzo {Matricola}", mezzo.Matricola);
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Nessun parcheggio attivo disponibile
+                    foreach (var mezzo in mezziDaSpostare)
+                    {
+                        mezzo.Stato = StatoMezzo.Manutenzione;
+                        //mezzo.IdParcheggioCorrente = null;
+                        mezziInManutenzione++;
+                        
+                        // === PHILIPS HUE: Luce GIALLA (manutenzione) ===
+                        try
+                        {
+                            await _philipsHueControl.SetSpiaColor(mezzo.Matricola, ColoreSpia.Giallo);
+                            _logger.LogInformation(
+                                "💡 Philips Hue: Luce {Matricola} → GIALLO (Manutenzione - eliminazione parcheggio)",
+                                mezzo.Matricola);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Impossibile aggiornare luce Philips Hue per mezzo {Matricola}", mezzo.Matricola);
+                        }
+                    }
+                }
+
+                await _context.SaveChangesAsync(); // Salva spostamenti mezzi
+            }
+
+            //Eliminazione
+            _context.Parcheggi.Remove(parcheggio);
+            await _context.SaveChangesAsync();
+
+            _logger.LogWarning(
+                "Parcheggio {Nome} (ID {Id}) eliminato. Mezzi spostati: {Spostati}, in manutenzione: {Manutenzione}",
+                parcheggio.Nome, parcheggio.Id, mezziSpostati, mezziInManutenzione);
+
+            return Ok(new SuccessResponse
+            {
+                Messaggio = $"Parcheggio '{parcheggio.Nome}' eliminato con successo",
+                Dati = new
+                {
+                    id = parcheggio.Id,
+                    nome = parcheggio.Nome,
+                    zona = parcheggio.Zona,
+                    mezziGestiti = new
+                    {
+                        totale = mezziDaSpostare.Count,
+                        spostati = mezziSpostati,
+                        inManutenzione = mezziInManutenzione
+                    }
                 }
             });
         }

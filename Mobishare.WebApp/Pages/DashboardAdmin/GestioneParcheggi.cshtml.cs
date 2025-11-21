@@ -196,6 +196,64 @@ public class GestioneParcheggiModel : PageModel
             }
         }
     }
+    public async Task<IActionResult> OnPostEliminaAsync(int id)
+    {
+        var userId = HttpContext.Session.GetInt32("UserId");
+        var userRole = HttpContext.Session.GetString("UserRole");
 
+        if (userId == null)
+            return RedirectToPage("/Account/Login");
+
+        if (!userRole?.Equals("Gestore", StringComparison.OrdinalIgnoreCase) ?? true)
+        {
+            TempData["ErrorMessage"] = "Non hai i permessi per eseguire questa operazione.";
+            return RedirectToPage("/DashboardAdmin/Index");
+        }
+
+        try
+        {
+            // Recupera il parcheggio per ottenere il nome (per il messaggio)
+            var parcheggio = Parcheggi.FirstOrDefault(p => p.Id == id);
+
+            // Se non è in cache, ricarica
+            if (parcheggio == null)
+            {
+                await CaricaParcheggiAsync();
+                parcheggio = Parcheggi.FirstOrDefault(p => p.Id == id);
+            }
+
+            if (parcheggio == null)
+            {
+                TempData["ErrorMessage"] = "Parcheggio non trovato.";
+                return RedirectToPage();
+            }
+
+            // Chiama API per eliminazione
+            var success = await _apiService.EliminaParcheggioAsync(id);
+
+            if (success)
+            {
+                TempData["SuccessMessage"] = $"Parcheggio '{parcheggio.Nome}' eliminato con successo dal sistema.";
+                _logger.LogWarning("Parcheggio {Nome} (ID {Id}) eliminato dal gestore {UserId}",
+                    parcheggio.Nome, id, userId);
+            }
+            else
+            {
+                // L'errore specifico è già in _apiService.LastError
+                TempData["ErrorMessage"] = _apiService.LastError ??
+                    "Errore durante l'eliminazione del parcheggio. Potrebbe contenere mezzi o essere referenziato in corse storiche.";
+
+                _logger.LogWarning("Tentativo fallito di eliminare parcheggio {Nome}: {Errore}",
+                    parcheggio.Nome, _apiService.LastError);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Errore durante l'eliminazione del parcheggio {Id}", id);
+            TempData["ErrorMessage"] = $"Errore imprevisto: {ex.Message}";
+        }
+
+        return RedirectToPage();
+    }
 
 }

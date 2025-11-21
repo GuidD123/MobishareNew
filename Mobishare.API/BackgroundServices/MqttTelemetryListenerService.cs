@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿/*using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -194,9 +194,10 @@ public class MqttTelemetryListenerService : IHostedService, IDisposable
                 try
                 {
                     await _hubContext.Clients.Group("admin")
-                        .SendAsync("RiceviNotificaAdmin",
-                            "Batteria Critica",
-                            $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) ha raggiunto il {mezzo.LivelloBatteria}% di batteria durante la corsa. Richiede ricarica urgente.");
+                        .SendAsync("NotificaAdmin", new {
+                            Titolo = "Batteria Critica",
+                            Testo = $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) ha raggiunto il {mezzo.LivelloBatteria}% di batteria durante la corsa. Richiede ricarica urgente."
+                        });
 
                     _logger.LogWarning("Notifica admin inviata: batteria critica per mezzo {Matricola} ({Livello}%)",
                         mezzo.Matricola, mezzo.LivelloBatteria);
@@ -213,9 +214,10 @@ public class MqttTelemetryListenerService : IHostedService, IDisposable
                 try
                 {
                     await _hubContext.Clients.Group("admin")
-                        .SendAsync("RiceviNotificaAdmin",
-                            "Mezzo Non Prelevabile",
-                            $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) è diventato non prelevabile (batteria: {mezzo.LivelloBatteria}%)");
+                        .SendAsync("NotificaAdmin", new {
+                            Titolo = "Mezzo Non Prelevabile",
+                            Testo = $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) è diventato non prelevabile (batteria: {mezzo.LivelloBatteria}%)"
+                        });
 
                     _logger.LogWarning("Notifica admin inviata: mezzo {Matricola} non prelevabile", mezzo.Matricola);
                 }
@@ -252,4 +254,4 @@ public class MqttTelemetryListenerService : IHostedService, IDisposable
             GC.SuppressFinalize(this);
         }
     }
-}
+}*/

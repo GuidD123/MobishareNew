@@ -9,17 +9,19 @@ using Mobishare.Core.Exceptions;
 using Mobishare.Core.Models;
 using Mobishare.Infrastructure.IoT.Interfaces;
 using Mobishare.Infrastructure.SignalRHubs;
+using Mobishare.Infrastructure.PhilipsHue;
 
 namespace Mobishare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class MezziController(MobishareDbContext context, IMqttIoTService mqttPublisher, ILogger<MezziController> logger, IHubContext<NotificheHub> hubContext) : ControllerBase
+    public class MezziController(MobishareDbContext context, IMqttIoTService mqttPublisher, ILogger<MezziController> logger, IHubContext<NotificheHub> hubContext, PhilipsHueControl philipsHueControl) : ControllerBase
     {
         private readonly MobishareDbContext _context = context;
         private readonly IMqttIoTService _mqttIoTService = mqttPublisher;
         private readonly ILogger<MezziController> _logger = logger;
         private readonly IHubContext<NotificheHub> _hubContext = hubContext;
+        private readonly PhilipsHueControl _philipsHueControl = philipsHueControl;
 
 
         // GET: api/mezzi -> serve all'admin per vedere tutti i mezzi della flotta (disponibili, occupati e guasti) 
@@ -84,7 +86,7 @@ namespace Mobishare.API.Controllers
             });
         }
 
-        // GET: api/mezzi/matricola/{matricola} -> unico modo per utente di vedere mezzo 
+        //GET: api/mezzi/matricola/{matricola} -> unico modo per utente di vedere mezzo 
         [HttpGet("matricola/{matricola}")]
         public async Task<ActionResult<SuccessResponse>> GetMezzoByMatricola(string matricola)
         {
@@ -118,7 +120,7 @@ namespace Mobishare.API.Controllers
             });
         }
 
-        // POST: api/mezzi -> crea mezzo
+        //POST: api/mezzi -> crea mezzo
         [Authorize(Roles = "Gestore")]
         [HttpPost]
         public async Task<ActionResult<SuccessResponse>> PostMezzo([FromBody] MezzoCreateDTO dto)
@@ -178,17 +180,25 @@ namespace Mobishare.API.Controllers
 
         }
 
+
         //PUT: api/mezzi/{id} -> cambia lo stato del mezzo e il parcheggio corrente
         [Authorize(Roles = "Gestore")]
         [HttpPut("{id}/stato")]
         public async Task<IActionResult> CambiaStatoMezzo(int id, [FromBody] MezzoUpdateDTO dto)
         {
             // Trova il mezzo
-            var mezzo = await _context.Mezzi.FindAsync(id) ?? throw new ElementoNonTrovatoException("Mezzo", id);
+            var mezzo = await _context.Mezzi.FindAsync(id) 
+                ?? throw new ElementoNonTrovatoException("Mezzo", id);
 
             // Applica aggiornamenti
             mezzo.LivelloBatteria = dto.LivelloBatteria;
             mezzo.Stato = dto.Stato;
+
+            // Se il gestore imposta manualmente Disponibile, resetta il motivo
+            if (dto.Stato == StatoMezzo.Disponibile)
+            {
+                mezzo.MotivoNonPrelevabile = MotivoNonPrelevabile.Nessuno;
+            }
 
             ApplicaRegoleBatteria(mezzo);
 
@@ -214,17 +224,45 @@ namespace Mobishare.API.Controllers
 
             await _context.SaveChangesAsync();
 
-            await _mqttIoTService.PublishAsync("mobishare/mezzo/stato", new
-            {
-                idMezzo = mezzo.Id,
-                nuovoStato = mezzo.Stato.ToString(),
-                parcheggio = mezzo.ParcheggioCorrente?.Nome,
-                livelloBatteria = mezzo.LivelloBatteria,
-                timestamp = DateTime.Now,
-                source = "API"
-            });
+            var coloreSpia = GetColoreSpiaPerStato(mezzo.Stato);
 
-            _logger.LogInformation("Stato mezzo {Matricola} aggiornato a {Stato}", mezzo.Matricola, mezzo.Stato);
+            // === PHILIPS HUE: Cambia colore spia in base allo stato ===
+            try
+            {
+                await _philipsHueControl.SetSpiaColor(mezzo.Matricola, coloreSpia);
+
+                _logger.LogInformation(
+                    "💡 Philips Hue + MQTT → Mezzo {Matricola} | Comando: {Comando} | " +
+                    "Stato: {Stato} | Spia: {Colore} | Batteria: {Batteria}%",
+                    mezzo.Matricola, TipoComandoIoT.CambiaColoreSpia,
+                    mezzo.Stato, coloreSpia, mezzo.LivelloBatteria ?? 0
+                );
+            }
+            catch (Exception hueEx)
+            {
+                _logger.LogWarning(hueEx, "Impossibile controllare Philips Hue per mezzo {Matricola}", mezzo.Matricola);
+            }
+
+            //payload MQTT
+            //await _mqttIoTService.PublishAsync($"Parking/{mezzo.IdParcheggioCorrente}/Mezzi/{mezzo.Matricola}", new
+            //{
+            //    idMezzo = mezzo.Id,
+            //    matricola = mezzo.Matricola,
+            //    comando = TipoComandoIoT.CambiaColoreSpia.ToString(),
+            //    nuovoStato = mezzo.Stato.ToString(),
+            //    coloreSpia = coloreSpia.ToString(),
+            //    parcheggio = mezzo.ParcheggioCorrente?.Nome,
+            //    livelloBatteria = mezzo.LivelloBatteria,
+            //    timestamp = DateTime.Now,
+            //    source = "API"
+            //});
+
+            // NOTA: NON pubblichiamo su MQTT perché il topic Parking/{id}/Mezzi/{matricola}
+            // è riservato alla TELEMETRIA dal Gateway. Il MqttIoTBackgroundService si sottoscrive
+            // a questo topic per aggiornare il DB basandosi sui messaggi del Gateway.
+            // Pubblicare qui causerebbe una doppia scrittura (race condition).
+            
+            _logger.LogInformation("Stato mezzo {Matricola} aggiornato manualmente da Admin (no MQTT - solo DB)", mezzo.Matricola);
 
             return Ok(new SuccessResponse
             {
@@ -232,14 +270,27 @@ namespace Mobishare.API.Controllers
                 Dati = new
                 {
                     nuovoStato = mezzo.Stato.ToString(),
+                    coloreSpia = coloreSpia.ToString(),
                     livelloBatteria = mezzo.LivelloBatteria,
                     parcheggio = mezzo.ParcheggioCorrente?.Nome
                 }
             });
         }
 
+        //Mappatura Stato → Colore LED
+        private static ColoreSpia GetColoreSpiaPerStato(StatoMezzo stato)
+        {
+            return stato switch
+            {
+                StatoMezzo.Disponibile => ColoreSpia.Verde,
+                StatoMezzo.InUso => ColoreSpia.Blu,
+                StatoMezzo.NonPrelevabile => ColoreSpia.Rosso,
+                StatoMezzo.Manutenzione => ColoreSpia.Giallo,
+                _ => ColoreSpia.Spenta
+            };
+        }
 
-        // PUT: api/mezzi/{id}/ricarica
+        //PUT: api/mezzi/{id}/ricarica
         [Authorize(Roles = "Gestore")]
         [HttpPut("{id}/ricarica")]
         public async Task<IActionResult> RicaricaMezzo(int id)
@@ -257,15 +308,37 @@ namespace Mobishare.API.Controllers
 
             await _context.SaveChangesAsync();
 
-            await _mqttIoTService.PublishAsync("mobishare/mezzo/ricarica", new
+            // === PHILIPS HUE: Luce VERDE (mezzo disponibile e ricaricato) ===
+            try
             {
-                idMezzo = mezzo.Id,
-                mezzo.Matricola,
-                livelloBatteria = mezzo.LivelloBatteria,
-                stato = mezzo.Stato.ToString(),
-                timestamp = DateTime.Now,
-                source = "API"
-            });
+                await _philipsHueControl.SetSpiaColor(mezzo.Matricola, ColoreSpia.Verde);
+
+                _logger.LogInformation(
+                    "💡 Philips Hue → Mezzo {Matricola} ricaricato | " +
+                    "Spia: Rosso → VERDE | Batteria: 100% | Stato: Disponibile",
+                    mezzo.Matricola
+                );
+            }
+            catch (Exception hueEx)
+            {
+                _logger.LogWarning(hueEx, "Impossibile controllare Philips Hue per mezzo {Matricola}", mezzo.Matricola);
+            }
+
+            //await _mqttIoTService.PublishAsync($"Parking/{mezzo.IdParcheggioCorrente}/Mezzi/{mezzo.Matricola}", new
+            //{
+            //    idMezzo = mezzo.Id,
+            //    mezzo.Matricola,
+            //    comando = TipoComandoIoT.CambiaColoreSpia.ToString(),
+            //    coloreSpia = coloreSpia.ToString(),
+            //    livelloBatteria = mezzo.LivelloBatteria,
+            //    stato = mezzo.Stato.ToString(),
+            //    timestamp = DateTime.Now,
+            //    source = "API"
+            //});
+
+            // NOTA: NON pubblichiamo su MQTT - il topic telemetria è gestito dal Gateway.
+            // La ricarica è un'operazione manuale dell'admin che aggiorna solo il DB.
+            // Il Gateway sync (ogni 20s) allineerà automaticamente lo stato.
 
             return Ok(new SuccessResponse
             {
@@ -275,13 +348,14 @@ namespace Mobishare.API.Controllers
                     mezzo.Id,
                     mezzo.Matricola,
                     mezzo.LivelloBatteria,
-                    nuovoStato = mezzo.Stato.ToString()
+                    nuovoStato = mezzo.Stato.ToString(),
+                    coloreSpia = ColoreSpia.Verde.ToString()
                 }
             });
         }
 
 
-        // PUT: api/mezzi/matricola/{matricola}/segnala-guasto
+        //PUT: api/mezzi/matricola/{matricola}/segnala-guasto
         [Authorize]
         [HttpPut("matricola/{matricola}/segnala-guasto")]
         public async Task<IActionResult> SegnalaGuastoByMatricola(string matricola)
@@ -311,18 +385,40 @@ namespace Mobishare.API.Controllers
             mezzo.MotivoNonPrelevabile = Core.Enums.MotivoNonPrelevabile.GuastoSegnalato; 
             await _context.SaveChangesAsync();
 
+            // === PHILIPS HUE: Luce ROSSA (mezzo guasto) ===
+            try
+            {
+                await _philipsHueControl.SetSpiaColor(mezzo.Matricola, ColoreSpia.Rosso);
+
+                _logger.LogWarning(
+                    "💡 Philips Hue → Mezzo {Matricola} | Comando: {Comando} | " +
+                    "Spia: ROSSO 🔴 | Motivo: Guasto segnalato da utente",
+                    mezzo.Matricola, TipoComandoIoT.CambiaColoreSpia
+                );
+            }
+            catch (Exception hueEx)
+            {
+                _logger.LogWarning(hueEx, "Impossibile controllare Philips Hue per mezzo {Matricola}", mezzo.Matricola);
+            }
+
             _logger.LogWarning("Segnalato guasto per mezzo {Matricola}", mezzo.Matricola);
 
             // Pubblica aggiornamento su MQTT 
-            await _mqttIoTService.PublishAsync("mobishare/mezzo/stato", new
-            {
-                idMezzo = mezzo.Id,
-                matricola = mezzo.Matricola,
-                stato = mezzo.Stato.ToString(),
-                motivo = "Guasto segnalato dall’utente",
-                timestamp = DateTime.Now,
-                source = "API"
-            });
+            //await _mqttIoTService.PublishAsync($"Parking/{mezzo.IdParcheggioCorrente}/Mezzi/{mezzo.Matricola}", new
+            //{
+            //    idMezzo = mezzo.Id,
+            //    matricola = mezzo.Matricola,
+            //    comando = TipoComandoIoT.CambiaColoreSpia.ToString(),
+            //    coloreSpia = coloreSpia.ToString(),
+            //    stato = mezzo.Stato.ToString(),
+            //    motivo = "Guasto segnalato dall’utente",
+            //    timestamp = DateTime.Now,
+            //    source = "API"
+            //});
+
+            // NOTA: NON pubblichiamo su MQTT - il topic telemetria è gestito dal Gateway.
+            // La segnalazione guasto è un'operazione che aggiorna solo il DB.
+            // Il Gateway sync (ogni 20s) allineerà automaticamente lo stato.
 
             //Notifica SignalR Admin
             try
@@ -333,10 +429,14 @@ namespace Mobishare.API.Controllers
                 {
                     var utente = await _context.Utenti.FindAsync(userId);
 
+                    //NOTIFICA ALL'ADMIN!
                     await _hubContext.Clients.Group("admin")
-                        .SendAsync("RiceviNotificaAdmin",
-                            "Mezzo Guasto Segnalato",
-                            $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) è stato segnalato guasto dall'utente {utente?.Nome} {utente?.Cognome} (ID: {userId}).");
+                        .SendAsync("SegnalazioneGuasto", new
+                        {
+                            Matricola = mezzo.Matricola,
+                            Tipo = mezzo.Tipo.ToString(),
+                            Dettagli = "Segnalato dall’utente"
+                        });
 
                     _logger.LogInformation("Notifica guasto inviata agli admin per mezzo {Matricola} da utente {UserId}", mezzo.Matricola, userId);
                 }
@@ -344,9 +444,11 @@ namespace Mobishare.API.Controllers
                 {
                     // Notifica senza info utente
                     await _hubContext.Clients.Group("admin")
-                        .SendAsync("RiceviNotificaAdmin",
-                            "Mezzo Guasto Segnalato",
-                            $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) è stato segnalato come guasto.");
+                        .SendAsync("NotificaAdmin", new
+                        {
+                            Titolo = "Mezzo Guasto Segnalato",
+                            Testo = $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) è stato segnalato come guasto."
+                        });
                 }
             }
             catch (Exception ex)
@@ -473,6 +575,29 @@ namespace Mobishare.API.Controllers
             // Salva modifiche
             await _context.SaveChangesAsync();
 
+            // === PHILIPS HUE: Cambia colore solo se stato è cambiato ===
+            if (vecchioStato != mezzo.Stato)
+            {
+                var coloreSpia = GetColoreSpiaPerStato(mezzo.Stato);
+
+                try
+                {
+                    await _philipsHueControl.SetSpiaColor(mezzo.Matricola, coloreSpia);
+
+                    _logger.LogWarning(
+                        "💡 Philips Hue → Mezzo {Matricola} | Spia: {StatoVecchio} → {Colore} | " +
+                        "Batteria: {Batteria}% | Motivo: {Motivo}",
+                        mezzo.Matricola, vecchioStato, coloreSpia,
+                        mezzo.LivelloBatteria,
+                        mezzo.LivelloBatteria < 20 ? "Batteria scarica" : "Stato cambiato"
+                    );
+                }
+                catch (Exception hueEx)
+                {
+                    _logger.LogWarning(hueEx, "Impossibile controllare Philips Hue per mezzo {Matricola}", mezzo.Matricola);
+                }
+            }
+
             //PUBLISH
             //Pubblica solo se c'è un cambiamento significativo
             var diff = Math.Abs((vecchioLivello ?? 0) - (mezzo.LivelloBatteria ?? 0));
@@ -482,6 +607,8 @@ namespace Mobishare.API.Controllers
                 {
                     idMezzo = mezzo.Id,
                     matricola = mezzo.Matricola,
+                    comando = vecchioStato != mezzo.Stato ? TipoComandoIoT.CambiaColoreSpia.ToString() : null,
+                    coloreSpia = GetColoreSpiaPerStato(mezzo.Stato).ToString(),
                     livelloBatteria = mezzo.LivelloBatteria,
                     stato = mezzo.Stato.ToString(),
                     cambiamento = new
@@ -509,7 +636,8 @@ namespace Mobishare.API.Controllers
                     {
                         precedente = vecchioStato.ToString(),
                         attuale = mezzo.Stato.ToString(),
-                        cambiato = vecchioStato != mezzo.Stato
+                        cambiato = vecchioStato != mezzo.Stato,
+                        coloreSpia = GetColoreSpiaPerStato(mezzo.Stato).ToString()
                     }
                 }
             });
@@ -602,6 +730,71 @@ namespace Mobishare.API.Controllers
                 }
             });
         }
+
+
+        // DELETE: api/mezzi/matricola/{matricola} -> elimina mezzo 
+        [Authorize(Roles = "Gestore")]
+        [HttpDelete("matricola/{matricola}")]
+        public async Task<IActionResult> DeleteMezzoByMatricola(string matricola)
+        {
+            var mezzo = await _context.Mezzi
+                .FirstOrDefaultAsync(m => m.Matricola == matricola)
+                ?? throw new ElementoNonTrovatoException("Mezzo", matricola);
+
+            //Blocca se il mezzo è in uso
+            if (mezzo.Stato == StatoMezzo.InUso)
+                throw new OperazioneNonConsentitaException(
+                    "Impossibile eliminare un mezzo attualmente in uso");
+
+            //Verifica corse attive (non ancora terminate)
+            var haCorseAttive = await _context.Corse
+                .AnyAsync(c => c.MatricolaMezzo == matricola && c.DataOraFine == null);
+
+            if (haCorseAttive)
+                throw new OperazioneNonConsentitaException(
+                    "Impossibile eliminare: il mezzo ha corse non terminate");
+
+            //conta storico corse
+            var numeroCorseStoriche = await _context.Corse
+                .CountAsync(c => c.MatricolaMezzo == matricola && c.DataOraFine != null);
+
+            if (numeroCorseStoriche > 0)
+            {
+                //Blocco operazione
+                throw new OperazioneNonConsentitaException(
+                    $"Impossibile eliminare: il mezzo ha {numeroCorseStoriche} corse nello storico. " +
+                    "L'eliminazione comprometterebbe l'integrità dei dati storici.");
+
+                //_logger.LogWarning(
+                //    "Eliminazione mezzo {Matricola} con {NumCorseStoriche} corse nello storico",
+                //    mezzo.Matricola, numeroCorseStoriche);
+
+            }
+
+            _context.Mezzi.Remove(mezzo);
+            await _context.SaveChangesAsync();
+
+            _logger.LogWarning("Mezzo {Matricola} (ID {Id}) eliminato dal sistema",
+                mezzo.Matricola, mezzo.Id);
+
+            //Notifica SignalR
+            await _hubContext.Clients.Group("admin")
+                .SendAsync("NotificaAdmin", "Mezzo Eliminato",
+                    $"Il mezzo {mezzo.Matricola} ({mezzo.Tipo}) è stato rimosso dalla flotta");
+
+            return Ok(new SuccessResponse
+            {
+                Messaggio = $"Mezzo {matricola} eliminato con successo",
+                Dati = new
+                {
+                    id = mezzo.Id,
+                    matricola = mezzo.Matricola,
+                    tipo = mezzo.Tipo.ToString(),
+                    corseStoriche = numeroCorseStoriche
+                }
+            });
+        }
+
 
         //Metodo helper per logica batteria 
         private static void ApplicaRegoleBatteria(Mezzo mezzo)

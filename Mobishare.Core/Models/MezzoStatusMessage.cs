@@ -21,7 +21,7 @@ namespace Mobishare.Core.Models
         /// <summary>
         /// Livello batteria (0-100%)
         /// </summary>
-        public int LivelloBatteria { get; set; }
+        public int? LivelloBatteria { get; set; }
 
         /// <summary>
         /// Stato operativo corrente del mezzo

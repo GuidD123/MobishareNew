@@ -19,6 +19,7 @@ public class IndexModel : PageModel
     public string NomeUtente { get; set; } = string.Empty;
     public decimal Credito { get; set; }
     public bool Sospeso { get; set; }
+    public int PuntiBonus { get; set; }
 
     // Statistiche
     public int TotaleCorseCompletate { get; set; }
@@ -63,6 +64,9 @@ public class IndexModel : PageModel
             Sospeso = sospesoSession;
         }
 
+        var profilo = await _apiService.GetProfiloUtenteAsync();
+        if (profilo != null)
+            PuntiBonus = profilo.PuntiBonus;
         try
         {
             // Carica dati utente aggiornati dall'API
@@ -74,11 +78,13 @@ public class IndexModel : PageModel
                 NomeUtente = utente.Nome;
                 Credito = utente.Credito;
                 Sospeso = utente.Sospeso;
-
+                PuntiBonus = utente.PuntiBonus;
+              
                 // Aggiorna session con dati freschi
                 HttpContext.Session.SetString("UserName", utente.Nome);
                 HttpContext.Session.SetString("Credito", utente.Credito.ToString("F2"));
                 HttpContext.Session.SetString("Sospeso", utente.Sospeso.ToString());
+                HttpContext.Session.SetInt32("PuntiBonus", utente.PuntiBonus);
 
                 _logger.LogInformation("Dati utente caricati: Nome={Nome}, Credito={Credito}, Sospeso={Sospeso}",
                     utente.Nome, utente.Credito, utente.Sospeso);

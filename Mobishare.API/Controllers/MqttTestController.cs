@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿/*using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Mobishare.API.DTO;
 using Mobishare.Infrastructure.IoT.Interfaces;
@@ -138,4 +138,4 @@ namespace Mobishare.API.Controllers
             });
         }
     }
-}
+}*/

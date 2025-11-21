@@ -1,6 +1,6 @@
 ﻿
 
-namespace Mobishare.API.DTO
+/*namespace Mobishare.API.DTO
 {
     /// <summary>
     /// Risposta generica per operazioni MQTT
@@ -28,3 +28,4 @@ namespace Mobishare.API.DTO
         public Dictionary<string, object>? Data { get; set; }
     }
 }
+*/

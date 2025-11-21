@@ -67,7 +67,6 @@ public class MobishareApiService : IMobishareApiService
         }
     }
 
-
     #region AUTENTICAZIONE
     public async Task<LoginResponseDTO?> LoginAsync(string email, string password)
     {
@@ -237,6 +236,28 @@ public class MobishareApiService : IMobishareApiService
             return false;
         }
     }
+
+    public async Task<ProfiloResponseDTO?> GetProfiloUtenteAsync()
+    {
+        try
+        {
+            AddAuthorizationHeader();
+            var response = await _http.GetAsync("api/utenti/profilo");
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var wrapper = await response.Content
+                .ReadFromJsonAsync<ApiSuccessResponse<ProfiloResponseDTO>>(_jsonOptions);
+
+            return wrapper?.Dati;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
 
     #endregion
 
@@ -603,7 +624,6 @@ public class MobishareApiService : IMobishareApiService
             return false;
         }
     }
-
     public async Task<bool> RicaricaMezzoAsync(int id)
     {
         try
@@ -623,7 +643,6 @@ public class MobishareApiService : IMobishareApiService
             return false;
         }
     }
-
     public async Task<bool> SegnalaGuastoAsync(string matricola)
     {
         AddAuthorizationHeader();
@@ -633,6 +652,39 @@ public class MobishareApiService : IMobishareApiService
 
         LastError = await response.Content.ReadAsStringAsync();
         return false;
+    }
+    public async Task<bool> EliminaMezzoAsync(string matricola)
+    {
+        try
+        {
+            var response = await _http.DeleteAsync($"/api/mezzi/matricola/{matricola}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                LastError = null;
+                return true;
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            _logger?.LogWarning("EliminaMezzoAsync fallito: {StatusCode} {Content}",
+                response.StatusCode, content);
+
+            // Estrai messaggio di errore dal JSON se possibile
+            LastError = $"Errore eliminazione mezzo ({response.StatusCode})";
+            return false;
+        }
+        catch (HttpRequestException ex)
+        {
+            LastError = "Errore di connessione con il server.";
+            _logger.LogError(ex, "Errore HTTP durante eliminazione mezzo {Matricola}", matricola);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            LastError = "Errore imprevisto durante l'eliminazione.";
+            _logger.LogError(ex, "Errore generico durante eliminazione mezzo {Matricola}", matricola);
+            return false;
+        }
     }
 
     #endregion
@@ -819,6 +871,35 @@ public class MobishareApiService : IMobishareApiService
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Errore durante AggiornaStatoParcheggioAsync (id={Id})", id);
+            LastError = "Errore di connessione o server non raggiungibile.";
+            return false;
+        }
+    }
+
+    public async Task<bool> EliminaParcheggioAsync(int id)
+    {
+        try
+        {
+            AddAuthorizationHeader();
+            var response = await _http.DeleteAsync($"api/parcheggi/{id}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                LastError = null;
+                return true;
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            _logger?.LogWarning("EliminaParcheggioAsync fallito: {StatusCode} {Content}",
+                response.StatusCode, content);
+
+            // Estrai messaggio di errore dal JSON se possibile
+            LastError = $"Errore eliminazione parcheggio ({response.StatusCode})";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Errore durante EliminaParcheggioAsync (id={Id})", id);
             LastError = "Errore di connessione o server non raggiungibile.";
             return false;
         }

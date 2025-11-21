@@ -228,6 +228,13 @@
                                                 @(parcheggio.Attivo ? "Disattiva" : "Attiva")
                                             </button>
                                         </form>
+
+                                        <form method="post" asp-page-handler="Elimina" class="d-inline" onsubmit="return confirm('ATTENZIONE!\n\nSei sicuro di voler eliminare definitivamente il parcheggio @parcheggio.Nome?\n\nQuesta operazione:\n- È IRREVERSIBILE\n- Sarà bloccata se ci sono mezzi presenti\n- Sarà bloccata se è referenziato in corse storiche\n- Rimuoverà permanentemente il parcheggio dal sistema\n\nConfermi l\'eliminazione?');">
+                                            <input type="hidden" name="id" value="@parcheggio.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash"></i> Elimina
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             }

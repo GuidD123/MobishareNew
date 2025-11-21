@@ -1,0 +1,1360 @@
+openapi: 3.0.3
+info:
+  title: Mobishare API
+  description: |
+    API REST per la piattaforma di bike/scooter sharing Mobishare.
+    
+    **Caratteristiche principali:**
+    - Gestione utenti (registrazione, login, autenticazione JWT)
+    - Gestione mezzi (bici muscolari, bici elettriche, monopattini elettrici)
+    - Gestione corse (avvio, terminazione, storico)
+    - Gestione parcheggi (disponibilità, capienza)
+    - Sistema di ricariche e pagamenti
+    - Feedback utenti
+    - Dashboard gestore con statistiche
+    - Integrazione MQTT per comunicazione con dispositivi IoT
+    - Notifiche real-time tramite SignalR
+    
+    **Autenticazione:**
+    La maggior parte degli endpoint richiede autenticazione tramite JWT Bearer token.
+    
+  version: 1.0.0
+  contact:
+    name: Mobishare Team
+    email: support@mobishare.local
+
+servers:
+  - url: https://localhost:7234/api
+    description: Server di sviluppo (HTTPS)
+  - url: http://localhost:5234/api
+    description: Server di sviluppo (HTTP)
+
+tags:
+  - name: Utenti
+    description: Gestione utenti e autenticazione
+  - name: Mezzi
+    description: Gestione mezzi (veicoli condivisi)
+  - name: Corse
+    description: Gestione corse (noleggi)
+  - name: Parcheggi
+    description: Gestione parcheggi
+  - name: Ricariche
+    description: Gestione ricariche credito
+  - name: Pagamenti
+    description: Gestione transazioni finanziarie
+  - name: Feedback
+    description: Gestione feedback utenti
+  - name: Dashboard
+    description: Dashboard gestore con statistiche
+  - name: IoT Emulator
+    description: Controllo emulatore IoT (solo sviluppo)
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ========================================
+  # UTENTI
+  # ========================================
+  /utenti:
+    get:
+      tags: [Utenti]
+      summary: Ottieni lista utenti
+      description: Restituisce la lista di tutti gli utenti (solo per Gestore)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Lista utenti ottenuta con successo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UtenteDTO'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags: [Utenti]
+      summary: Registra nuovo utente
+      description: Crea un nuovo account utente
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrazioneUtenteRequest'
+      responses:
+        '201':
+          description: Utente creato con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UtenteDTO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /utenti/{id}:
+    get:
+      tags: [Utenti]
+      summary: Ottieni dettagli utente
+      description: Restituisce i dettagli di un utente specifico
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Dettagli utente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UtenteDTO'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Utenti]
+      summary: Aggiorna utente
+      description: Aggiorna i dati di un utente (solo Gestore o utente stesso)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AggiornaUtenteRequest'
+      responses:
+        '204':
+          description: Utente aggiornato con successo
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /utenti/login:
+    post:
+      tags: [Utenti]
+      summary: Login utente
+      description: Autentica un utente e restituisce un JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login effettuato con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Credenziali non valide
+
+  /utenti/{id}/riattiva:
+    post:
+      tags: [Utenti]
+      summary: Riattiva utente sospeso
+      description: Riattiva un utente precedentemente sospeso (solo Gestore)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Utente riattivato con successo
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /utenti/sospesi:
+    get:
+      tags: [Utenti]
+      summary: Ottieni utenti sospesi
+      description: Restituisce la lista degli utenti sospesi (solo Gestore)
+      responses:
+        '200':
+          description: Lista utenti sospesi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UtenteDTO'
+
+  # ========================================
+  # MEZZI
+  # ========================================
+  /mezzi:
+    get:
+      tags: [Mezzi]
+      summary: Ottieni lista mezzi
+      description: Restituisce la lista di tutti i mezzi
+      responses:
+        '200':
+          description: Lista mezzi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MezzoResponseDTO'
+
+    post:
+      tags: [Mezzi]
+      summary: Crea nuovo mezzo
+      description: Crea un nuovo mezzo (solo Gestore)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreaMezzoRequest'
+      responses:
+        '201':
+          description: Mezzo creato con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MezzoResponseDTO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /mezzi/disponibili:
+    get:
+      tags: [Mezzi]
+      summary: Ottieni mezzi disponibili
+      description: Restituisce solo i mezzi disponibili per il noleggio
+      responses:
+        '200':
+          description: Lista mezzi disponibili
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MezzoResponseDTO'
+
+  /mezzi/non-prelevabili:
+    get:
+      tags: [Mezzi]
+      summary: Ottieni mezzi non prelevabili
+      description: Restituisce i mezzi in stato non prelevabile (solo Gestore)
+      responses:
+        '200':
+          description: Lista mezzi non prelevabili
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MezzoResponseDTO'
+
+  /mezzi/{id}:
+    get:
+      tags: [Mezzi]
+      summary: Ottieni dettagli mezzo
+      description: Restituisce i dettagli di un mezzo specifico
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Dettagli mezzo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MezzoResponseDTO'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Mezzi]
+      summary: Elimina mezzo
+      description: Elimina un mezzo (solo Gestore)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Mezzo eliminato con successo
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mezzi/matricola/{matricola}:
+    get:
+      tags: [Mezzi]
+      summary: Cerca mezzo per matricola
+      description: Restituisce un mezzo specifico tramite matricola
+      parameters:
+        - name: matricola
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "BE002"
+      responses:
+        '200':
+          description: Mezzo trovato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MezzoResponseDTO'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mezzi/{id}/stato:
+    put:
+      tags: [Mezzi]
+      summary: Aggiorna stato mezzo
+      description: Modifica lo stato di un mezzo (solo Gestore)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AggiornaStatoMezzoRequest'
+      responses:
+        '204':
+          description: Stato aggiornato con successo
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mezzi/{matricola}/segnala-guasto:
+    post:
+      tags: [Mezzi]
+      summary: Segnala guasto mezzo
+      description: Segnala un guasto su un mezzo
+      parameters:
+        - name: matricola
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Guasto segnalato con successo
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mezzi/{id}/ricarica-batteria:
+    post:
+      tags: [Mezzi]
+      summary: Ricarica batteria mezzo
+      description: Ricarica la batteria di un mezzo elettrico (solo Gestore)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                livelloBatteria:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                  example: 100
+      responses:
+        '204':
+          description: Batteria ricaricata con successo
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ========================================
+  # CORSE
+  # ========================================
+  /corse:
+    get:
+      tags: [Corse]
+      summary: Ottieni lista corse
+      description: Restituisce tutte le corse (Gestore) o le proprie corse (Utente)
+      responses:
+        '200':
+          description: Lista corse
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CorsaResponseDTO'
+
+  /corse/inizia:
+    post:
+      tags: [Corse]
+      summary: Avvia nuova corsa
+      description: Inizia una nuova corsa prenotando un mezzo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IniziaCorsa'
+      responses:
+        '201':
+          description: Corsa iniziata con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorsaResponseDTO'
+        '400':
+          description: Errore nell'avvio della corsa (credito insufficiente, mezzo non disponibile, ecc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /corse/attiva:
+    get:
+      tags: [Corse]
+      summary: Ottieni corsa attiva
+      description: Restituisce la corsa attualmente in corso per l'utente autenticato
+      responses:
+        '200':
+          description: Corsa attiva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorsaResponseDTO'
+        '404':
+          description: Nessuna corsa attiva
+
+  /corse/{id}:
+    get:
+      tags: [Corse]
+      summary: Ottieni dettagli corsa
+      description: Restituisce i dettagli di una corsa specifica
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Dettagli corsa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorsaResponseDTO'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /corse/{id}/termina:
+    put:
+      tags: [Corse]
+      summary: Termina corsa
+      description: Termina una corsa attiva e calcola il costo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TerminaCorsaRequest'
+      responses:
+        '200':
+          description: Corsa terminata con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorsaResponseDTO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /corse/utente/{idUtente}:
+    get:
+      tags: [Corse]
+      summary: Ottieni storico corse utente
+      description: Restituisce lo storico delle corse di un utente
+      parameters:
+        - name: idUtente
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Storico corse
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CorsaResponseDTO'
+
+  # ========================================
+  # PARCHEGGI
+  # ========================================
+  /parcheggi:
+    get:
+      tags: [Parcheggi]
+      summary: Ottieni lista parcheggi
+      description: Restituisce la lista di tutti i parcheggi
+      security: []
+      responses:
+        '200':
+          description: Lista parcheggi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParcheggioDTO'
+
+    post:
+      tags: [Parcheggi]
+      summary: Crea nuovo parcheggio
+      description: Crea un nuovo parcheggio (solo Gestore)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreaParcheggioRequest'
+      responses:
+        '201':
+          description: Parcheggio creato con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParcheggioDTO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /parcheggi/{id}:
+    get:
+      tags: [Parcheggi]
+      summary: Ottieni dettagli parcheggio
+      description: Restituisce i dettagli di un parcheggio specifico
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Dettagli parcheggio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParcheggioDTO'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Parcheggi]
+      summary: Elimina parcheggio
+      description: Elimina un parcheggio (solo Gestore)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Parcheggio eliminato con successo
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /parcheggi/{id}/disponibilita:
+    get:
+      tags: [Parcheggi]
+      summary: Ottieni disponibilità parcheggio
+      description: Restituisce il numero di posti disponibili in un parcheggio
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Disponibilità parcheggio
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  idParcheggio:
+                    type: integer
+                  nome:
+                    type: string
+                  postiOccupati:
+                    type: integer
+                  capienza:
+                    type: integer
+                  postiDisponibili:
+                    type: integer
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /parcheggi/{id}/mezzi:
+    get:
+      tags: [Parcheggi]
+      summary: Ottieni mezzi in un parcheggio
+      description: Restituisce tutti i mezzi presenti in un parcheggio
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista mezzi nel parcheggio
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MezzoResponseDTO'
+
+  # ========================================
+  # RICARICHE
+  # ========================================
+  /ricariche:
+    post:
+      tags: [Ricariche]
+      summary: Effettua ricarica credito
+      description: Crea una nuova ricarica di credito per l'utente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreaRicaricaRequest'
+      responses:
+        '201':
+          description: Ricarica creata con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RicaricaDTO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /ricariche/utente/{idUtente}:
+    get:
+      tags: [Ricariche]
+      summary: Ottieni storico ricariche utente
+      description: Restituisce lo storico delle ricariche di un utente
+      parameters:
+        - name: idUtente
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Storico ricariche
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RicaricaDTO'
+
+  /ricariche/{id}/conferma:
+    post:
+      tags: [Ricariche]
+      summary: Conferma ricarica (webhook)
+      description: Endpoint webhook per confermare una ricarica (chiamato dal sistema di pagamento)
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Ricarica confermata con successo
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ========================================
+  # PAGAMENTI
+  # ========================================
+  /pagamenti:
+    get:
+      tags: [Pagamenti]
+      summary: Ottieni lista pagamenti
+      description: Restituisce la lista di tutti i pagamenti (solo Gestore)
+      responses:
+        '200':
+          description: Lista pagamenti
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PagamentoDTO'
+
+  /pagamenti/utente/{idUtente}:
+    get:
+      tags: [Pagamenti]
+      summary: Ottieni pagamenti utente
+      description: Restituisce i pagamenti di un utente specifico
+      parameters:
+        - name: idUtente
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Pagamenti utente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PagamentoDTO'
+
+  # ========================================
+  # FEEDBACK
+  # ========================================
+  /feedback:
+    post:
+      tags: [Feedback]
+      summary: Invia feedback
+      description: Invia un feedback sul servizio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreaFeedbackRequest'
+      responses:
+        '201':
+          description: Feedback creato con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackDTO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /feedback/utente/{idUtente}:
+    get:
+      tags: [Feedback]
+      summary: Ottieni feedback utente
+      description: Restituisce i feedback inviati da un utente
+      parameters:
+        - name: idUtente
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Feedback utente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeedbackDTO'
+
+  /feedback/recenti:
+    get:
+      tags: [Feedback]
+      summary: Ottieni feedback recenti
+      description: Restituisce i feedback più recenti (solo Gestore)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Feedback recenti
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeedbackDTO'
+
+  /feedback/negativi:
+    get:
+      tags: [Feedback]
+      summary: Ottieni feedback negativi
+      description: Restituisce i feedback con voto basso (solo Gestore)
+      responses:
+        '200':
+          description: Feedback negativi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeedbackDTO'
+
+  # ========================================
+  # DASHBOARD
+  # ========================================
+  /dashboard/stats:
+    get:
+      tags: [Dashboard]
+      summary: Ottieni statistiche generali
+      description: Restituisce statistiche aggregate per la dashboard gestore
+      responses:
+        '200':
+          description: Statistiche dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStatsDTO'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # ========================================
+    # DTOs - UTENTI
+    # ========================================
+    UtenteDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: "Mario"
+        cognome:
+          type: string
+          example: "Rossi"
+        email:
+          type: string
+          format: email
+          example: "mario.rossi@example.com"
+        ruolo:
+          type: string
+          enum: [Utente, Gestore]
+          example: "Utente"
+        credito:
+          type: number
+          format: decimal
+          example: 25.50
+        debitoResiduo:
+          type: number
+          format: decimal
+          example: 0.00
+        sospeso:
+          type: boolean
+          example: false
+        puntiBonus:
+          type: integer
+          example: 3
+
+    RegistrazioneUtenteRequest:
+      type: object
+      required: [nome, cognome, email, password]
+      properties:
+        nome:
+          type: string
+          example: "Mario"
+        cognome:
+          type: string
+          example: "Rossi"
+        email:
+          type: string
+          format: email
+          example: "mario.rossi@example.com"
+        password:
+          type: string
+          format: password
+          minLength: 6
+          example: "password123"
+
+    AggiornaUtenteRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+        cognome:
+          type: string
+        email:
+          type: string
+          format: email
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "mario.rossi@example.com"
+        password:
+          type: string
+          format: password
+          example: "password123"
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        utente:
+          $ref: '#/components/schemas/UtenteDTO'
+
+    # ========================================
+    # DTOs - MEZZI
+    # ========================================
+    MezzoResponseDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5
+        matricola:
+          type: string
+          example: "BE002"
+        tipo:
+          type: string
+          enum: [BiciMuscolare, BiciElettrica, MonopattinoElettrico]
+          example: "BiciElettrica"
+        stato:
+          type: string
+          enum: [Disponibile, InUso, NonPrelevabile, Manutenzione]
+          example: "Disponibile"
+        livelloBatteria:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 100
+          example: 85
+        idParcheggioCorrente:
+          type: integer
+          nullable: true
+          example: 1
+        nomeParcheggio:
+          type: string
+          nullable: true
+          example: "Parcheggio Centro"
+        motivoNonPrelevabile:
+          type: string
+          nullable: true
+          enum: [Nessuno, Guasto, BatteriaScarica, Manutenzione]
+          example: "Nessuno"
+
+    CreaMezzoRequest:
+      type: object
+      required: [matricola, tipo, idParcheggioCorrente]
+      properties:
+        matricola:
+          type: string
+          example: "BE010"
+        tipo:
+          type: string
+          enum: [BiciMuscolare, BiciElettrica, MonopattinoElettrico]
+          example: "BiciElettrica"
+        idParcheggioCorrente:
+          type: integer
+          example: 1
+        livelloBatteria:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 100
+
+    AggiornaStatoMezzoRequest:
+      type: object
+      required: [stato]
+      properties:
+        stato:
+          type: string
+          enum: [Disponibile, NonPrelevabile, Manutenzione]
+        motivoNonPrelevabile:
+          type: string
+          enum: [Nessuno, Guasto, BatteriaScarica, Manutenzione]
+
+    # ========================================
+    # DTOs - CORSE
+    # ========================================
+    CorsaResponseDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        idUtente:
+          type: integer
+          example: 3
+        nomeUtente:
+          type: string
+          example: "Mario Rossi"
+        matricolaMezzo:
+          type: string
+          example: "BE002"
+        tipoMezzo:
+          type: string
+          example: "BiciElettrica"
+        stato:
+          type: string
+          enum: [InCorso, Completata, Annullata]
+          example: "Completata"
+        idParcheggioPrelievo:
+          type: integer
+          example: 1
+        nomeParcheggioPrelievo:
+          type: string
+          example: "Parcheggio Centro"
+        idParcheggioRilascio:
+          type: integer
+          nullable: true
+          example: 2
+        nomeParcheggioRilascio:
+          type: string
+          nullable: true
+          example: "Parcheggio Nord"
+        dataOraInizio:
+          type: string
+          format: date-time
+          example: "2025-11-21T10:30:00Z"
+        dataOraFine:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-11-21T11:45:00Z"
+        durataMinuti:
+          type: integer
+          nullable: true
+          example: 75
+        costoFinale:
+          type: number
+          format: decimal
+          nullable: true
+          example: 9.50
+        segnalazioneProblema:
+          type: boolean
+          example: false
+
+    IniziaCorsa:
+      type: object
+      required: [matricolaMezzo, idParcheggioPrelievo]
+      properties:
+        matricolaMezzo:
+          type: string
+          example: "BE002"
+        idParcheggioPrelievo:
+          type: integer
+          example: 1
+
+    TerminaCorsaRequest:
+      type: object
+      required: [idParcheggioRilascio]
+      properties:
+        idParcheggioRilascio:
+          type: integer
+          example: 2
+        segnalazioneProblema:
+          type: boolean
+          default: false
+
+    # ========================================
+    # DTOs - PARCHEGGI
+    # ========================================
+    ParcheggioDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: "Parcheggio Centro"
+        zona:
+          type: string
+          example: "Centro Storico"
+        indirizzo:
+          type: string
+          nullable: true
+          example: "Via Roma, 15"
+        capienza:
+          type: integer
+          example: 10
+        attivo:
+          type: boolean
+          example: true
+
+    CreaParcheggioRequest:
+      type: object
+      required: [nome, zona, capienza]
+      properties:
+        nome:
+          type: string
+          example: "Parcheggio Stazione"
+        zona:
+          type: string
+          example: "Zona Stazione"
+        indirizzo:
+          type: string
+          example: "Piazza Garibaldi, 1"
+        capienza:
+          type: integer
+          minimum: 1
+          example: 15
+
+    # ========================================
+    # DTOs - RICARICHE
+    # ========================================
+    RicaricaDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12
+        idUtente:
+          type: integer
+          example: 3
+        importo:
+          type: number
+          format: decimal
+          example: 20.00
+        data:
+          type: string
+          format: date-time
+          example: "2025-11-20T15:30:00Z"
+        stato:
+          type: string
+          enum: [InAttesa, Completata, Fallita]
+          example: "Completata"
+        metodoPagamento:
+          type: string
+          example: "CartaCredito"
+
+    CreaRicaricaRequest:
+      type: object
+      required: [importo, metodoPagamento]
+      properties:
+        importo:
+          type: number
+          format: decimal
+          minimum: 5.00
+          example: 20.00
+        metodoPagamento:
+          type: string
+          example: "CartaCredito"
+
+    # ========================================
+    # DTOs - PAGAMENTI
+    # ========================================
+    PagamentoDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 87
+        idUtente:
+          type: integer
+          example: 3
+        idCorsa:
+          type: integer
+          nullable: true
+          example: 42
+        importo:
+          type: number
+          format: decimal
+          example: 9.50
+        tipo:
+          type: string
+          enum: [Credito, Debito]
+          example: "Debito"
+        data:
+          type: string
+          format: date-time
+          example: "2025-11-21T11:45:00Z"
+        stato:
+          type: string
+          enum: [InAttesa, Completato, Fallito]
+          example: "Completato"
+
+    # ========================================
+    # DTOs - FEEDBACK
+    # ========================================
+    FeedbackDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 25
+        idUtente:
+          type: integer
+          example: 3
+        nomeUtente:
+          type: string
+          example: "Mario Rossi"
+        voto:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 4
+        commento:
+          type: string
+          nullable: true
+          example: "Ottimo servizio, bici in buone condizioni!"
+        data:
+          type: string
+          format: date-time
+          example: "2025-11-21T12:00:00Z"
+
+    CreaFeedbackRequest:
+      type: object
+      required: [voto]
+      properties:
+        voto:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        commento:
+          type: string
+          maxLength: 500
+          example: "Servizio eccellente!"
+
+    # ========================================
+    # DTOs - DASHBOARD
+    # ========================================
+    DashboardStatsDTO:
+      type: object
+      properties:
+        totaleUtenti:
+          type: integer
+          example: 150
+        utentiAttivi:
+          type: integer
+          example: 142
+        utentiSospesi:
+          type: integer
+          example: 8
+        totaleMezzi:
+          type: integer
+          example: 18
+        mezziDisponibili:
+          type: integer
+          example: 12
+        mezziInUso:
+          type: integer
+          example: 5
+        mezziManutenzione:
+          type: integer
+          example: 1
+        corseAttive:
+          type: integer
+          example: 5
+        corseOggi:
+          type: integer
+          example: 32
+        corseTotali:
+          type: integer
+          example: 487
+        creditoTotale:
+          type: number
+          format: decimal
+          example: 3250.75
+        feedbackMedio:
+          type: number
+          format: float
+          example: 4.2
+
+    # ========================================
+    # ERROR RESPONSES
+    # ========================================
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Errore durante l'operazione"
+        details:
+          type: string
+          nullable: true
+          example: "Credito insufficiente per avviare la corsa"
+
+  responses:
+    BadRequest:
+      description: Richiesta non valida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Non autenticato - Token JWT mancante o non valido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Forbidden:
+      description: Non autorizzato - Permessi insufficienti
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Risorsa non trovata
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

@@ -1,27 +1,42 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Mobishare.Core.Data;
 using Mobishare.Core.DTOs;
 using Mobishare.Core.Enums;
+using Mobishare.Core.Exceptions;
 using Mobishare.Core.Models;
+using Mobishare.Infrastructure.SignalRHubs;
+using System.Security.Claims;
 
 namespace Mobishare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class FeedbackController(MobishareDbContext context) : ControllerBase
+    public class FeedbackController(MobishareDbContext context, IHubContext<NotificheHub> hubContext) : ControllerBase
     {
         private readonly MobishareDbContext _context = context;
+        private readonly IHubContext<NotificheHub> _hubContext = hubContext;
 
         // POST: api/feedback
+        [Authorize(Roles = "Utente")]
         [HttpPost]
         public async Task<IActionResult> PostFeedback([FromBody] FeedbackCreateDTO dto)
         {
-            var utente = await _context.Utenti.FindAsync(dto.IdUtente);
-            var corsa = await _context.Corse.FindAsync(dto.IdCorsa);
+            // Estrai ID utente dal token JWT
+            var utente = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new OperazioneNonConsentitaException("Utente non autenticato"));
 
-            if (utente == null || corsa == null)
-                return NotFound("Utente o corsa non trovati");
+            if (dto.IdUtente != utente)
+                throw new OperazioneNonConsentitaException("Puoi lasciare feedback solo per le tue corse");
+
+            var corsa = await _context.Corse.FindAsync(dto.IdCorsa)
+                ?? throw new ElementoNonTrovatoException("Corsa", dto.IdCorsa);
+
+            // Verifica che la corsa appartenga all'utente
+            if (corsa.IdUtente != utente)
+                throw new OperazioneNonConsentitaException("Questa corsa non ti appartiene");
 
             if (!corsa.DataOraFine.HasValue)
                 return BadRequest("Non puoi lasciare un feedback su una corsa non ancora terminata");
@@ -46,6 +61,19 @@ namespace Mobishare.API.Controllers
             _context.Feedbacks.Add(feedback);
             await _context.SaveChangesAsync();
 
+            if (feedback.Valutazione == ValutazioneFeedback.Pessimo || feedback.Valutazione == ValutazioneFeedback.Scarso)
+            {
+                var u = await _context.Utenti.FindAsync(utente)
+                    ?? throw new ElementoNonTrovatoException("Utente", utente);
+
+                await _hubContext.Clients.Group("admin")
+                    .SendAsync("NotificaAdmin", new
+                    {
+                        Titolo = "Feedback negativo",
+                        Testo = $"Corsa {feedback.IdCorsa}: valutazione {feedback.Valutazione} da {u.Nome} {u.Cognome} (ID {u.Id})."
+                    });
+            }
+
             return Ok(new SuccessResponse
             {
                 Messaggio = "Feedback ricevuto, grazie!",
@@ -54,9 +82,16 @@ namespace Mobishare.API.Controllers
         }
 
         // GET: api/feedback/utente/idutente
+        [Authorize]
         [HttpGet("utente/{idUtente}")]
         public async Task<IActionResult> GetFeedbackPerUtente(int idUtente)
         {
+            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            var isGestore = User.IsInRole("Gestore");
+
+            if (!isGestore && currentUserId != idUtente)
+                throw new OperazioneNonConsentitaException("Non puoi vedere i feedback di altri utenti");
+
             var feedbackEntities = await _context.Feedbacks
                 .Where(f => f.IdUtente == idUtente)
                 .Include(f => f.Utente)
@@ -86,6 +121,7 @@ namespace Mobishare.API.Controllers
         }
 
         // GET: api/feedback/recenti
+        [Authorize(Roles = "Gestore")]
         [HttpGet("recenti")]
         public async Task<IActionResult> GetFeedbackRecenti()
         {
@@ -119,6 +155,7 @@ namespace Mobishare.API.Controllers
         }
 
         // GET: api/feedback/negativi
+        [Authorize(Roles = "Gestore")]
         [HttpGet("negativi")]
         public async Task<IActionResult> GetFeedbackNegativi()
         {
@@ -157,6 +194,7 @@ namespace Mobishare.API.Controllers
         }
 
         // GET: api/feedback/statistiche
+        [Authorize(Roles = "Gestore")]
         [HttpGet("statistiche")]
         public async Task<IActionResult> GetStatisticheFeedback()
         {
@@ -192,7 +230,7 @@ namespace Mobishare.API.Controllers
             });
         }
 
-        private static string GetDescrizioneMedia(double media)
+        /*private static string GetDescrizioneMedia(double media)
         {
             return media switch
             {
@@ -202,6 +240,6 @@ namespace Mobishare.API.Controllers
                 >= 1.5 => "Scarso",
                 _ => "Pessimo"
             };
-        }
+        }*/
     }
 }

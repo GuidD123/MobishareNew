@@ -373,6 +373,65 @@ public class GestioneMezziModel : PageModel
         return RedirectToPage();
     }
 
+    public async Task<IActionResult> OnPostEliminaAsync(int id)
+    {
+        var userId = HttpContext.Session.GetInt32("UserId");
+        var userRole = HttpContext.Session.GetString("UserRole");
+
+        if (userId == null)
+            return RedirectToPage("/Account/Login");
+
+        if (!userRole?.Equals("Gestore", StringComparison.OrdinalIgnoreCase) ?? true)
+        {
+            TempData["ErrorMessage"] = "Non hai i permessi per eseguire questa operazione.";
+            return RedirectToPage("/DashboardAdmin/Index");
+        }
+
+        try
+        {
+            // Recupera il mezzo per ottenere la matricola (per il messaggio)
+            var mezzo = await _apiService.GetMezzoAsync(id);
+            if (mezzo == null)
+            {
+                TempData["ErrorMessage"] = "Mezzo non trovato.";
+                return RedirectToPage();
+            }
+
+            // Verifica che non sia in uso
+            if (mezzo.Stato == "InUso")
+            {
+                TempData["ErrorMessage"] = $"Impossibile eliminare: il mezzo '{mezzo.Matricola}' è attualmente in uso.";
+                return RedirectToPage();
+            }
+
+            // Chiama API per eliminazione
+            var success = await _apiService.EliminaMezzoAsync(mezzo.Matricola);
+
+            if (success)
+            {
+                TempData["SuccessMessage"] = $"Mezzo '{mezzo.Matricola}' eliminato con successo dal sistema.";
+                _logger.LogWarning("Mezzo {Matricola} (ID {Id}) eliminato dal gestore {UserId}",
+                    mezzo.Matricola, id, userId);
+            }
+            else
+            {
+                // L'errore specifico è già in _apiService.LastError
+                TempData["ErrorMessage"] = _apiService.LastError ??
+                    "Errore durante l'eliminazione del mezzo. Potrebbe avere corse nello storico o essere ancora in uso.";
+
+                _logger.LogWarning("Tentativo fallito di eliminare mezzo {Matricola}: {Errore}",
+                    mezzo.Matricola, _apiService.LastError);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Errore durante l'eliminazione del mezzo {Id}", id);
+            TempData["ErrorMessage"] = $"Errore imprevisto: {ex.Message}";
+        }
+
+        return RedirectToPage();
+    }
+
     private async Task CaricaDatiAsync()
     {
         try

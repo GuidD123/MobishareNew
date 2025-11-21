@@ -1,4 +1,4 @@
-﻿namespace Mobishare.Infrastructure.IoT.Interfaces
+﻿/*namespace Mobishare.Infrastructure.IoT.Interfaces
 {
     /// <summary>
     /// Servizio per la gestione di scenari di test IoT predefiniti.
@@ -39,4 +39,4 @@
         /// </summary>
         string? DettagliScenario { get; }
     }
-}
+}*/

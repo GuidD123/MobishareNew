@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Mobishare.Core.Data;
+using Mobishare.Core.Enums;
 using Mobishare.Infrastructure.IoT.Events;
 using Mobishare.Infrastructure.IoT.Interfaces;
 using Mobishare.Infrastructure.SignalRHubs;
@@ -101,8 +102,39 @@ namespace Mobishare.Infrastructure.IoT.HostedServices
                     return;
                 }
 
-                mezzo.Stato = e.StatusMessage.Stato;
-                mezzo.LivelloBatteria = e.StatusMessage.LivelloBatteria;
+                // Filtra le bici muscolari - non devono avere batteria
+                if (mezzo.Tipo == Core.Enums.TipoMezzo.BiciMuscolare)
+                {
+                    // Aggiorna solo lo stato, NON la batteria
+                    mezzo.Stato = e.StatusMessage.Stato;
+                    mezzo.LivelloBatteria = null; // Forza null per le bici muscolari
+                    _logger.LogDebug("Aggiornamento bici muscolare {Matricola}: solo stato {Stato}",
+                        mezzo.Matricola, mezzo.Stato);
+                }
+                else
+                {
+                    // Mezzi elettrici: aggiorna stato e batteria
+                    // Aggiorna solo se la batteria è cambiata (ottimizzazione)
+                    bool batteriaChanged = mezzo.LivelloBatteria != e.StatusMessage.LivelloBatteria;
+                    bool statoChanged = mezzo.Stato != e.StatusMessage.Stato;
+
+                    if (!batteriaChanged && !statoChanged)
+                    {
+                        _logger.LogDebug("Nessun cambiamento per mezzo {Matricola}, skip update", mezzo.Matricola);
+                        return;
+                    }
+
+                    // Se il DB dice Disponibile ma il gateway dice InUso, ignora
+                    if (mezzo.Stato == StatoMezzo.Disponibile && e.StatusMessage.Stato == StatoMezzo.InUso)
+                    {
+                        _logger.LogWarning("Ignorato status InUso per mezzo {Matricola} - DB dice già Disponibile",
+                            mezzo.Matricola);
+                        return;
+                    }
+
+                    mezzo.Stato = e.StatusMessage.Stato;
+                    mezzo.LivelloBatteria = e.StatusMessage.LivelloBatteria;
+                }
 
                 await db.SaveChangesAsync(ct);
 

@@ -1,4 +1,4 @@
-﻿
+﻿/*
 
 namespace Mobishare.API.DTO
 {
@@ -18,3 +18,4 @@ namespace Mobishare.API.DTO
         public string IdMezzo { get; set; } = string.Empty;
     }
 }
+*/

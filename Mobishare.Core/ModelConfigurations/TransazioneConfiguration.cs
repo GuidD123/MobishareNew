@@ -33,14 +33,25 @@ namespace Mobishare.Core.ModelConfigurations
                    .IsRequired(false);
 
             // Relazione con Utente
-            builder.HasOne<Utente>()
-                   .WithMany()
-                   .HasForeignKey(t => t.IdUtente)
-                   .OnDelete(DeleteBehavior.Restrict);
+            //builder.HasOne<Utente>()
+            //       .WithMany()
+            //       .HasForeignKey(t => t.IdUtente)
+            //       .OnDelete(DeleteBehavior.Restrict);
 
             // Relazione con Corsa (opzionale)
-            builder.HasOne<Corsa>()
-                   .WithMany()
+            //builder.HasOne<Corsa>()
+            //       .WithMany()
+            //       .HasForeignKey(t => t.IdCorsa)
+            //       .OnDelete(DeleteBehavior.Restrict)
+            //       .IsRequired(false);
+
+            builder.HasOne(t => t.Utente)
+                   .WithMany(u => u.Transazioni)
+                    .HasForeignKey(t => t.IdUtente)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(t => t.Corsa)
+                   .WithMany(c => c.Transazioni)
                    .HasForeignKey(t => t.IdCorsa)
                    .OnDelete(DeleteBehavior.Restrict)
                    .IsRequired(false);
@@ -51,6 +62,10 @@ namespace Mobishare.Core.ModelConfigurations
                    .HasForeignKey(t => t.IdRicarica)
                    .OnDelete(DeleteBehavior.Restrict)
                    .IsRequired(false);
+
+            builder.Property(t => t.Tipo)
+                    .HasMaxLength(20)
+                    .IsRequired();
 
             // Indici per performance
             builder.HasIndex(t => t.IdUtente)
@@ -81,7 +96,9 @@ namespace Mobishare.Core.ModelConfigurations
 
             // Business rule constraint: deve avere IdCorsa O IdRicarica (non entrambi, non nessuno)
             builder.ToTable(t => t.HasCheckConstraint("CK_Transazione_TipoTransazione",
-                "(IdCorsa IS NOT NULL AND IdRicarica IS NULL) OR (IdCorsa IS NULL AND IdRicarica IS NOT NULL)"));
+                "(Tipo = 'Corsa' AND IdCorsa IS NOT NULL AND IdRicarica IS NULL) OR " + 
+                "(Tipo = 'Ricarica' AND IdRicarica IS NOT NULL AND IdCorsa IS NULL) OR " + 
+                "(Tipo = 'Bonus' AND IdCorsa IS NULL AND IdRicarica IS NULL)"));
         }
     }
 }

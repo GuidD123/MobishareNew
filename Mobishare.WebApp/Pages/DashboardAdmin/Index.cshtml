@@ -282,138 +282,168 @@
 
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"
-        integrity="sha384-f1MzM6v4w7r3dM2AtFhBvBvq5z2gyqNnAW+u6rA9hAl1gCHwGjUqkCQg+XfB4cmN"
         crossorigin="anonymous"></script>
-
-
     <script>
 
-        const token = sessionStorage.getItem("jwtToken"); 
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl("https://localhost:7001/hub/notifiche", {
-                accessTokenFactory: () => token
-            })
-            .withAutomaticReconnect()
-            .configureLogging(signalR.LogLevel.Information)
-            .build();
+    
 
-        // 2. Evento ricevuto dal server
-        connection.on("AggiornaDashboard", data => {
-            console.log("Dashboard aggiornata in tempo reale:", data);
+document.addEventListener('DOMContentLoaded', function () {
 
-            const totMezzi = data.MezziDisponibili + data.MezziInUso + data.MezziGuasti;
-            const perc = (v) => totMezzi > 0 ? (v / totMezzi * 100) : 0;
+    const checkConnection = setInterval(() => {
 
-            function setProgress(id, value, percSpanId, numSpanId) {
-                const container = document.getElementById(id);
-                if (!container) return;
-                const bar = container.querySelector(".progress-bar");
-                if (!bar) return;
-                const p = perc(value);
-                bar.style.width = p.toFixed(1) + "%";
-                const prog = container.querySelector(".progress");
-                if (prog) prog.setAttribute("aria-valuenow", p.toFixed(1));
-                const percEl = document.getElementById(percSpanId);
-                if (percEl) percEl.textContent = p.toFixed(1);
-                const numEl = document.getElementById(numSpanId);
-                if (numEl) numEl.textContent = value;
-           }
+        if (window.mobishareConnection && window.mobishareConnection.state === 1) {
+            clearInterval(checkConnection);
+            console.log("Dashboard: connessione globale SignalR attiva");
 
-            setProgress("progress-disponibili", data.MezziDisponibili, "perc-disponibili", "num-disponibili");
-            setProgress("progress-inuso",       data.MezziInUso,       "perc-inuso",       "num-inuso");
-            setProgress("progress-guasti",      data.MezziGuasti,      "perc-guasti",      "num-guasti");
+            const connection = window.mobishareConnection;
 
-            const totEl = document.getElementById("tot-mezzi");
-            if (totEl) totEl.textContent = totMezzi;
+            // ============================================
+            //        LISTENER: AGGIORNAMENTO DASHBOARD
+            // ============================================
+            connection.on("AggiornaDashboard", data => {
 
-            const sospesiEl = document.getElementById("utenti-sospesi");
-            if (sospesiEl && typeof data.UtentiSospesi !== "undefined") {
-                sospesiEl.textContent = data.UtentiSospesi;
-                sospesiEl.classList.remove("text-success","text-danger");
-                sospesiEl.classList.add(data.UtentiSospesi > 0 ? "text-danger" : "text-success");
-            }
+                console.log("Dashboard aggiornata:", data);
 
-            const guastiEl = document.getElementById("mezzi-guasti");
-            if (guastiEl) {
-                const precedente = parseInt(guastiEl.textContent || "0");
-                if (data.MezziGuasti > precedente) {
-                    guastiEl.classList.add("bg-danger", "text-white");
-                    setTimeout(() => guastiEl.classList.remove("bg-danger", "text-white"), 2000);
-                    console.log("Nuovo mezzo guasto segnalato");
+               
+                const totMezzi =
+                    data.MezziDisponibili +
+                    data.MezziInUso +
+                    data.MezziGuasti;
+
+                const perc = v => totMezzi > 0 ? (v / totMezzi * 100) : 0;
+
+                function setProgress(id, value, percSpanId, numSpanId) {
+                    const container = document.getElementById(id);
+                    if (!container) return;
+
+                    const bar = container.querySelector(".progress-bar");
+                    if (!bar) return;
+
+                    const p = perc(value);
+
+                    bar.style.width = p.toFixed(1) + "%";
+
+                    const prog = container.querySelector(".progress");
+                    if (prog) prog.setAttribute("aria-valuenow", p.toFixed(1));
+
+                    const percEl = document.getElementById(percSpanId);
+                    if (percEl) percEl.textContent = p.toFixed(1);
+
+                    const numEl = document.getElementById(numSpanId);
+                    if (numEl) numEl.textContent = value;
                 }
-                guastiEl.textContent = data.MezziGuasti;
-            }
 
+                // === Progress bars mezzi ===
+                setProgress("progress-disponibili", data.MezziDisponibili, "perc-disponibili", "num-disponibili");
+                setProgress("progress-inuso", data.MezziInUso, "perc-inuso", "num-inuso");
+                setProgress("progress-guasti", data.MezziGuasti, "perc-guasti", "num-guasti");
 
-            // Mappa chiave → id HTML da aggiornare
-            const mapping = {
-                NumeroCorseTotali: "num-corse-totali",
-                CorseOggi: "corse-oggi",
-                CorseUltimaSettimana: "corse-settimana",
-                MezziDisponibili: "mezzi-disponibili",
-                MezziInUso: "mezzi-inuso",
-                MezziGuasti: "mezzi-guasti",
-                UtentiTotali: "utenti-totali",
-                //UtentiSospesi: "utenti-sospesi"
-            };
+                const totEl = document.getElementById("tot-mezzi");
+                if (totEl) totEl.textContent = totMezzi;
 
-            for (const key in mapping) {
-                const el = document.getElementById(mapping[key]);
-                if (el && typeof data[key] !== "undefined") {
-                    el.textContent = data[key];
-                    el.classList.add("highlight");
-                    setTimeout(() => el.classList.remove("highlight"), 600);
+                const sospesiEl = document.getElementById("utenti-sospesi");
+                if (sospesiEl && typeof data.UtentiSospesi !== "undefined") {
+                    sospesiEl.textContent = data.UtentiSospesi;
+                    sospesiEl.classList.remove("text-success", "text-danger");
+                    sospesiEl.classList.add(data.UtentiSospesi > 0 ? "text-danger" : "text-success");
                 }
-            }
-        });
 
-        // Aggiornamento telemetria singoli mezzi
-        connection.on("AggiornamentoTelemetria", function (data) {
-            console.log("📡 Telemetria aggiornata:", data);
+                // === Highlight numeri dashboard ===
+                const mapping = {
+                    NumeroCorseTotali: "num-corse-totali",
+                    CorseOggi: "corse-oggi",
+                    CorseUltimaSettimana: "corse-settimana",
+                    MezziDisponibili: "mezzi-disponibili",
+                    MezziInUso: "mezzi-inuso",
+                    MezziGuasti: "mezzi-guasti",
+                    UtentiTotali: "utenti-totali"
+                };
 
-            let log = document.getElementById("telemetria-log");
-            if (!log) {
-                // Se non esiste ancora, crealo dinamicamente sotto le statistiche
-                const container = document.querySelector(".container");
-                const card = document.createElement("div");
-                card.className = "card mt-4 shadow-sm";
-                card.innerHTML = `
-                    <div class="card-header bg-primary text-white">
-                        <i class="bi bi-broadcast me-2"></i> Telemetria in tempo reale
-                    </div>
-                    <div class="card-body">
-                        <p id="telemetria-log" class="text-muted mb-0">
-                            In attesa di aggiornamenti dai mezzi...
-                        </p>
-                    </div>
-                `;
-                container.appendChild(card);
-                log = document.getElementById("telemetria-log");
-            }
+                for (const key in mapping) {
+                    const el = document.getElementById(mapping[key]);
+                    if (el && typeof data[key] !== "undefined") {
+                        el.textContent = data[key];
+                        el.classList.add("highlight");
+                        setTimeout(() => el.classList.remove("highlight"), 600);
+                    }
+                }
+            });
+
+
+            // ============================================
+            //              LISTENER: TELEMETRIA
+            // ============================================
+            connection.on("AggiornamentoTelemetria", data => {
+
+                console.log("Telemetria aggiornata:", data);
+
+                
+                const matricola = data.Matricola ?? data.matricola;
+                const stato = data.Stato ?? data.stato;
+                const batteria = data.LivelloBatteria ?? data.livelloBatteria;
+                const time = data.TimeStamp ?? data.timeStamp;
+
+                let log = document.getElementById("telemetria-log");
+
+                if (!log) {
+                    const container = document.querySelector(".container");
+                    const card = document.createElement("div");
+                    card.className = "card mt-4 shadow-sm";
+                    card.innerHTML = `
+                        <div class="card-header bg-primary text-white">
+                            <i class="bi bi-broadcast me-2"></i> Telemetria in tempo reale
+                        </div>
+                        <div class="card-body">
+                            <p id="telemetria-log" class="text-muted mb-0">
+                                In attesa di aggiornamenti...
+                            </p>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                    log = document.getElementById("telemetria-log");
+                }
+
+                const badgeColor =
+                    stato === "InUso" ? "success" :
+                    stato === "Guasto" ? "danger" : "secondary";
 
                 log.innerHTML = `
-                    <strong>Mezzo ${data.matricola}</strong> 
-                    → Stato: <span class="text-${data.stato === 'InUso' ? 'success' : data.stato === 'Guasto' ? 'danger' : 'secondary'}">
-                    ${data.stato}</span>, 
-                    Batteria: <strong>${data.livelloBatteria}%</strong> 
-                    <small class="text-muted ms-2">(${new Date(data.timeStamp).toLocaleTimeString('it-IT')})</small>
+                    <strong>Mezzo ${matricola}</strong>
+                    → Stato:
+                    <span class="text-${badgeColor}">${stato}</span>,
+                    Batteria: <strong>${batteria}%</strong>
+                    <small class="text-muted ms-2">
+                        (${new Date(time).toLocaleTimeString('it-IT')})
+                    </small>
                 `;
-        });
+            });
+
+            console.log("Listener Dashboard registrati");
+        }
+
+    }, 100);
 
 
-        // 3. Gestione connessione
-        connection.start()
-            .then(() => console.log("Connesso a NotificheHub"))
-            .catch(err => console.error("Errore SignalR:", err));
+    // Timeout sicurezza
+    setTimeout(() => {
+        clearInterval(checkConnection);
+        if (!window.mobishareConnection) {
+            console.error("Nessuna connessione globale SignalR rilevata");
+        }
+    }, 5000);
 
-        // 4. (CSS facoltativo per animazione highlight)
-        const style = document.createElement('style');
-        style.innerHTML = `
-            .highlight {
-                background: #fff3cd;
-                transition: background 0.8s ease;
-            }
-        `;
-        document.head.appendChild(style);
-    </script>
+});
+
+// CSS animazione highlight
+const style = document.createElement('style');
+style.innerHTML = `
+    .highlight {
+        background: #fff3cd;
+        transition: background 0.8s ease;
+    }
+`;
+document.head.appendChild(style);
+
+</script>
+
 }

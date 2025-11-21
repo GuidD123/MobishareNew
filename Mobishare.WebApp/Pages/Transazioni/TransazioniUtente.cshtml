@@ -37,7 +37,8 @@
                         <select name="tipoFiltro" class="form-select" onchange="this.form.submit()">
                             <option value="">Tutte</option>
                             <option value="Ricarica" selected="@(Model.TipoFiltro == "Ricarica")">Ricariche</option>
-                            <option value="Pagamento" selected="@(Model.TipoFiltro == "Pagamento")">Pagamenti Corse</option>
+                            <option value="Bonus" selected="@(Model.TipoFiltro == "Bonus")">Bonus</option>
+                            <option value="Corsa" selected="@(Model.TipoFiltro == "Corsa")">Pagamenti Corse</option>
                             <option value="Rimborso" selected="@(Model.TipoFiltro == "Rimborso")">Rimborsi</option>
                         </select>
                     </div>
@@ -51,7 +52,7 @@
                         </select>
                     </div>
                     <div class="col-md-4 d-flex align-items-end">
-                        <a asp-page="/Transazioni/Index" class="btn btn-secondary">
+                        <a asp-page="/Transazioni/TransazioniUtente" class="btn btn-secondary">
                             <i class="bi bi-x-circle"></i> Resetta Filtri
                         </a>
                     </div>
@@ -64,7 +65,7 @@
             <div class="col-md-4">
                 <div class="card text-white bg-success">
                     <div class="card-body">
-                        <h6 class="card-title">Totale Ricariche</h6>
+                        <h6 class="card-title">Totale Ricariche / Punti Bonus</h6>
                         <h3>€ @Model.TotaleRicariche.ToString("F2")</h3>
                     </div>
                 </div>
@@ -120,10 +121,16 @@
                                                 <i class="bi bi-arrow-up-circle"></i> Ricarica
                                             </span>
                                         }
-                                        else if (trans.Tipo == "Pagamento")
+                                         @if (trans.Tipo == "Bonus")
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-arrow-up-circle"></i> Bonus
+                                            </span>
+                                        }
+                                        else if (trans.Tipo == "Corsa")
                                         {
                                             <span class="badge bg-primary">
-                                                <i class="bi bi-arrow-down-circle"></i> Pagamento
+                                                <i class="bi bi-arrow-down-circle"></i> Pagamento Corsa
                                             </span>
                                         }
                                         else if (trans.Tipo == "Rimborso")
@@ -165,7 +172,7 @@
                                     <td>
                                         @if (trans.IdCorsa.HasValue)
                                         {
-                                            <a asp-page="/Corse/Dettaglio" asp-route-id="@trans.IdCorsa" 
+                                            <a asp-page="/Corse/Index" asp-route-id="@trans.IdCorsa" 
                                                class="btn btn-sm btn-outline-primary">
                                                 <i class="bi bi-eye"></i> Corsa
                                             </a>

@@ -98,111 +98,8 @@ namespace Mobishare.API.Controllers
             });
         }
 
-        
-        //crea una nuova transazione il gestore -> rimborsi ecc 
-        // POST: api/pagamenti
-        /*[Authorize(Roles = "Gestore")]
-        [HttpPost]
-        public async Task<ActionResult<SuccessResponse>> PostTransazione([FromBody] TransazioneCreateDTO dto)
-        {
-            if (dto.Importo == 0)
-                throw new ValoreNonValidoException(nameof(dto.Importo), "non può essere zero");
 
-            var utente = await _context.Utenti.FindAsync(dto.IdUtente)
-                ?? throw new ElementoNonTrovatoException("Utente", dto.IdUtente);
-
-            // Crea transazione
-            var transazione = new Transazione
-            {
-                IdUtente = dto.IdUtente,
-                Importo = dto.Importo,
-                Stato = StatoPagamento.Completato, 
-                DataTransazione = DateTime.UtcNow,
-                Tipo = dto.Tipo,
-                IdCorsa = dto.IdCorsa,
-                IdRicarica = dto.IdRicarica
-            };
-
-            _context.Transazioni.Add(transazione);
-
-            //Aggiorna il credito dell'utente
-            utente.Credito += dto.Importo; // Positivo = aggiunge, Negativo = sottrae
-
-            //Gestisci sospensione/riattivazione
-            if (utente.Sospeso && utente.Credito >= 0)
-            {
-                utente.Sospeso = false;
-                _logger.LogInformation("Utente {UserId} riattivato tramite transazione manuale", utente.Id);
-            }
-            else if (!utente.Sospeso && utente.Credito < 0)
-            {
-                utente.Sospeso = true;
-                _logger.LogWarning("Utente {UserId} sospeso tramite transazione manuale", utente.Id);
-            }
-
-
-            await _context.SaveChangesAsync();
-
-
-            //NOTIFICA SIGNALR
-            try
-            {
-                // Notifica utente
-                string evento = transazione.Stato switch
-                {
-                    StatoPagamento.Completato => "PagamentoCompletato",
-                    StatoPagamento.Fallito => "PagamentoFallito",
-                    _ => "PagamentoAggiornato"
-                };
-
-                await _hubContext.Clients.Group($"utenti:{transazione.IdUtente}")
-                    .SendAsync(evento, new
-                    {
-                        TransazioneId = transazione.Id,
-                        Importo = transazione.Importo,
-                        Stato = transazione.Stato.ToString(),
-                        Data = transazione.DataTransazione
-                    });
-
-                // Notifica admin
-                await _hubContext.Clients.Group("admin")
-                    .SendAsync("RiceviNotificaAdmin",
-                        "Nuovo pagamento registrato",
-                        $"Utente {utente.Nome} (ID {utente.Id}) - {transazione.Importo:F2}€ [{transazione.Stato}]");
-
-                _logger.LogInformation("Notifica SignalR inviata per transazione {Id}, utente {UtenteId}, stato {Stato}",
-                    transazione.Id, transazione.IdUtente, transazione.Stato);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Errore durante invio notifica SignalR per transazione {Id}", transazione.Id);
-            }
-
-
-            var responseDto = new TransazioneResponseDTO
-            {
-                Id = transazione.Id,
-                IdUtente = transazione.IdUtente,
-                IdCorsa = transazione.IdCorsa,
-                IdRicarica = transazione.IdRicarica,
-                Importo = transazione.Importo,
-                Stato = transazione.Stato.ToString(),
-                DataTransazione = transazione.DataTransazione,
-                Tipo = transazione.Tipo,
-                NomeUtente = utente.Nome,
-                EmailUtente = utente.Email
-            };
-
-            return CreatedAtAction(nameof(GetTransazioniByUtente), new { idUtente = transazione.IdUtente },
-                new SuccessResponse
-                {
-                    Messaggio = "Transazione registrata con successo",
-                    Dati = responseDto
-                });
-        }*/
-
-
-        //aggiorna stato transazione -> Completato, Fallito ecc..
+        /*//aggiorna stato transazione -> Completato, Fallito ecc..
         //Invia due notifiche SignalR -> all'utente: PagamentoCompletato/PagamentoFallito
         //all'admin: RiceviNotifica
         //Restituisce SuccessResponse coi dettagli aggiornati 
@@ -252,12 +149,6 @@ namespace Mobishare.API.Controllers
                             Stato = nuovoStato.ToString(),
                             Data = transazione.DataTransazione
                         });
-
-                    // Notifica ai gestori
-                    await _hubContext.Clients.Group("admin")
-                        .SendAsync("RiceviNotificaAdmin",
-                            "Aggiornamento pagamento",
-                            $"Transazione {transazione.Id} ({transazione.Importo:F2}€) aggiornata a stato: {nuovoStato}");
                 
 
                 _logger.LogInformation("Transazione {Id} aggiornata da {Old} a {New}", id, statoVecchio, nuovoStato);
@@ -278,6 +169,6 @@ namespace Mobishare.API.Controllers
                     Stato = transazione.Stato.ToString()
                 }
             });
-        }
+        }*/
     }
 }

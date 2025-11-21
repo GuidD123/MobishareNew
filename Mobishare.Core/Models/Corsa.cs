@@ -18,7 +18,10 @@ namespace Mobishare.Core.Models
         public Parcheggio? ParcheggioRilascio { get; set; } // FK verso Parcheggio rilascio (può essere null all'inizio)
         public DateTime? DataOraFine { get; set; }   // Orario fine corsa (può essere null finché non termina)
         public decimal? CostoFinale { get; set; } //addebito va sottratto al credito disponibile -> ottengo saldo utente 
+        public int? PuntiGuadagnati { get; set; } //popolato quando si è alla fine di una corsa con bici muscolare 
+        public int? PuntiUsati { get; set; } //popolato con calcolo (punti tolti) quando utente avvia nuova corsa (con altri mezzi) e usa i punti da scalare al costo finale
         public bool SegnalazioneProblema { get; set; }
+        public List<Transazione> Transazioni { get; set; } = []; 
 
         // Aggiunta per la concorrenza
         [Timestamp]

@@ -1,0 +1,520 @@
+@startuml Mobishare_Class_Diagram
+
+!define ENTITY_COLOR #FFE6CC
+!define CONTROLLER_COLOR #CCE5FF
+!define DTO_COLOR #E6F4EA
+!define SERVICE_COLOR #F4CCCC
+!define ENUM_COLOR #FCE4EC
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+' ========================================
+' PACKAGE: Mobishare.Core.Models (Entità)
+' ========================================
+package "Mobishare.Core.Models" <<Rectangle>> {
+  
+  class Utente <<Entity>> ENTITY_COLOR {
+    - Id: int
+    - Nome: string
+    - Cognome: string
+    - Email: string
+    - Password: string
+    - Ruolo: UserRole
+    - Credito: decimal
+    - DebitoResiduo: decimal
+    - Sospeso: bool
+    - PuntiBonus: int
+    - Corse: ICollection<Corsa>
+    - RicaricheUtente: ICollection<Ricarica>
+  }
+  
+  class Mezzo <<Entity>> ENTITY_COLOR {
+    - Id: int
+    - Matricola: string
+    - Tipo: TipoMezzo
+    - Stato: StatoMezzo
+    - LivelloBatteria: int?
+    - IdParcheggioCorrente: int
+    - MotivoNonPrelevabile: MotivoNonPrelevabile
+    - RowVersion: byte[]
+    - ParcheggioCorrente: Parcheggio
+    - Corse: ICollection<Corsa>
+  }
+  
+  class Parcheggio <<Entity>> ENTITY_COLOR {
+    - Id: int
+    - Nome: string
+    - Zona: string
+    - Indirizzo: string?
+    - Capienza: int
+    - Attivo: bool
+    - Mezzi: ICollection<Mezzo>
+    - CorsePrelievo: ICollection<Corsa>
+    - CorseRilascio: ICollection<Corsa>
+  }
+  
+  class Corsa <<Entity>> ENTITY_COLOR {
+    - Id: int
+    - IdUtente: int
+    - MatricolaMezzo: string
+    - Stato: StatoCorsa
+    - IdParcheggioPrelievo: int
+    - DataOraInizio: DateTime
+    - IdParcheggioRilascio: int?
+    - DataOraFine: DateTime?
+    - CostoFinale: decimal?
+    - SegnalazioneProblema: bool
+    - RowVersion: byte[]
+    - Utente: Utente
+    - Mezzo: Mezzo
+    - ParcheggioPrelievo: Parcheggio
+    - ParcheggioRilascio: Parcheggio?
+  }
+  
+  class Ricarica <<Entity>> ENTITY_COLOR {
+    - Id: int
+    - IdUtente: int
+    - Importo: decimal
+    - Data: DateTime
+    - Stato: StatoRicarica
+    - MetodoPagamento: string
+    - Utente: Utente
+  }
+  
+  class Pagamento <<Entity>> ENTITY_COLOR {
+    - Id: int
+    - IdUtente: int
+    - IdCorsa: int?
+    - Importo: decimal
+    - Tipo: TipoPagamento
+    - Data: DateTime
+    - Stato: StatoPagamento
+    - Utente: Utente
+    - Corsa: Corsa?
+  }
+  
+  class Feedback <<Entity>> ENTITY_COLOR {
+    - Id: int
+    - IdUtente: int
+    - Voto: int
+    - Commento: string?
+    - Data: DateTime
+    - Utente: Utente
+  }
+}
+
+' ========================================
+' PACKAGE: Mobishare.Core.Enums
+' ========================================
+package "Mobishare.Core.Enums" <<Rectangle>> {
+  enum UserRole ENUM_COLOR {
+    Utente
+    Gestore
+  }
+  
+  enum TipoMezzo ENUM_COLOR {
+    BiciMuscolare
+    BiciElettrica
+    MonopattinoElettrico
+  }
+  
+  enum StatoMezzo ENUM_COLOR {
+    Disponibile
+    InUso
+    NonPrelevabile
+    Manutenzione
+  }
+  
+  enum StatoCorsa ENUM_COLOR {
+    InCorso
+    Completata
+    Annullata
+  }
+  
+  enum MotivoNonPrelevabile ENUM_COLOR {
+    Nessuno
+    Guasto
+    BatteriaScarica
+    Manutenzione
+  }
+  
+  enum StatoRicarica ENUM_COLOR {
+    InAttesa
+    Completata
+    Fallita
+  }
+  
+  enum StatoPagamento ENUM_COLOR {
+    InAttesa
+    Completato
+    Fallito
+  }
+  
+  enum TipoPagamento ENUM_COLOR {
+    Credito
+    Debito
+  }
+}
+
+' ========================================
+' PACKAGE: Mobishare.Core.DTOs
+' ========================================
+package "Mobishare.Core.DTOs" <<Rectangle>> {
+  
+  class UtenteDTO <<DTO>> DTO_COLOR {
+    + Id: int
+    + Nome: string
+    + Email: string
+    + Ruolo: string
+    + Credito: decimal
+    + Sospeso: bool
+  }
+  
+  class MezzoResponseDTO <<DTO>> DTO_COLOR {
+    + Id: int
+    + Matricola: string
+    + Tipo: string
+    + Stato: string
+    + LivelloBatteria: int?
+    + IdParcheggioCorrente: int?
+    + NomeParcheggio: string?
+    + MotivoNonPrelevabile: string?
+  }
+  
+  class CorsaResponseDTO <<DTO>> DTO_COLOR {
+    + Id: int
+    + IdUtente: int
+    + MatricolaMezzo: string
+    + TipoMezzo: string
+    + IdParcheggioPrelievo: int?
+    + IdParcheggioRilascio: int?
+    + DataOraInizio: DateTime
+    + DataOraFine: DateTime?
+    + CostoFinale: decimal?
+  }
+  
+  class IniziaCorsa <<DTO>> DTO_COLOR {
+    + MatricolaMezzo: string
+    + IdParcheggioPrelievo: int
+  }
+}
+
+' ========================================
+' PACKAGE: Mobishare.API.Controllers
+' ========================================
+package "Mobishare.API.Controllers" <<Rectangle>> {
+  
+  class UtentiController <<Controller>> CONTROLLER_COLOR {
+    - _context: MobishareDbContext
+    - _logger: ILogger
+    - _jwtSettings: JwtSettings
+    --
+    + PostUtente(dto): ActionResult
+    + Login(dto): ActionResult
+    + GetUtenti(): ActionResult
+    + GetUtente(id): ActionResult
+    + PutUtente(id, dto): ActionResult
+    + RiattivaUtente(id): ActionResult
+  }
+  
+  class MezziController <<Controller>> CONTROLLER_COLOR {
+    - _context: MobishareDbContext
+    - _mqttIoTService: IMqttIoTService
+    - _logger: ILogger
+    --
+    + GetMezzi(): ActionResult
+    + GetMezziDisponibili(): ActionResult
+    + GetMezzo(id): ActionResult
+    + PostMezzo(dto): ActionResult
+    + PutStatoMezzo(id, dto): ActionResult
+    + SegnalaGuasto(matricola): ActionResult
+  }
+  
+  class CorseController <<Controller>> CONTROLLER_COLOR {
+    - _context: MobishareDbContext
+    - _mqttPublisher: IMqttIoTService
+    - _logger: ILogger
+    - _notifiche: IHubContext
+    --
+    + GetCorse(): ActionResult
+    + GetCorsaAttiva(): ActionResult
+    + GetStoricoCorseUtente(id): ActionResult
+    + PostIniziaCorsa(dto): ActionResult
+    + PutTerminaCorsa(id, dto): ActionResult
+  }
+  
+  class ParcheggiController <<Controller>> CONTROLLER_COLOR {
+    - _context: MobishareDbContext
+    --
+    + GetParcheggi(): ActionResult
+    + GetParcheggio(id): ActionResult
+    + GetDisponibilita(id): ActionResult
+    + PostParcheggio(dto): ActionResult
+  }
+  
+  class RicaricheController <<Controller>> CONTROLLER_COLOR {
+    - _context: MobishareDbContext
+    - _logger: ILogger
+    --
+    + GetRicaricheUtente(id): ActionResult
+    + GetSaldoUtente(id): ActionResult
+    + PostRicarica(dto): ActionResult
+    + PostConfermaRicarica(id): ActionResult
+  }
+}
+
+' ========================================
+' PACKAGE: Mobishare.Infrastructure
+' ========================================
+package "Mobishare.Infrastructure" <<Rectangle>> {
+  
+  class MobishareDbContext <<DbContext>> SERVICE_COLOR {
+    + Utenti: DbSet<Utente>
+    + Mezzi: DbSet<Mezzo>
+    + Parcheggi: DbSet<Parcheggio>
+    + Corse: DbSet<Corsa>
+    + Ricariche: DbSet<Ricarica>
+    + Pagamenti: DbSet<Pagamento>
+    + Feedback: DbSet<Feedback>
+    --
+    + OnModelCreating(builder): void
+  }
+  
+  interface IMqttIoTService <<Interface>> {
+    + PublishAsync(topic, payload): Task
+    + SbloccaMezzoAsync(matricola): Task
+    + BloccaMezzoAsync(matricola): Task
+  }
+  
+  class MqttIoTService <<Service>> SERVICE_COLOR {
+    - _mqttClient: IMqttClient
+    - _logger: ILogger
+    --
+    + PublishAsync(topic, payload): Task
+    + SbloccaMezzoAsync(matricola): Task
+    + BloccaMezzoAsync(matricola): Task
+  }
+  
+  class RideMonitoringService <<BackgroundService>> SERVICE_COLOR {
+    - _serviceProvider: IServiceProvider
+    - _logger: ILogger
+    --
+    + ExecuteAsync(token): Task
+    - VerificaCorseSenzaFine(): Task
+    - GestioneCredito(): Task
+  }
+  
+  class NotificheHub <<SignalR Hub>> SERVICE_COLOR {
+    - _logger: ILogger
+    --
+    + OnConnectedAsync(): Task
+    + OnDisconnectedAsync(): Task
+  }
+}
+
+' ========================================
+' RELAZIONI TRA CLASSI
+' ========================================
+
+' Relazioni Models (Aggregazione/Composizione)
+Utente "1" o-- "0..*" Corsa : effettua >
+Utente "1" o-- "0..*" Ricarica : effettua >
+Utente "1" o-- "0..*" Pagamento : effettua >
+Utente "1" o-- "0..*" Feedback : invia >
+
+Mezzo "1" o-- "0..*" Corsa : utilizzato in >
+Mezzo "*" --o "1" Parcheggio : si trova in >
+
+Parcheggio "1" o-- "0..*" Corsa : prelievo/rilascio >
+
+Corsa "*" --> "1" Utente
+Corsa "*" --> "1" Mezzo
+Corsa "*" --> "1" Parcheggio : prelievo
+Corsa "*" --> "0..1" Parcheggio : rilascio
+
+' Relazioni con Enums
+Utente --> UserRole
+Mezzo --> TipoMezzo
+Mezzo --> StatoMezzo
+Mezzo --> MotivoNonPrelevabile
+Corsa --> StatoCorsa
+Ricarica --> StatoRicarica
+Pagamento --> StatoPagamento
+Pagamento --> TipoPagamento
+
+' Controllers usano DbContext
+UtentiController ..> MobishareDbContext : <<use>>
+MezziController ..> MobishareDbContext : <<use>>
+CorseController ..> MobishareDbContext : <<use>>
+ParcheggiController ..> MobishareDbContext : <<use>>
+RicaricheController ..> MobishareDbContext : <<use>>
+
+' Controllers usano DTOs
+UtentiController ..> UtenteDTO : <<use>>
+MezziController ..> MezzoResponseDTO : <<use>>
+CorseController ..> CorsaResponseDTO : <<use>>
+CorseController ..> IniziaCorsa : <<use>>
+
+' DbContext gestisce entità
+MobishareDbContext ..> Utente : <<manage>>
+MobishareDbContext ..> Mezzo : <<manage>>
+MobishareDbContext ..> Corsa : <<manage>>
+MobishareDbContext ..> Parcheggio : <<manage>>
+MobishareDbContext ..> Ricarica : <<manage>>
+MobishareDbContext ..> Pagamento : <<manage>>
+
+' MezziController usa MQTT
+MezziController ..> IMqttIoTService : <<use>>
+CorseController ..> IMqttIoTService : <<use>>
+
+' Implementazione interfaccia
+MqttIoTService ..|> IMqttIoTService : <<implements>>
+
+' Background Service usa DbContext
+RideMonitoringService ..> MobishareDbContext : <<use>>
+
+' CorseController usa SignalR
+CorseController ..> NotificheHub : <<use>>
+
+note right of MobishareDbContext
+  **DbContext EF Core**
+  Gestisce persistenza su SQLite
+  con Fluent API Configuration
+end note
+
+note right of MqttIoTService
+  **MQTT Service**
+  Comunica con dispositivi IoT
+  Topics: mobishare/mezzi/{matricola}/comandi
+end note
+
+note bottom of RideMonitoringService
+  **Background Service**
+  • Monitoraggio corse attive ogni 1 min
+  • Gestione automatica credito/sospensione
+  • Verifica corse senza fine
+end note
+
+note bottom of CorseController
+  **REST API + MQTT + SignalR**
+  • Sblocca mezzo via MQTT
+  • Notifica utente via SignalR
+  • Gestisce transazioni DB
+end note
+
+' ========================================
+' PACKAGE: Mobishare.IoT.Gateway
+' ========================================
+package "Mobishare.IoT.Gateway" <<Rectangle>> {
+  
+  class MqttGatewayManager <<Service>> SERVICE_COLOR {
+    - _gateways: Dictionary<int, MqttGatewayEmulatorService>
+    - _serviceScopeFactory: IServiceScopeFactory
+    - _logger: ILogger
+    --
+    + AvviaTuttiGatewayAsync(): Task
+    + AvviaGatewayAsync(idParcheggio): Task
+    + FermaGatewayAsync(idParcheggio): Task
+    + SincronizzaMezziConDatabaseAsync(): Task
+    + ContaGatewayAttivi(): int
+    + InviaComandoAsync(matricola, comando): Task
+  }
+  
+  class MqttGatewayEmulatorService <<Service>> SERVICE_COLOR {
+    - _mqttClient: IManagedMqttClient
+    - _mezziInMemoria: Dictionary<string, MezzoEmulato>
+    - _idParcheggio: int
+    - _logger: ILogger
+    --
+    + AvviaAsync(): Task
+    + FermaAsync(): Task
+    + AggiungiMezzoAsync(mezzo): Task
+    + RimuoviMezzoAsync(matricola): Task
+    + GetMezziInMemoriaAsync(): List<MezzoDTO>
+    - ElaboraComandoAsync(comando): Task
+    - SimulaScaricaBatteriaAsync(mezzo): Task
+  }
+  
+  class MqttGatewayHostedService <<HostedService>> SERVICE_COLOR {
+    - _gatewayManager: MqttGatewayManager
+    - _logger: ILogger
+    --
+    + StartAsync(token): Task
+    + StopAsync(token): Task
+  }
+  
+  class GatewaySyncBackgroundService <<BackgroundService>> SERVICE_COLOR {
+    - _gatewayManager: MqttGatewayManager
+    - _syncInterval: TimeSpan
+    - _logger: ILogger
+    --
+    # ExecuteAsync(token): Task
+    - SincronizzaPeriodica(): Task
+  }
+  
+  class MezzoEmulato <<Model>> ENTITY_COLOR {
+    + Matricola: string
+    + Tipo: TipoMezzo
+    + LivelloBatteria: int
+    + Stato: StatoMezzo
+    + TaskScaricaBatteria: Task?
+    + CancellationTokenSource: CTS?
+  }
+}
+
+' ========================================
+' RELAZIONI IoT.GATEWAY
+' ========================================
+
+' Manager gestisce N gateways
+MqttGatewayManager "1" o-- "*" MqttGatewayEmulatorService : gestisce >
+
+' HostedService usa Manager
+MqttGatewayHostedService ..> MqttGatewayManager : <<use>>
+
+' BackgroundService usa Manager
+GatewaySyncBackgroundService ..> MqttGatewayManager : <<use>>
+
+' Gateway gestisce mezzi emulati
+MqttGatewayEmulatorService "1" o-- "*" MezzoEmulato : emula >
+
+' Gateway usa DbContext per sync
+MqttGatewayManager ..> MobishareDbContext : <<use>>
+
+' Comunicazione MQTT tra API e Gateway
+MqttIoTService ..> MqttGatewayEmulatorService : <<MQTT>>
+note on link
+  **MQTT Broker (Mosquitto)**
+  Topics:
+  • mobishare/mezzi/{matricola}/comandi
+  • mobishare/mezzi/{matricola}/telemetria
+end note
+
+note right of MqttGatewayManager
+  **Multi-Gateway Orchestrator**
+  • Gestisce 5 gateway (uno per parcheggio)
+  • Sincronizzazione DB ogni 20 secondi
+  • On-demand sync quando mezzo non trovato
+  • Operazioni CRUD su mezzi emulati
+end note
+
+note right of MqttGatewayEmulatorService
+  **Emulatore Dispositivo IoT**
+  • Simula hardware su singolo mezzo
+  • Batteria: MonopattinoElettrico 1-2%/10s
+  • Batteria: BiciElettrica 1%/10s
+  • Risponde a comandi: sblocca, blocca
+  • Pubblica telemetria via MQTT
+end note
+
+note bottom of GatewaySyncBackgroundService
+  **Sync Automatica**
+  • Timer: ogni 20 secondi
+  • Carica mezzi da DB
+  • Confronta con stato in-memory gateway
+  • Aggiunge/rimuove mezzi dinamicamente
+  • Gestisce spostamenti tra parcheggi
+end note
+
+@enduml

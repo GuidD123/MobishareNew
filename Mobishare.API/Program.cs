@@ -3,16 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Mobishare.API.BackgroundServices;
-using Mobishare.Core.DTOs;
 using Mobishare.API.Middleware;
 using Mobishare.Core.Data;
 using Mobishare.Infrastructure.IoT.HostedServices;
 using Mobishare.Infrastructure.IoT.Interfaces;
 using Mobishare.Infrastructure.IoT.Services;
+using Mobishare.Infrastructure.PhilipsHue;
 using Mobishare.Infrastructure.Services;
 using Mobishare.Infrastructure.SignalRHubs;
-using Mobishare.Infrastructure.SignalRHubs.HostedServices;
-using Mobishare.Infrastructure.SignalRHubs.Services;
 using System.Text;
 using System.Text.Json;
 
@@ -69,9 +67,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 Console.WriteLine("Autenticazione fallita: " + context.Exception.Message);
                 return Task.CompletedTask;
             },
+
             OnTokenValidated = context =>
             {
                 Console.WriteLine("Token validato per: " + context.Principal?.Identity?.Name);
+                return Task.CompletedTask;
+            }, 
+
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hub/notifiche"))
+                {
+                    context.Token = accessToken;
+                }
+
                 return Task.CompletedTask;
             }
         };
@@ -101,6 +114,7 @@ builder.Services.AddAuthorizationBuilder()
 builder.Services.AddSingleton<IMqttIoTService, MqttIoTService>();
 builder.Services.AddHostedService(sp => (MqttIoTService)sp.GetRequiredService<IMqttIoTService>());
 builder.Services.AddHostedService<MqttIoTBackgroundService>();
+// Nota: MqttGatewayManager è gestito dalla WebApp, non dall'API
 #endregion
 
 
@@ -108,7 +122,37 @@ builder.Services.AddHostedService<MqttIoTBackgroundService>();
 builder.Services.AddSingleton<PasswordService>();
 builder.Services.AddScoped<IRideMonitoringService, RideMonitoringService>();
 builder.Services.AddHostedService<RideMonitoringBackgroundService>();
-builder.Services.AddHostedService<MqttTelemetryListenerService>();
+
+builder.Services.AddHttpClient("PhilipsHue", client =>
+{
+    var hueUrl = builder.Configuration["Hue:BaseUrl"];
+
+    if (!string.IsNullOrEmpty(hueUrl))
+    {
+        client.BaseAddress = new Uri(hueUrl);
+        Console.WriteLine($"Philips Hue configurato: {hueUrl}");
+    }
+    else
+    {
+        // Philips Hue opzionale - costruisci URL da host e porta
+        var hueHost = builder.Configuration["Hue:Host"] ?? "localhost";
+        var huePort = builder.Configuration["Hue:Port"] ?? "8000";
+        var hueUsername = builder.Configuration["Hue:Username"] ?? "newdeveloper";
+        
+        var fallbackUrl = $"http://{hueHost}:{huePort}/api/{hueUsername}/";
+        client.BaseAddress = new Uri(fallbackUrl);
+        
+        Console.WriteLine($"Philips Hue: BaseUrl non trovato, uso fallback: {fallbackUrl}");
+    }
+    
+    // Timeout per evitare attese infinite
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+builder.Services.AddScoped<PhilipsHueControl>();
+
+// Servizio di sincronizzazione iniziale Philips Hue (opzionale)
+// Sincronizza lo stato delle luci con il DB all'avvio
+builder.Services.AddHostedService<PhilipsHueSyncService>();
 #endregion
 
 
@@ -177,16 +221,16 @@ builder.Logging.AddDebug();
 
 
 #region Configurazione SignalR
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(120);
+});
 #endregion
 
-
-builder.Services.AddSingleton<NotificationOutboxService>();
-builder.Services.AddHostedService<NotificationRetryService>();
-
-// Costruzione app
 var app = builder.Build();
 
+#region Seeder
 // Seeder iniziale
 using (var scope = app.Services.CreateScope())
 {
@@ -196,9 +240,12 @@ using (var scope = app.Services.CreateScope())
     context.Database.Migrate();
     Mobishare.Infrastructure.Seed.DbSeeder.SeedDatabase(context, passwordService);
 }
+#endregion
 
+#region ExceptionHandling
 // Middleware custom
 app.UseExceptionHandling();
+#endregion 
 
 #region Pipeline HTTP
 if (app.Environment.IsDevelopment())
@@ -253,9 +300,11 @@ app.MapGet("/health", async (MobishareDbContext context) =>
 });
 #endregion
 
+#region CONTROLLERS + HUB NOTIFICHE
 // Controllers + Hub
 app.MapControllers();
 app.MapHub<NotificheHub>("/hub/notifiche");
+#endregion
 
 #region Gestione Arresto Pulito
 var cts = new CancellationTokenSource();

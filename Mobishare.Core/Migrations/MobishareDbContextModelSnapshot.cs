@@ -46,6 +46,12 @@ namespace Mobishare.Core.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("PuntiGuadagnati")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PuntiUsati")
+                        .HasColumnType("INTEGER");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -156,9 +162,7 @@ namespace Mobishare.Core.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("LivelloBatteria")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(100);
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Matricola")
                         .IsRequired()
@@ -321,9 +325,6 @@ namespace Mobishare.Core.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("CorsaId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<DateTime>("DataTransazione")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
@@ -348,14 +349,10 @@ namespace Mobishare.Core.Migrations
 
                     b.Property<string>("Tipo")
                         .IsRequired()
+                        .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("UtenteId")
-                        .HasColumnType("INTEGER");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("CorsaId");
 
                     b.HasIndex("DataTransazione")
                         .HasDatabaseName("IX_Transazioni_DataTransazione");
@@ -372,8 +369,6 @@ namespace Mobishare.Core.Migrations
                     b.HasIndex("Stato")
                         .HasDatabaseName("IX_Transazioni_Stato");
 
-                    b.HasIndex("UtenteId");
-
                     b.HasIndex("IdUtente", "DataTransazione")
                         .HasDatabaseName("IX_Transazioni_Utente_Data");
 
@@ -385,7 +380,7 @@ namespace Mobishare.Core.Migrations
 
                     b.ToTable("Transazioni", t =>
                         {
-                            t.HasCheckConstraint("CK_Transazione_TipoTransazione", "(IdCorsa IS NOT NULL AND IdRicarica IS NULL) OR (IdCorsa IS NULL AND IdRicarica IS NOT NULL)");
+                            t.HasCheckConstraint("CK_Transazione_TipoTransazione", "(Tipo = 'Corsa' AND IdCorsa IS NOT NULL AND IdRicarica IS NULL) OR (Tipo = 'Ricarica' AND IdRicarica IS NOT NULL AND IdCorsa IS NULL) OR (Tipo = 'Bonus' AND IdCorsa IS NULL AND IdRicarica IS NULL)");
                         });
                 });
 
@@ -525,11 +520,7 @@ namespace Mobishare.Core.Migrations
             modelBuilder.Entity("Mobishare.Core.Models.Transazione", b =>
                 {
                     b.HasOne("Mobishare.Core.Models.Corsa", "Corsa")
-                        .WithMany()
-                        .HasForeignKey("CorsaId");
-
-                    b.HasOne("Mobishare.Core.Models.Corsa", null)
-                        .WithMany()
+                        .WithMany("Transazioni")
                         .HasForeignKey("IdCorsa")
                         .OnDelete(DeleteBehavior.Restrict);
 
@@ -538,19 +529,20 @@ namespace Mobishare.Core.Migrations
                         .HasForeignKey("IdRicarica")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Mobishare.Core.Models.Utente", null)
-                        .WithMany()
+                    b.HasOne("Mobishare.Core.Models.Utente", "Utente")
+                        .WithMany("Transazioni")
                         .HasForeignKey("IdUtente")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Mobishare.Core.Models.Utente", "Utente")
-                        .WithMany()
-                        .HasForeignKey("UtenteId");
-
                     b.Navigation("Corsa");
 
                     b.Navigation("Utente");
+                });
+
+            modelBuilder.Entity("Mobishare.Core.Models.Corsa", b =>
+                {
+                    b.Navigation("Transazioni");
                 });
 
             modelBuilder.Entity("Mobishare.Core.Models.Mezzo", b =>
@@ -572,6 +564,8 @@ namespace Mobishare.Core.Migrations
                     b.Navigation("Corse");
 
                     b.Navigation("RicaricheUtente");
+
+                    b.Navigation("Transazioni");
                 });
 #pragma warning restore 612, 618
         }

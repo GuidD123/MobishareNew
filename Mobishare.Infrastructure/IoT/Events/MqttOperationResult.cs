@@ -1,7 +1,7 @@
 ﻿namespace Mobishare.Infrastructure.IoT.Events
 {
     /// <summary>
-    /// Risultato di un'operazione MQTT (per usi futuri, es. API che ritorna esito publish)
+    /// Risultato di un'operazione MQTT - es. API che ritorna esito publish
     /// </summary>
     public class MqttOperationResult
     {

@@ -249,6 +249,21 @@
                                             <i class="bi bi-truck"></i> Sposta
                                         </button>
 
+                                        @* RICARICA PREVENTIVA - Mezzi elettrici < 100% *@
+                                        @if ((mezzo.Tipo.Contains("Elettrica", StringComparison.OrdinalIgnoreCase) || mezzo.Tipo.Contains("Monopattino", StringComparison.OrdinalIgnoreCase)) 
+                                             && mezzo.LivelloBatteria.HasValue 
+                                             && mezzo.LivelloBatteria.Value < 100 
+                                             && mezzo.Stato != "InUso")
+                                        {
+                                            <form method="post" asp-page-handler="Ricarica" class="d-inline"
+                                                  onsubmit="return confirm('Ricaricare la batteria di @mezzo.Matricola da @mezzo.LivelloBatteria% → 100%?');">
+                                                <input type="hidden" name="id" value="@mezzo.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                                    <i class="bi bi-battery-charging"></i> Ricarica
+                                                </button>
+                                            </form>
+                                        }
+
                                         @if (mezzo.Stato == "Disponibile")
                                         {
                                             <!-- Metti in manutenzione programmata -->
@@ -284,21 +299,22 @@
                                                     <small class="d-block text-warning mt-1">
                                                         <i class="bi bi-battery"></i> <strong>Batteria scarica (&lt; 20%)</strong>
                                                     </small>
-
-                                                    <!-- 🔋 Bottone ricarica -->
-                                                    <form method="post" asp-page-handler="Ricarica" class="d-inline"
-                                                        onsubmit="return confirm('Confermi la ricarica della batteria di questo mezzo?');">
-                                                        <input type="hidden" name="id" value="@mezzo.Id" />
-                                                        <button type="submit" class="btn btn-sm btn-outline-primary">
-                                                            <i class="bi bi-battery-charging"></i> Ricarica
-                                                        </button>
-                                                    </form>
                                                 }
                                                 else
                                                 {
                                                     <small class="d-block text-muted mt-1">
                                                         <i class="bi bi-x-circle"></i> Non prelevabile
                                                     </small>
+                                                }
+
+                                                @if (mezzo.Stato != "InUso")
+                                                {
+                                                    <form method="post" asp-page-handler="Elimina" class="d-inline mt-2" onsubmit="return confirm('⚠️ ATTENZIONE!\n\nSei sicuro di voler eliminare definitivamente il mezzo @mezzo.Matricola?\n\nQuesta operazione:\n- È IRREVERSIBILE\n- Sarà bloccata se ci sono corse nello storico\n- Rimuoverà permanentemente il mezzo dal sistema\n\nConfermi l\'eliminazione?');">
+                                                        <input type="hidden" name="id" value="@mezzo.Id" />
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                            <i class="bi bi-trash"></i> Elimina
+                                                        </button>
+                                                    </form>
                                                 }
                                             }
                                         }

@@ -19,6 +19,7 @@ public class CorsaCorrenteModel : PageModel
     public List<ParcheggioResponseDTO> ParcheggiDisponibili { get; set; } = new();
     public int DurataMinuti { get; set; }
     public decimal CostoStimato { get; set; }
+    public int PuntiBonus { get; set; }
     public string? ErrorMessage { get; set; }
     public string? SuccessMessage { get; set; }
 
@@ -42,6 +43,10 @@ public class CorsaCorrenteModel : PageModel
         {
             return RedirectToPage("/Account/Login");
         }
+
+        var profilo = await _apiService.GetProfiloUtenteAsync();
+        if (profilo != null)
+            PuntiBonus = profilo.PuntiBonus;
 
         try
         {

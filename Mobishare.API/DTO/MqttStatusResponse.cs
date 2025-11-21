@@ -1,5 +1,5 @@
 ﻿
-namespace Mobishare.API.DTO
+/*namespace Mobishare.API.DTO
 {
     /// <summary>
     /// Risposta per lo status del servizio MQTT
@@ -22,3 +22,4 @@ namespace Mobishare.API.DTO
         public string? BrokerInfo { get; set; }
     }
 }
+*/

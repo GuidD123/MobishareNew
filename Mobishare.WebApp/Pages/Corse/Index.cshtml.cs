@@ -20,6 +20,7 @@ public class IndexModel : PageModel
     public List<ParcheggioResponseDTO> Parcheggi { get; set; } = new();
     public int CorseCompletate { get; set; }
     public decimal TotaleSpeso { get; set; }
+    public int PuntiBonus { get; set; }
     public string? SuccessMessage { get; set; }
     public string? ErrorMessage { get; set; }
 
@@ -31,6 +32,10 @@ public class IndexModel : PageModel
         {
             return RedirectToPage("/Account/Login");
         }
+
+        var profilo = await _apiService.GetProfiloUtenteAsync();
+        if (profilo != null)
+            PuntiBonus = profilo.PuntiBonus;
 
         try
         {

@@ -23,6 +23,8 @@ namespace Mobishare.IoT.Gateway.Services
         private readonly ConcurrentDictionary<string, MezzoEmulato> _mezziEmulati;
         private readonly Random _random;
 
+        private readonly ConcurrentDictionary<string, CancellationTokenSource> _batterySimulations = new();
+
         private bool _disposed = false;
         private bool _isRunning = false;
         private int _idParcheggio;
@@ -36,6 +38,8 @@ namespace Mobishare.IoT.Gateway.Services
             _configuration = configuration;
             _mezziEmulati = new ConcurrentDictionary<string, MezzoEmulato>();
             _random = new Random();
+
+            _batterySimulations = new ConcurrentDictionary<string, CancellationTokenSource>();
 
             _mqttConfig = new MqttConfiguration();
             _configuration.GetSection("Mqtt").Bind(_mqttConfig);
@@ -135,21 +139,34 @@ namespace Mobishare.IoT.Gateway.Services
             _logger.LogInformation("Gateway emulatore sottoscritto ai comandi: {Topic}", commandTopic);
         }
 
-        public async Task AggiungiMezzoEmulato(string idMezzo, string matricola, TipoMezzo tipo)
+
+        public async Task AggiungiMezzoEmulato(string idMezzo, string matricola, TipoMezzo tipo, StatoMezzo statoIniziale, int? livelloBatteria)
         {
             var mezzoEmulato = new MezzoEmulato
             {
                 IdMezzo = idMezzo,
                 Matricola = matricola,
                 Tipo = tipo,
-                Stato = StatoMezzo.Disponibile,
-                LivelloBatteria = tipo == TipoMezzo.BiciMuscolare ? 100 : _random.Next(20, 100),
-                ColoreSpia = ColoreSpia.Verde,
+                Stato = statoIniziale,
+                //Gestione livelloBatteria nullable
+                LivelloBatteria = tipo == TipoMezzo.BiciMuscolare
+                    ? null
+                    : (livelloBatteria ?? 100), // Se null, default 100 per mezzi elettrici
+                ColoreSpia = statoIniziale switch
+                {
+                    StatoMezzo.Disponibile => ColoreSpia.Verde,
+                    StatoMezzo.InUso => ColoreSpia.Rosso,
+                    StatoMezzo.Manutenzione => ColoreSpia.Giallo,
+                    StatoMezzo.NonPrelevabile => ColoreSpia.Rosso,
+                    _ => ColoreSpia.Spenta
+                },
                 UltimoAggiornamento = DateTime.Now
             };
 
             _mezziEmulati.TryAdd(idMezzo, mezzoEmulato);
-            _logger.LogInformation("Mezzo emulato aggiunto: {IdMezzo} ({Tipo})", idMezzo, tipo);
+            _logger.LogInformation("Mezzo emulato aggiunto: {IdMezzo} ({Tipo}) - Stato: {Stato}, Batteria: {Batteria}%",
+                idMezzo, tipo, statoIniziale, tipo == TipoMezzo.BiciMuscolare ? "N/A" : livelloBatteria?.ToString() ?? "100");
+
             await InviaStatusMezzoAsync(mezzoEmulato);
         }
 
@@ -157,6 +174,14 @@ namespace Mobishare.IoT.Gateway.Services
         {
             if (_mezziEmulati.TryRemove(idMezzo, out _))
             {
+                //Ferma il thread di scarica batteria
+                if (_batterySimulations.TryRemove(idMezzo, out var cts))
+                {
+                    cts.Cancel();
+                    cts.Dispose();
+                    _logger.LogInformation("Thread batteria fermato per mezzo {IdMezzo}", idMezzo);
+                }
+
                 _logger.LogInformation("Mezzo emulato rimosso: {IdMezzo}", idMezzo);
             }
             await Task.CompletedTask;
@@ -231,7 +256,7 @@ namespace Mobishare.IoT.Gateway.Services
                 {
                     IdMezzo = mezzo.IdMezzo,
                     Matricola = mezzo.Matricola,
-                    LivelloBatteria = mezzo.LivelloBatteria,
+                    LivelloBatteria = mezzo.Tipo == TipoMezzo.BiciMuscolare ? null : mezzo.LivelloBatteria,
                     Stato = mezzo.Stato,
                     Tipo = mezzo.Tipo,
                     Timestamp = DateTime.Now,
@@ -287,7 +312,7 @@ namespace Mobishare.IoT.Gateway.Services
         {
             try
             {
-                // ✅ CORRETTO: Usa il modello ComandoMezzoMessage
+                //Usa il modello ComandoMezzoMessage
                 var comando = JsonSerializer.Deserialize<ComandoMezzoMessage>(payload, _jsonOptions);
                 if (comando == null)
                 {
@@ -300,6 +325,16 @@ namespace Mobishare.IoT.Gateway.Services
 
                 var successo = false;
                 var messaggioRisposta = "";
+
+                // Se il mezzo non è presente, potrebbe essere appena arrivato in questo parcheggio
+                // Prova a sincronizzarlo dal database prima di fallire
+                if (!_mezziEmulati.ContainsKey(idMezzo))
+                {
+                    _logger.LogInformation("Mezzo {IdMezzo} non trovato nel gateway - tentativo sync on-demand", idMezzo);
+                    // Nota: qui non possiamo fare await perché non abbiamo MqttGatewayManager
+                    // Il sync on-demand verrà gestito dalla sincronizzazione periodica entro 30s
+                    // In alternativa, il comando fallirà e l'utente dovrà riprovare
+                }
 
                 if (_mezziEmulati.TryGetValue(idMezzo, out var mezzo))
                 {
@@ -347,6 +382,7 @@ namespace Mobishare.IoT.Gateway.Services
 
         private async Task<bool> ProcessaSbloccoAsync(MezzoEmulato mezzo)
         {
+            //mezzo in db -> disponibile MA MezzoEmulato nell'emulatore non è sincronizzato col database 
             if (mezzo.Stato != StatoMezzo.Disponibile)
                 return false;
 
@@ -356,35 +392,59 @@ namespace Mobishare.IoT.Gateway.Services
 
             await InviaStatusMezzoAsync(mezzo);
 
+            // Crea un token per cancellare la simulazione
+            var cts = new CancellationTokenSource();
+            _batterySimulations.TryAdd(mezzo.IdMezzo, cts);
+
             // Avvia thread simulazione scarica batteria
-            _ = Task.Run(async () =>
+            if (mezzo.Tipo != TipoMezzo.BiciMuscolare && mezzo.LivelloBatteria.HasValue)
             {
-                while (mezzo.Stato == StatoMezzo.InUso && mezzo.LivelloBatteria > 0)
+                _ = Task.Run(async () =>
                 {
-                    // Simula consumo proporzionale
-                    var consumo = mezzo.Tipo switch
-                    {
-                        TipoMezzo.MonopattinoElettrico => _random.Next(2, 5), // 2–5% ogni ciclo
-                        TipoMezzo.BiciElettrica => _random.Next(1, 3),       // 1–3% ogni ciclo
-                        _ => 0
-                    };
+                    // Usa una variabile locale per evitare problemi con nullable
+                    int batteria = mezzo.LivelloBatteria.Value;
 
-                    mezzo.LivelloBatteria = Math.Max(0, mezzo.LivelloBatteria - consumo);
+                try{
+                        while (mezzo.Stato == StatoMezzo.InUso && batteria > 0 && !cts.Token.IsCancellationRequested)
+                        {
+                            // Simula consumo realistico per demo
+                            var consumo = mezzo.Tipo switch
+                            {
+                                TipoMezzo.MonopattinoElettrico => _random.Next(1, 3), // 1–2% ogni 10s (~10% al minuto)
+                                TipoMezzo.BiciElettrica => 1,                         // 1% ogni 10s (~6% al minuto)
+                                _ => 0
+                            };
 
-                    // Se scende sotto 20%, segna come non prelevabile
-                    if (mezzo.LivelloBatteria < 20 && mezzo.Tipo != TipoMezzo.BiciMuscolare)
-                    {
-                        mezzo.Stato = StatoMezzo.NonPrelevabile;
-                        mezzo.ColoreSpia = ColoreSpia.Rosso;
+                            batteria = Math.Max(0, batteria - consumo);
+                            mezzo.LivelloBatteria = batteria;
+
+                            // Se scende sotto 20%, segna come non prelevabile
+                            if (batteria < 20)
+                            {
+                                mezzo.Stato = StatoMezzo.NonPrelevabile;
+                                mezzo.ColoreSpia = ColoreSpia.Rosso;
+
+                                _logger.LogWarning("Mezzo {Matricola} con batteria critica: {Batteria}%",
+                                    mezzo.Matricola, batteria);
+                            }
+
+                            // Pubblica aggiornamento telemetria
+                            await InviaStatusMezzoAsync(mezzo);
+
+                            // Attendi 10 secondi prima del prossimo aggiornamento
+                            await Task.Delay(TimeSpan.FromSeconds(10), cts.Token);
+                        }
                     }
-
-                    // Pubblica aggiornamento telemetria
-                    await InviaStatusMezzoAsync(mezzo);
-
-                    // Attendi 10 secondi prima del prossimo aggiornamento
-                    await Task.Delay(TimeSpan.FromSeconds(10));
-                }
-            });
+                    catch (OperationCanceledException)
+                    {
+                        _logger.LogInformation("Simulazione batteria terminata per mezzo {Matricola}", mezzo.Matricola);
+                    }
+                    finally
+                    {
+                        _batterySimulations.TryRemove(mezzo.IdMezzo, out _);
+                    }
+                }, cts.Token);
+            }
 
             return true;
         }
@@ -394,11 +454,18 @@ namespace Mobishare.IoT.Gateway.Services
             if (mezzo.Stato != StatoMezzo.InUso)
                 return false;
 
+            if (_batterySimulations.TryRemove(mezzo.IdMezzo, out var cts))
+            {
+                cts.Cancel();
+                cts.Dispose();
+            }
+
             mezzo.Stato = StatoMezzo.Disponibile;
             mezzo.ColoreSpia = ColoreSpia.Verde;
             mezzo.UltimoAggiornamento = DateTime.Now;
 
             await InviaStatusMezzoAsync(mezzo);
+            _logger.LogInformation("Mezzo {Matricola} bloccato e simulazione batteria fermata", mezzo.Matricola);
             return true;
         }
 
@@ -424,7 +491,7 @@ namespace Mobishare.IoT.Gateway.Services
                 var risposta = new RispostaComandoMessage
                 {
                     IdMezzo = idMezzo,
-                    CommandId = commandId,  // ← Per correlazione
+                    CommandId = commandId,  
                     ComandoOriginale = comandoOriginale,
                     Successo = successo,
                     ErroreDescrizione = successo ? null : messaggio,

@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+﻿/*using Microsoft.Extensions.Logging;
 using Mobishare.Core.Enums;
 using Mobishare.Infrastructure.IoT.Interfaces;
 using Mobishare.IoT.Gateway.Interfaces; 
@@ -178,4 +178,4 @@ namespace Mobishare.Infrastructure.IoT.Services
             _logger.LogInformation("Scenario GuastoMezzo: mezzo {IdMezzo} portato in Manutenzione", idMezzo);
         }
     }
-}
+}*/

@@ -23,7 +23,7 @@ namespace Mobishare.API.Controllers
         private readonly PagamentoService _pagamentoService = pagamentoService;
 
 
-        // GET: api/ricariche/{idUtente} - Storico ricariche utente
+        //GET: api/ricariche/{idUtente} - Storico ricariche utente
         [HttpGet("{idUtente}")]
         public async Task<ActionResult<SuccessResponse>> GetRicaricheUtente(int idUtente)
         {
@@ -52,7 +52,7 @@ namespace Mobishare.API.Controllers
 
 
 
-        // POST: api/ricariche - Crea nuova ricarica partendo dal NuovaRicaricaDTO, valida importo e utente, simula pagamento e aggiorna credito utente
+        //POST: api/ricariche - Crea nuova ricarica partendo dal NuovaRicaricaDTO, valida importo e utente, simula pagamento e aggiorna credito utente
         //Inoltre gestisce utente sospeso/riattivato e salva il tutto 
         [HttpPost]
         public async Task<ActionResult<SuccessResponse>> PostRicarica([FromBody] NuovaRicaricaDTO dto)
@@ -61,7 +61,7 @@ namespace Mobishare.API.Controllers
 
             try
             {
-                // Validazioni dati input 
+                //Validazioni dati input 
                 var utente = await _context.Utenti.FindAsync(dto.IdUtente)
                      ?? throw new ElementoNonTrovatoException("Utente", dto.IdUtente);
 
@@ -72,7 +72,7 @@ namespace Mobishare.API.Controllers
                     throw new ImportoNonValidoException(dto.ImportoRicarica, "supera il massimo di 500€");
 
 
-                // Crea ricarica in stato "InSospeso"
+                //Crea ricarica in stato "InSospeso"
                 var ricarica = new Ricarica
                 {
                     IdUtente = dto.IdUtente,
@@ -127,7 +127,10 @@ namespace Mobishare.API.Controllers
 
                         //notifica admin avvenuta ricarica
                         await _hubContext.Clients.Group("admin")
-                            .SendAsync("RiceviNotificaAdmin","Ricarica completata",$"Utente {utente.Nome} (ID {utente.Id}) ha effettuato una ricarica da {dto.ImportoRicarica:F2}€");
+                            .SendAsync("NotificaAdmin", new {
+                                Titolo = "Ricarica Completata",
+                                Testo = $"Utente {utente.Nome} (ID {utente.Id}) ha effettuato una ricarica da {dto.ImportoRicarica:F2}€"
+                            });
 
                         _logger.LogInformation("Notifica SignalR inviata a utente {Id} (credito: {Credito}€)",
                             utente.Id, utente.Credito);
@@ -139,9 +142,9 @@ namespace Mobishare.API.Controllers
 
                     ricarica.Stato = StatoPagamento.Completato;
                     await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-
-                    //delega tutto al servizio al PagamentoService
+                    
+                    // === REGISTRA MOVIMENTO PRIMA DEL COMMIT ===
+                    // Se fallisce, rollback automatico della transazione
                     await _pagamentoService.RegistraMovimentoAsync(
                         idUtente: utente.Id,
                         importo: dto.ImportoRicarica,
@@ -149,35 +152,47 @@ namespace Mobishare.API.Controllers
                         tipo: "Ricarica",
                         idRicarica: ricarica.Id
                     );
+                    
+                    await transaction.CommitAsync();
+
+                    // === NOTIFICHE SIGNALR DOPO COMMIT ===
+                    // Invia notifiche solo dopo che i dati sono confermati nel DB
+                    await _pagamentoService.InviaNotificheMovimentoAsync(
+                        utente.Id,
+                        utente.Credito,
+                        dto.ImportoRicarica,
+                        "Ricarica",
+                        StatoPagamento.Completato
+                    );
 
                     //Se l'utente era sospeso ma ora ha credito positivo → riattivalo
-                    if (utente.Sospeso && utente.Credito >= 0)
-                    {
-                        utente.Sospeso = false;
-                        await _context.SaveChangesAsync();
+                    //if (utente.Sospeso && utente.Credito >= 0)
+                    //{
+                    //    utente.Sospeso = false;
+                    //    await _context.SaveChangesAsync();
 
-                        _logger.LogInformation("Utente {UserId} riattivato automaticamente dopo ricarica. Credito: {Credito}€",
-                            utente.Id, utente.Credito);
+                    //    _logger.LogInformation("Utente {UserId} riattivato automaticamente dopo ricarica. Credito: {Credito}€",
+                    //        utente.Id, utente.Credito);
 
-                        try
-                        {
-                            await _hubContext.Clients.Group($"utenti:{utente.Id}")
-                                .SendAsync("UtenteRiattivato", new
-                                {
-                                    id = utente.Id,
-                                    messaggio = "Il tuo account è stato riattivato automaticamente dopo la ricarica."
-                                });
-
-                            await _hubContext.Clients.Group("admin")
-                                .SendAsync("RiceviNotificaAdmin",
-                                    "Utente riattivato",
-                                    $"L’utente {utente.Nome} (ID {utente.Id}) è stato riattivato automaticamente dopo la ricarica.");
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "SignalR: notifica riattivazione utente {Id} fallita", utente.Id);
-                        }
-                    }
+                    //    try
+                    //      {
+                    //        await _hubContext.Clients.Group($"utenti:{utente.Id}")
+                    //            .SendAsync("UtenteRiattivato", new
+                    //            {
+                    //                id = utente.Id,
+                    //                messaggio = "Il tuo account è stato riattivato automaticamente dopo la ricarica."
+                    //            });
+                    //
+                    //        await _hubContext.Clients.Group("admin")
+                    //            .SendAsync("RiceviNotificaAdmin",
+                    //                "Utente riattivato",
+                    //                $"L’utente {utente.Nome} (ID {utente.Id}) è stato riattivato automaticamente dopo la ricarica.");
+                    //    }
+                    //    catch (Exception ex)
+                    //    {
+                    //        _logger.LogWarning(ex, "SignalR: notifica riattivazione utente {Id} fallita", utente.Id);
+                    //    }
+                    //}
 
 
                     var payload = new RicaricaResponseDTO
@@ -199,7 +214,7 @@ namespace Mobishare.API.Controllers
                 }
                 else
                 {
-                    // Pagamento fallito
+                    //Pagamento fallito
                     ricarica.Stato = StatoPagamento.Fallito;
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
@@ -207,10 +222,7 @@ namespace Mobishare.API.Controllers
                     _logger.LogWarning("Ricarica fallita: Utente {UserId}, Importo {Importo}€, Tipo {Tipo}",
                         dto.IdUtente, dto.ImportoRicarica, dto.TipoRicarica);
 
-                    if (utente.Credito < 0)
-                    {
-                        await SospendiUtenteAsync(utente, "Pagamento fallito - credito negativo");
-                    }
+                    //La sospensione viene gestita automaticamente da PagamentoService se il credito è negativo dopo la transazione
 
                     throw new PagamentoFallitoException("Pagamento rifiutato. Verifica i dati della carta o riprova.");
                 }
@@ -229,7 +241,7 @@ namespace Mobishare.API.Controllers
         }
 
 
-        // POST: api/ricariche/{id}/conferma - Conferma ricarica (webhook)
+        //POST: api/ricariche/{id}/conferma - Conferma ricarica (webhook)
         //Funziona come un webhook che in un sistema reale arriverebbe da stripe/paypal: controlla un TokenSicurezza e se successo == true allora aggiorna credito utente altrimenti "Fallito"
         [HttpPost("{id}/conferma")]
         public async Task<ActionResult<SuccessResponse>> ConfermaRicarica(int id, [FromBody] ConfermaRicaricaDTO dto)
@@ -246,17 +258,17 @@ namespace Mobishare.API.Controllers
                 if (ricarica.Stato != StatoPagamento.InSospeso)
                     throw new OperazioneNonConsentitaException("La ricarica non è in stato sospeso");
 
-                // Verifica token sicurezza (in produzione usare chiavi API)
+                //Verifica token sicurezza (in produzione usare chiavi API)
                 if (dto.TokenSicurezza != "webhook_secret_key")
                     throw new UtenteNonAutorizzatoException("Conferma ricarica");
 
                 if (dto.Successo)
                 {
-                    // Conferma pagamento riuscito
+                    //Conferma pagamento riuscito
                     ricarica.Stato = StatoPagamento.Completato;
                     ricarica.Utente!.Credito += ricarica.ImportoRicarica;
 
-                    // Riattiva utente se era sospeso
+                    //Riattiva utente se era sospeso
                     if (ricarica.Utente.Sospeso && ricarica.Utente.Credito >= 0)
                     {
                         ricarica.Utente.Sospeso = false;
@@ -267,7 +279,7 @@ namespace Mobishare.API.Controllers
                 }
                 else
                 {
-                    // Conferma pagamento fallito
+                    //Conferma pagamento fallito
                     ricarica.Stato = StatoPagamento.Fallito;
 
                     _logger.LogWarning("Ricarica rifiutata via webhook: Id {RicaricaId}, Motivo: {Motivo}",
@@ -295,15 +307,15 @@ namespace Mobishare.API.Controllers
 
 
 
-        // GET: api/ricariche/utente/{idUtente}/saldo - Saldo attuale utente
+        //GET: api/ricariche/utente/{idUtente}/saldo - Saldo attuale utente
         //Ritorna la vista utente: credito attuale, totale ricariche, spese, ultima ricarica
         [HttpGet("utente/{idUtente}/saldo")]
         public async Task<ActionResult<SuccessResponse>> GetSaldoUtente(int idUtente)
         {
             var utente = await _context.Utenti.FindAsync(idUtente)
              ?? throw new ElementoNonTrovatoException("Utente", idUtente);
-
-            // Calcola statistiche ricariche
+            
+            //Calcola statistiche ricariche
             var totaleRicariche = _context.Ricariche
                 .Where(r => r.IdUtente == idUtente && r.Stato == StatoPagamento.Completato)
                 .AsEnumerable()
@@ -314,7 +326,7 @@ namespace Mobishare.API.Controllers
                 .AsEnumerable()
                 .Sum(r => r.ImportoRicarica);
 
-            // Calcola spese corse - totale 
+            //Calcola spese corse - totale 
             var totaleSpeseCorse = _context.Corse
                 .Where(c => c.IdUtente == idUtente && c.CostoFinale.HasValue && c.DataOraFine.HasValue && c.Stato == StatoCorsa.Completata)
                 .AsEnumerable()
@@ -345,7 +357,7 @@ namespace Mobishare.API.Controllers
         }
 
 
-        // Metodo privato per simulare processamento pagamento
+        //Metodo privato per simulare processamento pagamento
         private async Task<bool> ProcessaPagamentoAsync(Ricarica ricarica, NuovaRicaricaDTO dto)
         {
             // Simula latenza processamento
@@ -363,7 +375,7 @@ namespace Mobishare.API.Controllers
         }
 
         
-        // gestione sospensione utente 
+        //gestione sospensione utente 
         private async Task SospendiUtenteAsync(Utente utente, string motivo)
         {
             if (!utente.Sospeso)
@@ -391,8 +403,11 @@ namespace Mobishare.API.Controllers
                 try
                 {
                     await _hubContext.Clients.Group("admin")
-                        .SendAsync("RiceviNotificaAdmin", "Utente sospeso",
-                            $"L’utente {utente.Nome} (ID {utente.Id}) è stato sospeso. Motivo: {motivo}");
+                        .SendAsync("NotificaAdmin", new
+                        {
+                            Titolo = "Utente sospeso",
+                            Testo = $"L’utente {utente.Nome} (ID {utente.Id}) è stato sospeso. Motivo: {motivo}"
+                        });
                 }
                 catch (Exception ex)
                 {

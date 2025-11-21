@@ -32,7 +32,7 @@ namespace Mobishare.IoT.Gateway.Interfaces
         /// <summary>
         /// Aggiunge un mezzo da emulare
         /// </summary>
-        Task AggiungiMezzoEmulato(string idMezzo, string matricola, TipoMezzo tipo);
+        Task AggiungiMezzoEmulato(string idMezzo, string matricola, TipoMezzo tipo, StatoMezzo statoIniziale, int? livelloBatteria);
 
         /// <summary>
         /// Rimuove un mezzo dall'emulazione
@@ -43,6 +43,8 @@ namespace Mobishare.IoT.Gateway.Interfaces
         /// Ottieni la lista dei mezzi attualmente emulati
         /// </summary>
         List<string> GetMezziEmulati();
+
+
 
         // === SIMULAZIONE COMPORTAMENTI ===
 

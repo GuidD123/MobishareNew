@@ -74,6 +74,26 @@
                     </div>
                 </div>
             </div>
+            <div class="row mb-4">
+                 <div class="col-md-4">
+                     <div class="card text-center shadow-sm border-warning">
+                         <div class="card-body">
+                             <h3 id="puntiBonusValue" class="text-warning">@Model.PuntiBonus</h3>
+                             <p class="mb-0 text-muted">Punti Bonus</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if (Model.PuntiBonus < 5)
+            {
+                <div class="progress mt-2" style="height: 8px;">
+                    <div class="progress-bar bg-warning" role="progressbar" style="width:@(Model.PuntiBonus * 20)%"></div>
+                </div>
+                <small class="text-muted">@Model.PuntiBonus/5 punti — te ne manca/no @(5 - Model.PuntiBonus)!</small>
+            } else {
+                <span class="badge bg-success mt-2">Hai diritto a 1€ di sconto!</span>
+            }
         </div>
 
         <!-- Tabella Corse -->
@@ -95,6 +115,7 @@
                                 <th>Parcheggi</th>
                                 <th>Durata</th>
                                 <th>Costo</th>
+                                <th>Bonus</th>
                                 <th>Azioni</th>
                             </tr>
                         </thead>
@@ -163,6 +184,24 @@
                                         else
                                         {
                                             <span class="text-muted">In corso</span>
+                                        }
+                                    </td>
+
+                                    <!-- Punti bonus -->
+                                    <td>
+                                        @if (corsa.PuntiGuadagnati > 0)
+                                        {
+                                            <span class="badge bg-warning text-dark">+@corsa.PuntiGuadagnati pt</span>
+                                        }
+
+                                        @if (corsa.PuntiUsati > 0)
+                                        {
+                                            <span class="badge bg-danger ms-1">-@corsa.PuntiUsati pt</span>
+                                        }
+
+                                        @if ((corsa.PuntiGuadagnati ?? 0) == 0 && (corsa.PuntiUsati ?? 0) == 0)
+                                        {
+                                            <span class="text-muted">—</span>
                                         }
                                     </td>
 
@@ -281,5 +320,22 @@
                 });
             }
         })();
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            const puntiEl = document.getElementById("puntiBonus");
+    
+            if (!window.mobishareConnection) return;
+
+            window.mobishareConnection.on("BonusApplicato", data => {
+                if (puntiEl) puntiEl.textContent = data.TotalePunti;
+            });
+
+            window.mobishareConnection.on("BonusUsato", data => {
+                if (puntiEl) puntiEl.textContent = data.TotalePunti;
+            });
+        });
     </script>
 }

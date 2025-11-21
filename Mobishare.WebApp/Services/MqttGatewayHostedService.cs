@@ -1,4 +1,4 @@
-﻿using Mobishare.IoT.Gateway.Interfaces;
+﻿using Mobishare.IoT.Gateway.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -6,46 +6,48 @@ namespace Mobishare.WebApp.Services;
 
 public class MqttGatewayHostedService : IHostedService
 {
-    private readonly IMqttGatewayEmulatorService _gatewayService;
+    private readonly MqttGatewayManager _gatewayManager;
     private readonly ILogger<MqttGatewayHostedService> _logger;
 
     public MqttGatewayHostedService(
-        IMqttGatewayEmulatorService gatewayService,
+        MqttGatewayManager gatewayManager,
         ILogger<MqttGatewayHostedService> logger)
     {
-        _gatewayService = gatewayService;
+        _gatewayManager = gatewayManager;
         _logger = logger;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Avvio automatico Gateway MQTT Emulator...");
+        _logger.LogInformation("Avvio automatico Gateway MQTT Emulators per tutti i parcheggi attivi...");
 
         try
         {
-            // Avvia il gateway per il parcheggio ID 1 (configurabile da appsettings se vuoi)
-            await _gatewayService.StartAsync(idParcheggio: 1, cancellationToken);
+            // Avvia gateway per TUTTI i parcheggi attivi nel database
+            await _gatewayManager.AvviaTuttiGatewayAsync(cancellationToken);
 
-            _logger.LogInformation("Gateway MQTT Emulator avviato con successo per parcheggio 1");
+            _logger.LogInformation(
+                "Gateway MQTT Emulators avviati con successo: {Count} gateway attivi",
+                _gatewayManager.ContaGatewayAttivi());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Errore nell'avvio del Gateway MQTT Emulator");
+            _logger.LogError(ex, "Errore nell'avvio dei Gateway MQTT Emulators");
         }
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Arresto Gateway MQTT Emulator...");
+        _logger.LogInformation("Arresto di tutti i Gateway MQTT Emulators...");
 
         try
         {
-            await _gatewayService.StopAsync(cancellationToken);
-            _logger.LogInformation("Gateway MQTT Emulator arrestato");
+            await _gatewayManager.FermaTuttiGatewayAsync(cancellationToken);
+            _logger.LogInformation("Tutti i Gateway MQTT Emulators sono stati arrestati");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Errore nell'arresto del Gateway MQTT Emulator");
+            _logger.LogError(ex, "Errore nell'arresto dei Gateway MQTT Emulators");
         }
     }
 }

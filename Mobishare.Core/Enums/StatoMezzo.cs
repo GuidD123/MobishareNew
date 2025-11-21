@@ -23,6 +23,11 @@
         /// <summary>
         /// Mezzo in manutenzione programmata
         /// </summary>
-        Manutenzione
+        Manutenzione,
+
+        /// <summary>
+        /// Mezzo offline e spento
+        /// </summary>
+        Spento
     }
 }

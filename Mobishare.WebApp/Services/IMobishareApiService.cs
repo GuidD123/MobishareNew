@@ -17,6 +17,7 @@ public interface IMobishareApiService
     Task<bool> CambiaPasswordAsync(CambiaPswDTO dto);
     Task<bool> AggiornaProfiloAsync(int id, UtenteDTO dto);
     Task<bool> ResetPasswordAsync(string email, string newPassword, string token);
+    Task<ProfiloResponseDTO?> GetProfiloUtenteAsync();
     #endregion
 
 
@@ -64,6 +65,7 @@ public interface IMobishareApiService
     Task<bool> AggiornaMezzoAsync(int id, MezzoUpdateDTO dto);
     Task<bool> SegnalaGuastoAsync(string matricola);
     Task<bool> RicaricaMezzoAsync(int id);
+    Task<bool> EliminaMezzoAsync(string matricola);
     #endregion
 
 
@@ -72,6 +74,7 @@ public interface IMobishareApiService
     Task<ParcheggioResponseDTO?> GetParcheggioAsync(int id);
     Task<ParcheggioResponseDTO?> CreaParcheggioAsync(ParcheggioCreateDTO dto);
     Task<bool> AggiornaStatoParcheggioAsync(int id, bool attivo);
+    Task<bool> EliminaParcheggioAsync(int id);
     #endregion
 
 
