@@ -9,7 +9,7 @@ namespace Mobishare.Core.Data
     public class MobishareDbContext(DbContextOptions<MobishareDbContext> options) : DbContext(options)
     {
 
-        // Definiamo le tabelle del database
+        //tabelle del database
         public DbSet<Utente> Utenti { get; set; }
         public DbSet<Mezzo> Mezzi { get; set; }
         public DbSet<Parcheggio> Parcheggi { get; set; }
@@ -26,7 +26,7 @@ namespace Mobishare.Core.Data
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(MobishareDbContext).Assembly); 
         }
 
-        //metodo utility richiamabile ovunque per aggiornare il credito (valutare)\
+        //metodo utility richiamabile ovunque per aggiornare il credito
         public async Task RegistraTransazioneAsync(int idUtente, decimal importo, StatoPagamento stato, int? idCorsa = null, int? idRicarica = null)
         {
             var transazione = new Transazione

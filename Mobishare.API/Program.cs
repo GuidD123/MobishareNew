@@ -114,7 +114,6 @@ builder.Services.AddAuthorizationBuilder()
 builder.Services.AddSingleton<IMqttIoTService, MqttIoTService>();
 builder.Services.AddHostedService(sp => (MqttIoTService)sp.GetRequiredService<IMqttIoTService>());
 builder.Services.AddHostedService<MqttIoTBackgroundService>();
-// Nota: MqttGatewayManager è gestito dalla WebApp, non dall'API
 #endregion
 
 
@@ -134,7 +133,6 @@ builder.Services.AddHttpClient("PhilipsHue", client =>
     }
     else
     {
-        // Philips Hue opzionale - costruisci URL da host e porta
         var hueHost = builder.Configuration["Hue:Host"] ?? "localhost";
         var huePort = builder.Configuration["Hue:Port"] ?? "8000";
         var hueUsername = builder.Configuration["Hue:Username"] ?? "newdeveloper";
@@ -150,7 +148,7 @@ builder.Services.AddHttpClient("PhilipsHue", client =>
 });
 builder.Services.AddScoped<PhilipsHueControl>();
 
-// Servizio di sincronizzazione iniziale Philips Hue (opzionale)
+// Servizio di sincronizzazione iniziale Philips Hue 
 // Sincronizza lo stato delle luci con il DB all'avvio
 builder.Services.AddHostedService<PhilipsHueSyncService>();
 #endregion

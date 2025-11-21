@@ -137,7 +137,6 @@ namespace Mobishare.API.Controllers
 
 
         //ZONA UTENTE
-
         //POST: api/utenti -> Registrazione di un nuovo utente
         [HttpPost]
         public async Task<ActionResult<SuccessResponse>> PostUtente([FromBody] RegisterDTO dto)

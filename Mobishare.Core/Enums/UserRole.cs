@@ -18,6 +18,6 @@
         /// <summary>
         /// Super amministratore con accesso completo al sistema
         /// </summary>
-        SuperAdmin = 99
+        //SuperAdmin = 99
     }
 }

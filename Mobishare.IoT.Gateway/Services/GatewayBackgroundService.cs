@@ -19,7 +19,7 @@ namespace Mobishare.IoT.Gateway.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("=== Gateway Background Service avviato ===");
+            _logger.LogInformation("Gateway Background Service avviato");
 
             try
             {
@@ -40,7 +40,7 @@ namespace Mobishare.IoT.Gateway.Services
 
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("=== Gateway Background Service in arresto ===");
+            _logger.LogInformation("Gateway Background Service in arresto");
             await _gatewayService.FermaAsync();
             await base.StopAsync(cancellationToken);
         }

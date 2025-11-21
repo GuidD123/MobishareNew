@@ -24,7 +24,7 @@ namespace Mobishare.API.Controllers
 
         //CONSULTA STORICO TRANSAZIONI
         // GET: api/pagamenti/utente/{idUtente}
-        [Authorize(Roles = "Gestore,Utente")]
+        [Authorize(Roles = "Gestore")]
         [HttpGet("utente/{idUtente}")]
         public async Task<ActionResult<SuccessResponse>> GetTransazioniByUtente(int idUtente)
         {

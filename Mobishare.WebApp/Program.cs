@@ -34,10 +34,10 @@ builder.Services.AddHttpClient<IMobishareApiService, MobishareApiService>(client
         new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
 
-// Alternativa: HttpClient generico (se non hai IMobishareApiService)
+
 builder.Services.AddHttpClient();
 
-// Session per gestire login/logout
+//Session per gestire login/logout
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);
@@ -77,9 +77,7 @@ builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = options.DefaultPolicy;
 });
 
-// ========================================
-// NOTA: Gateway IoT rimossi da WebApp
-// ========================================
+
 // I gateway MQTT sono ora gestiti dal progetto standalone Mobishare.IoT.Gateway.
 // WebApp si occupa SOLO del frontend (Razor Pages) e chiamate API.
 // Per avviare i gateway, eseguire separatamente Mobishare.IoT.Gateway.exe
@@ -156,7 +154,7 @@ app.UseRouting(); //definisce endpoint corrente
 // Session -> dev'essere disponibile in tutte le pagine razor ma prima di MapRazoPages()
 app.UseSession();
 
-// CORS (se configurato)
+// CORS 
 app.UseCors("AllowBackend");
 
 app.UseAuthentication();

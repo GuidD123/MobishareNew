@@ -23,7 +23,7 @@
         /// <summary>
         /// Pagamento rimborsato all'utente
         /// </summary>
-        Rimborso,
+        //Rimborso,
 
         /// <summary>
         /// Pagamento annullato prima del completamento

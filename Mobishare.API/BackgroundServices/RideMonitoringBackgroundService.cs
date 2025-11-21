@@ -14,7 +14,7 @@ namespace Mobishare.API.BackgroundServices
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<RideMonitoringBackgroundService> _logger;
 
-        // Intervallo di controllo: ogni quanti secondi controllare le corse
+        //Intervallo di controllo: ogni quanti secondi controllare le corse
         private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(30);
 
         public RideMonitoringBackgroundService(

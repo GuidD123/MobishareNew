@@ -1,0 +1,1395 @@
+openapi: 3.0.1
+info:
+  title: Mobishare API
+  version: v1
+paths:
+  /api/Corse:
+    get:
+      tags:
+        - Corse
+      parameters:
+        - name: idUtente
+          in: query
+          schema:
+            type: integer
+            format: int32
+        - name: matricolaMezzo
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Corse/attiva:
+    get:
+      tags:
+        - Corse
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Corse/utente/{idUtente}:
+    get:
+      tags:
+        - Corse
+      parameters:
+        - name: idUtente
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Corse/{id}:
+    get:
+      tags:
+        - Corse
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    put:
+      tags:
+        - Corse
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FineCorsaDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/FineCorsaDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/FineCorsaDTO'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Corse/inizia:
+    post:
+      tags:
+        - Corse
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvviaCorsaDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/AvviaCorsaDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/AvviaCorsaDTO'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Corse/statistiche:
+    get:
+      tags:
+        - Corse
+      parameters:
+        - name: idUtente
+          in: query
+          schema:
+            type: integer
+            format: int32
+        - name: matricolaMezzo
+          in: query
+          schema:
+            type: string
+        - name: dal
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: al
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Dashboard:
+    get:
+      tags:
+        - Dashboard
+      parameters:
+        - name: idUtente
+          in: query
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+  /api/Feedback:
+    post:
+      tags:
+        - Feedback
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackCreateDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackCreateDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/FeedbackCreateDTO'
+      responses:
+        '200':
+          description: Success
+  /api/Feedback/utente/{idUtente}:
+    get:
+      tags:
+        - Feedback
+      parameters:
+        - name: idUtente
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+  /api/Feedback/recenti:
+    get:
+      tags:
+        - Feedback
+      responses:
+        '200':
+          description: Success
+  /api/Feedback/negativi:
+    get:
+      tags:
+        - Feedback
+      responses:
+        '200':
+          description: Success
+  /api/Feedback/statistiche:
+    get:
+      tags:
+        - Feedback
+      responses:
+        '200':
+          description: Success
+  /api/Mezzi:
+    get:
+      tags:
+        - Mezzi
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    post:
+      tags:
+        - Mezzi
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MezzoCreateDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/MezzoCreateDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/MezzoCreateDTO'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Mezzi/{id}:
+    get:
+      tags:
+        - Mezzi
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Mezzi/matricola/{matricola}:
+    get:
+      tags:
+        - Mezzi
+      parameters:
+        - name: matricola
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    delete:
+      tags:
+        - Mezzi
+      parameters:
+        - name: matricola
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+  /api/Mezzi/{id}/stato:
+    put:
+      tags:
+        - Mezzi
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MezzoUpdateDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/MezzoUpdateDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/MezzoUpdateDTO'
+      responses:
+        '200':
+          description: Success
+  /api/Mezzi/{id}/ricarica:
+    put:
+      tags:
+        - Mezzi
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+  /api/Mezzi/matricola/{matricola}/segnala-guasto:
+    put:
+      tags:
+        - Mezzi
+      parameters:
+        - name: matricola
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+  /api/Mezzi/disponibili:
+    get:
+      tags:
+        - Mezzi
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Mezzi/nonprelevabili:
+    get:
+      tags:
+        - Mezzi
+      responses:
+        '200':
+          description: Success
+  /api/Mezzi/mqtt-batteria:
+    post:
+      tags:
+        - Mezzi
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatteriaDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/BatteriaDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/BatteriaDTO'
+      responses:
+        '200':
+          description: Success
+  /api/Mezzi/parcheggio/{idParcheggio}:
+    get:
+      tags:
+        - Mezzi
+      parameters:
+        - name: idParcheggio
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+  /api/Mezzi/statistiche:
+    get:
+      tags:
+        - Mezzi
+      responses:
+        '200':
+          description: Success
+  /health:
+    get:
+      tags:
+        - Mobishare.API
+      responses:
+        '200':
+          description: Success
+  /api/Pagamenti/utente/{idUtente}:
+    get:
+      tags:
+        - Pagamenti
+      parameters:
+        - name: idUtente
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Pagamenti/miei:
+    get:
+      tags:
+        - Pagamenti
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Parcheggi:
+    get:
+      tags:
+        - Parcheggi
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    post:
+      tags:
+        - Parcheggi
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParcheggioCreateDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/ParcheggioCreateDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/ParcheggioCreateDTO'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Parcheggi/{id}:
+    get:
+      tags:
+        - Parcheggi
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    delete:
+      tags:
+        - Parcheggi
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+  /api/Parcheggi/{id}/disponibilita:
+    get:
+      tags:
+        - Parcheggi
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Parcheggi/{id}/stato:
+    put:
+      tags:
+        - Parcheggi
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParcheggioStatoDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/ParcheggioStatoDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/ParcheggioStatoDTO'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Ricariche/{idUtente}:
+    get:
+      tags:
+        - Ricariche
+      parameters:
+        - name: idUtente
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Ricariche:
+    post:
+      tags:
+        - Ricariche
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NuovaRicaricaDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/NuovaRicaricaDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/NuovaRicaricaDTO'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Ricariche/{id}/conferma:
+    post:
+      tags:
+        - Ricariche
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfermaRicaricaDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/ConfermaRicaricaDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/ConfermaRicaricaDTO'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Ricariche/utente/{idUtente}/saldo:
+    get:
+      tags:
+        - Ricariche
+      parameters:
+        - name: idUtente
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Utenti:
+    get:
+      tags:
+        - Utenti
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    post:
+      tags:
+        - Utenti
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/RegisterDTO'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Utenti/sospesi:
+    get:
+      tags:
+        - Utenti
+      responses:
+        '200':
+          description: Success
+  /api/Utenti/{id}/riattiva:
+    put:
+      tags:
+        - Utenti
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+  /api/Utenti/login:
+    post:
+      tags:
+        - Utenti
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/LoginResponseDTOSuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponseDTOSuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponseDTOSuccessResponse'
+  /api/Utenti/cambia-password:
+    put:
+      tags:
+        - Utenti
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambiaPswDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/CambiaPswDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/CambiaPswDTO'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Utenti/request-password-reset:
+    post:
+      tags:
+        - Utenti
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequestDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequestDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequestDTO'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/StringSuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringSuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/StringSuccessResponse'
+  /api/Utenti/reset-password:
+    post:
+      tags:
+        - Utenti
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequestDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequestDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequestDTO'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Utenti/{id}:
+    get:
+      tags:
+        - Utenti
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    put:
+      tags:
+        - Utenti
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UtenteDTO'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/UtenteDTO'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/UtenteDTO'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/Utenti/profilo:
+    get:
+      tags:
+        - Utenti
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+components:
+  schemas:
+    AvviaCorsaDTO:
+      required:
+        - idParcheggioPrelievo
+        - matricolaMezzo
+      type: object
+      properties:
+        matricolaMezzo:
+          maxLength: 64
+          minLength: 1
+          type: string
+        idParcheggioPrelievo:
+          maximum: 2147483647
+          minimum: 1
+          type: integer
+          format: int32
+      additionalProperties: false
+    BatteriaDTO:
+      required:
+        - idMezzo
+      type: object
+      properties:
+        idMezzo:
+          type: integer
+          format: int32
+        livelloBatteria:
+          maximum: 100
+          minimum: 0
+          type: integer
+          format: int32
+      additionalProperties: false
+    CambiaPswDTO:
+      required:
+        - email
+        - nuovaPassword
+        - vecchiaPassword
+      type: object
+      properties:
+        email:
+          minLength: 1
+          type: string
+          format: email
+        vecchiaPassword:
+          minLength: 1
+          type: string
+        nuovaPassword:
+          minLength: 8
+          pattern: ^(?=.*[A-Z])(?=.*\d).+$
+          type: string
+      additionalProperties: false
+    ConfermaRicaricaDTO:
+      required:
+        - successo
+        - tokenSicurezza
+      type: object
+      properties:
+        successo:
+          type: boolean
+        motivoRifiuto:
+          type: string
+          nullable: true
+        tokenSicurezza:
+          minLength: 1
+          type: string
+      additionalProperties: false
+    FeedbackCreateDTO:
+      type: object
+      properties:
+        idUtente:
+          type: integer
+          format: int32
+        idCorsa:
+          type: integer
+          format: int32
+        valutazione:
+          type: integer
+          format: int32
+        commento:
+          type: string
+          nullable: true
+      additionalProperties: false
+    FineCorsaDTO:
+      required:
+        - dataOraFineCorsa
+        - idParcheggioRilascio
+      type: object
+      properties:
+        dataOraFineCorsa:
+          type: string
+          format: date-time
+        idParcheggioRilascio:
+          maximum: 2147483647
+          minimum: 1
+          type: integer
+          format: int32
+        segnalazioneProblema:
+          type: boolean
+      additionalProperties: false
+    LoginRequest:
+      required:
+        - email
+        - password
+      type: object
+      properties:
+        email:
+          minLength: 1
+          type: string
+          format: email
+        password:
+          minLength: 1
+          pattern: ^(?=.*[A-Z])(?=.*\d).{8,}$
+          type: string
+      additionalProperties: false
+    LoginResponseDTO:
+      type: object
+      properties:
+        token:
+          type: string
+          nullable: true
+        id:
+          type: integer
+          format: int32
+        nome:
+          type: string
+          nullable: true
+        ruolo:
+          type: string
+          nullable: true
+        credito:
+          type: number
+          format: double
+        sospeso:
+          type: boolean
+      additionalProperties: false
+    LoginResponseDTOSuccessResponse:
+      type: object
+      properties:
+        messaggio:
+          type: string
+          nullable: true
+        dati:
+          $ref: '#/components/schemas/LoginResponseDTO'
+      additionalProperties: false
+    MezzoCreateDTO:
+      required:
+        - idParcheggioCorrente
+        - matricola
+        - stato
+        - tipo
+      type: object
+      properties:
+        matricola:
+          maxLength: 64
+          minLength: 3
+          type: string
+        tipo:
+          $ref: '#/components/schemas/TipoMezzo'
+        stato:
+          $ref: '#/components/schemas/StatoMezzo'
+        livelloBatteria:
+          maximum: 100
+          minimum: 0
+          type: integer
+          format: int32
+        idParcheggioCorrente:
+          maximum: 2147483647
+          minimum: 1
+          type: integer
+          format: int32
+      additionalProperties: false
+    MezzoUpdateDTO:
+      type: object
+      properties:
+        stato:
+          $ref: '#/components/schemas/StatoMezzo'
+        livelloBatteria:
+          maximum: 100
+          minimum: 0
+          type: integer
+          format: int32
+        idParcheggioCorrente:
+          type: integer
+          format: int32
+          nullable: true
+      additionalProperties: false
+    NuovaRicaricaDTO:
+      required:
+        - idUtente
+        - importoRicarica
+        - tipoRicarica
+      type: object
+      properties:
+        idUtente:
+          maximum: 2147483647
+          minimum: 1
+          type: integer
+          format: int32
+        importoRicarica:
+          maximum: 500
+          minimum: 5
+          type: number
+          format: double
+        tipoRicarica:
+          $ref: '#/components/schemas/TipoRicarica'
+        numeroCarta:
+          maxLength: 19
+          minLength: 13
+          type: string
+          nullable: true
+        emailPayPal:
+          maxLength: 100
+          minLength: 0
+          type: string
+          format: email
+          nullable: true
+      additionalProperties: false
+    ParcheggioCreateDTO:
+      required:
+        - capienza
+        - nome
+        - zona
+      type: object
+      properties:
+        nome:
+          maxLength: 100
+          minLength: 3
+          type: string
+        zona:
+          maxLength: 100
+          minLength: 0
+          type: string
+        indirizzo:
+          maxLength: 255
+          minLength: 0
+          type: string
+          nullable: true
+        capienza:
+          maximum: 1000
+          minimum: 1
+          type: integer
+          format: int32
+        attivo:
+          type: boolean
+      additionalProperties: false
+    ParcheggioStatoDTO:
+      type: object
+      properties:
+        attivo:
+          type: boolean
+      additionalProperties: false
+    RegisterDTO:
+      required:
+        - cognome
+        - email
+        - nome
+        - password
+      type: object
+      properties:
+        email:
+          maxLength: 255
+          minLength: 0
+          type: string
+          format: email
+        nome:
+          maxLength: 100
+          minLength: 2
+          type: string
+        cognome:
+          maxLength: 100
+          minLength: 2
+          type: string
+        password:
+          maxLength: 100
+          minLength: 8
+          pattern: ^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$
+          type: string
+      additionalProperties: false
+    ResetPasswordRequestDTO:
+      type: object
+      properties:
+        email:
+          type: string
+          nullable: true
+        token:
+          type: string
+          nullable: true
+        newPassword:
+          type: string
+          nullable: true
+      additionalProperties: false
+    StatoMezzo:
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+      type: integer
+      format: int32
+    StringSuccessResponse:
+      type: object
+      properties:
+        messaggio:
+          type: string
+          nullable: true
+        dati:
+          type: string
+          nullable: true
+      additionalProperties: false
+    SuccessResponse:
+      type: object
+      properties:
+        messaggio:
+          type: string
+          nullable: true
+        dati:
+          nullable: true
+      additionalProperties: false
+    TipoMezzo:
+      enum:
+        - 0
+        - 1
+        - 2
+      type: integer
+      format: int32
+    TipoRicarica:
+      enum:
+        - 0
+        - 1
+      type: integer
+      format: int32
+    UtenteDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        nome:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        ruolo:
+          type: string
+          nullable: true
+        credito:
+          type: number
+          format: double
+        sospeso:
+          type: boolean
+        puntiBonus:
+          type: integer
+          format: int32
+      additionalProperties: false
+  securitySchemes:
+    Bearer:
+      type: apiKey
+      description: Inserisci 'Bearer' seguito da spazio e token JWT
+      name: Authorization
+      in: header
+security:
+  - Bearer: []

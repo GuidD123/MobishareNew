@@ -21,7 +21,7 @@
         Blu = 2,
 
         /// <summary>
-        /// Spia gialla - mezzo in manutenzione o diagnostica - non prelevabile
+        /// Spia gialla - mezzo in manutenzione/ricarica o diagnostica - non prelevabile
         /// </summary>
         Giallo = 3,
 

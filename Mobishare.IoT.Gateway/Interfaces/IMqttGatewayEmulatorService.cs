@@ -4,7 +4,6 @@ namespace Mobishare.IoT.Gateway.Interfaces
 {
     public interface IMqttGatewayEmulatorService
     {
-
         Task AvviaAsync();
         Task FermaAsync();
         /// <summary>
@@ -27,7 +26,7 @@ namespace Mobishare.IoT.Gateway.Interfaces
         /// </summary>
         int IdParcheggio { get; }
 
-        // === GESTIONE MEZZI EMULATI ===
+        //GESTIONE MEZZI EMULATI
 
         /// <summary>
         /// Aggiunge un mezzo da emulare
@@ -45,9 +44,8 @@ namespace Mobishare.IoT.Gateway.Interfaces
         List<string> GetMezziEmulati();
 
 
-
-        // === SIMULAZIONE COMPORTAMENTI ===
-
+        //COMPORTAMENTI
+        
         /// <summary>
         /// Simula un cambio di stato per un mezzo
         /// </summary>
